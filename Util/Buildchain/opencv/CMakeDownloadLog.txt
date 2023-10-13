@@ -1,0 +1,6 @@
+#use_cache "/home/adhiraj/opencv-4.x/.cache"
+#do_unpack "v0.1.2a.zip" "fa4b3e25167319cb0fa9432ef8281945" "https://github.com/opencv/ade/archive/v0.1.2a.zip" "/home/adhiraj/opencv-4.x/build/3rdparty/ade"
+#check_md5 "/home/adhiraj/opencv-4.x/.cache/ade/fa4b3e25167319cb0fa9432ef8281945-v0.1.2a.zip"
+#remove_unpack "/home/adhiraj/opencv-4.x/build/3rdparty/ade"
+#mkdir "/home/adhiraj/opencv-4.x/build/3rdparty/ade"
+#unpack "/home/adhiraj/opencv-4.x/build/3rdparty/ade" "/home/adhiraj/opencv-4.x/.cache/ade/fa4b3e25167319cb0fa9432ef8281945-v0.1.2a.zip"

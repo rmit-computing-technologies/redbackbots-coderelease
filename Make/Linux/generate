@@ -1,0 +1,12 @@
+#!/bin/bash
+# Generate CLion project or CMake caches
+
+cd "$(dirname "$(which "$0")")"
+
+for CONFIG in Debug Develop Release; do
+  cmake -DCMAKE_BUILD_TYPE=$CONFIG -G Ninja -S . -B ../../Build/Linux/CMake/$CONFIG
+done
+
+# if [ ! -u ../../Util/Buildchain/Linux/bin/getModKey ]; then
+#   pkexec bash -c "chown root:root $(pwd)/../../Util/Buildchain/Linux/bin/getModKey; chmod u+s $(pwd)/../../Util/Buildchain/Linux/bin/getModKey"
+# fi

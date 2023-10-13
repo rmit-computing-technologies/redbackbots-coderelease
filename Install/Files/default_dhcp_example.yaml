@@ -1,0 +1,15 @@
+# This is an example full netplan configuration for DHCP networking
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: true
+      dhcp6: false
+  wifis:
+    wlan0:
+      dhcp4: true
+      dhcp6: false
+      access-points:
+        "ssid":
+          password: "password"

@@ -1,0 +1,23 @@
+dist: bionic
+language: cpp
+
+addons:
+  apt:
+    sources:
+      - sourceline: 'deb https://apt.kitware.com/ubuntu/ bionic main'
+        key_url: https://apt.kitware.com/keys/kitware-archive-latest.asc
+    packages:
+      - cmake
+      - ninja-build
+      - libhdf5-dev
+      - libgtest-dev
+      - libprotobuf-dev
+      - protobuf-compiler
+
+script:
+  - /usr/bin/cmake -G Ninja -S /usr/src/googletest -B gtest_build
+  - sudo /usr/bin/cmake --build gtest_build --target install
+  - /usr/bin/cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DWITH_APPLICATIONS=ON -DWITH_TESTS=ON -S . -B build
+  - cd build
+  - ninja
+  - ninja test

@@ -1,0 +1,173 @@
+#! /usr/bin/env python3
+
+'''
+createHomeArchive:
+- Create an archive file of the home folder
+
+@author
+- based on bHuman createHomeArchive
+- Timothy Wiley
+'''
+
+import argparse
+import datetime
+import os
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+
+import rbbpython.config as cfg
+from rbbpython.echo import (
+    print_error,
+    print_status,
+    print_warning,
+    print_progress,
+    print_subitem,
+    query_yes_no
+)
+import rbbpython.install as install
+import rbbpython.shellEscape as shell
+
+# Global Parameters
+REDBACKBOTS_CHECKOUT_DIR = cfg.rbbCheckoutDirectory()
+
+# Static/Constants strings
+# CHMOD_GO_NONE = 'go= '
+
+# Main entry point
+if __name__ == "__main__":
+    # Python version 3.8 or greater is required for shutil.copytree() method
+    # TODO: fix for older versions
+    if (not (sys.version_info[0] >= 3 and sys.version_info[1] >= 8)):
+        print_error("Python Version 3.8+ is required for this script. Current version: " + sys.version)
+        exit()
+    
+    # Process args
+    parser = argparse.ArgumentParser(description='Sync RedBackBots to a Nao')
+    parser.add_argument('-b', action='store_true', help='Enable debug mode - does not clean-up temp directory')
+    parser.add_argument('-c', dest='config', type=str, default='Release', choices=['Release', 'Develop', 'Debug'], help='Build configuration to deploy. Default: Release')
+    parser.add_argument('-H', dest='archive', type=str, help='Path to the home archive')
+    # parser.add_argument('-r', dest="robot", help='Robot to use for the archive configuration')
+    parser.add_argument('-u', action='store_true', help='Require a USB drive when starting redbackbots')
+    parser.add_argument('-v', dest='volume', type=int, help='Set volume to the specified value')
+    parser.add_argument('-w', dest='wireless', type=str, help='Set the wireless profile')
+    args = parser.parse_args()
+    
+    print_status("Create Home Archive")
+    print_subitem("REDBACKBOTS_CHECKOUT_DIR = "+ REDBACKBOTS_CHECKOUT_DIR)
+    print()
+
+    # Configure settings & Defaults
+    homeDir = "/tmp/rbb-home"
+    buildConfiguration = args.config
+    requireUSB = False if not args.u else args.u
+    volume = None if not args.volume else args.volume
+    wirelessProfile = "RBB" if not args.wireless else args.wireless
+    homeArchive = REDBACKBOTS_CHECKOUT_DIR + "/home.tar.gz" if not args.archive else args.archive
+    print_subitem("Build configuration: " + buildConfiguration)
+    print_subitem("Require USB: " + str(requireUSB))
+    print_subitem("Volume: " + str(volume))
+    print_subitem("Wireless Profile: " + wirelessProfile)
+    print_subitem("Archive location: " + homeArchive)
+
+    # Check existing home directory
+    if os.path.exists(homeDir):
+        print_warning(homeDir + "exists already (from a previous run) - removing old directory")
+        shutil.rmtree(homeDir)
+
+    # Create home directory
+    os.makedirs(homeDir + "/nao", exist_ok=True)
+
+    # Iterate through collection of files to install
+    for element in install.installFiles:
+        if element["archive"]:
+            print_subitem("Processing: " + element["description"])
+            src = REDBACKBOTS_CHECKOUT_DIR + "/" + element["src"]
+            dest = homeDir + "/nao/" + element["dest"]
+            
+            # Ensure dest directory exists
+            os.makedirs(dest, exist_ok=True)
+            
+            # Do copy
+            if element["directory"]:
+                # This required Python version 3.8+
+                shutil.copytree(src, dest, dirs_exist_ok=True)
+            else:
+                basename = os.path.basename(src)
+                dest = dest + basename
+                shutil.copy(src, dest)
+    
+    # Iterate through services
+    servicesDir = homeDir + "/nao/.config/systemd/user/"
+    servicesDefaultDir = servicesDir + "default.target.wants/"
+    os.makedirs(servicesDir, exist_ok=True)
+    os.makedirs(servicesDefaultDir, exist_ok=True)
+    for element in install.services:
+        print_subitem("Processing: " + element + ".service")
+        src = REDBACKBOTS_CHECKOUT_DIR + "/Install/Files/" + element + ".service"
+        dest = servicesDir + element + ".service"
+        
+        # Copy service
+        shutil.copy(src, dest)
+        
+        # Ensure service link to enable service start by default
+        command = "ln -s ../" + element + ".service " + servicesDefaultDir + element + ".service"
+        # print_subitem("    command: " + command)
+        shell.exec(command, hideOutput=False)
+
+    # Copy redbackbots executable
+    src = cfg.getCppExecutablePath(buildConfiguration)
+    basename = os.path.basename(src)
+    dest = homeDir + "/nao/" + basename
+    print_subitem("Syncing RedBackBots Code (build config: " + buildConfiguration + ")")
+    shutil.copy(src, dest)
+
+    # If a different volume has been set, update the volume
+    if volume:
+        print_subitem("Setting volume to " + str(volume))
+        with open(homeDir + "/nao/config/volume", 'w') as vFile:
+            vFile.write(str(volume))
+
+    # Create Head Id -> Name mapping file for install.sh
+    robotConfig = cfg.loadConfigJSON("Robots/robotsv2.cfg")
+    with open(homeDir + "/nao/.config/idmapping", 'w') as vFile:
+        for robot in robotConfig:
+            if robot != '**WARNING':
+                vFile.write(robot + '=' +  robotConfig[robot]["head"] + '\n')
+        vFile.write('---end---\n')
+
+    # Set default values for hostname, wiredIP, wireless IP
+    # These are over-ridden by install.sh if a robot is detected from the robots.cfg using the head serial number
+    with open(homeDir + "/nao/.config/hostname", 'w') as vFile:
+        vFile.write("Default")
+    with open(homeDir + "/nao/.config/wirelessIp", 'w') as vFile:
+        vFile.write("192.168.100.250")
+    with open(homeDir + "/nao/.config/wiredIp", 'w') as vFile:
+        vFile.write("192.168.100.251")
+
+    # Set wireless default profile (used by install.sh to grab the 'default' profile)
+    src = REDBACKBOTS_CHECKOUT_DIR + "/Install/Profiles/" + wirelessProfile
+    dest = homeDir + "/nao/Profiles/default"
+    shutil.copy(src, dest)
+
+    # Set requireUSB
+    if requireUSB:
+        print_subitem("Setting USB as required")
+        with open(homeDir + "/nao/.config/require-usb", 'w') as vFile:
+            vFile.write("ON")
+
+    # Create archive file
+    print()
+    print_status("Generating archive")
+    command = "tar -czf '" + homeArchive + "' -C '" + homeDir + "' nao"
+    print_subitem(command)
+    shell.exec(command, hideOutput=False)
+
+    # Cleanup
+    if not args.b:
+        shutil.rmtree(homeDir)
+
+    print()
+    print_status("createHomeArchive done - output in " + homeArchive)

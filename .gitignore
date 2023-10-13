@@ -1,0 +1,46 @@
+# redbackbots configuration
+.bashrc
+
+# Save files
+*~
+*.log
+*.nnmc
+*.ofn
+*.ofn2
+*.pyc
+*.pyo
+*.orig
+*.pydevproject
+*.swp
+*.swo
+*.swn
+*.swm
+*.swl
+*.swj
+*.swk
+*.opn
+
+# Build/Run/Save folders
+bin/error.txt
+Build
+build-*/
+cmake-build-*/
+CMakeFiles/*
+ctc
+dumps
+GameController*/
+logs/
+tags
+software/
+
+# IDE Files
+*.code-workspace
+.cproject
+cscope*
+.idea
+.project
+.tags*
+.settings
+.vscode
+cmake-build-*/
+

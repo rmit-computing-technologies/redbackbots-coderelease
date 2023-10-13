@@ -1,0 +1,2 @@
+#!/bin/sh
+${REDBACKBOTS_CHECKOUT_DIR}/Build/Linux/Offnao/Release/offnao "$@"

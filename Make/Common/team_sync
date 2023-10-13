@@ -1,0 +1,104 @@
+#! /usr/bin/env python3
+
+'''
+nao_sync:
+- Synchronise the code to the Nao robot
+
+@author
+- based on rUNSWift nao_sync
+- Timothy Wiley
+'''
+
+import argparse
+import datetime
+import os
+import json
+
+from re import findall
+from subprocess import Popen, PIPE
+import subprocess
+import configparser
+
+import rbbpython.config as cfg
+from rbbpython.echo import (
+    print_error,
+    print_status,
+    print_warning,
+    print_subitem,
+)
+import rbbpython.install as install
+import rbbpython.shellEscape as shell
+import rbbpython.sshscp as scp
+
+# Global Parameters
+REDBACKBOTS_CHECKOUT_DIR = cfg.rbbCheckoutDirectory()
+remote = None
+#remote = scp.SshScp()
+
+# Static/Constants strings
+CHMOD_GO_NONE = 'go= '
+
+config_file = "./Config/Robots/robotsv2.cfg"
+robots = {}
+readyToSync = []
+notAvailable = []
+
+# https://medium.com/@networksuatomation/python-ping-an-ip-adress-663ed902e051
+# https://stackoverflow.com/questions/12101239/multiple-ping-script-in-python
+def ping():
+
+    for robot in robots:
+        address = robots[robot]
+        print("hello " + robot + "?")
+        ping = Popen(['ping', '-c','1','-W','1','-q', address], stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        output, err = ping.communicate(b"input data that is passed to subprocess' stdin")
+        rc = ping.returncode
+
+        # print(res2)
+        if rc == 0:
+            # print(robot + " is here")
+            readyToSync.append(robot)
+        else:
+            # print(robot + " sleeping")
+            notAvailable.append(robot)
+
+def sync():
+    for robot in readyToSync:
+        ping = Popen(['nao_sync', '-a','-r', robot], stdout=PIPE)
+        print("syncing with "+robot)
+
+        stdout = ping.stdout.read()
+        stdout = str(stdout)
+        output = stdout.split("[+]")
+        length = len(output)
+        output[length-1].strip()
+        print(output[length-1].strip("\\nx1b[0;0m'"))
+
+        ping.wait()
+
+
+def loadConfig():
+    with open(config_file) as file:
+        # Load the JSON data
+        config = json.load(file)
+        config.pop("**WARNING")
+
+    # Iterate over the items in the data dictionary
+    for item, item_data in config.items():
+        # Check if the current item has the "ip" key
+        if "ip" in item_data:
+            ip = item_data["ip"]
+            robots[item] = "192.168.100."+str(ip)
+
+# Main entry point
+if __name__ == "__main__":
+    loadConfig()
+
+    ping()
+
+    sync()
+
+    print("\nROBOTS MISSING:")
+    print(notAvailable)
+
+    

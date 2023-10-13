@@ -1,0 +1,372 @@
+#! /usr/bin/env python3
+
+'''
+build_setup:
+- Configures the build environment for working with RedBackBots soccer
+
+@author
+- based on rUNSWift build_setup
+- Timothy Wiley
+- RedbBackBots
+'''
+
+import argparse
+import os
+import pathlib
+import subprocess
+
+import rbbpython.config as cfg
+import rbbpython.shellEscape as shell
+import rbbpython.sshscp as ssh
+from rbbpython.echo import (
+    print_error,
+    print_status,
+    print_warning,
+    print_progress,
+    print_subitem,
+    query_yes_no,
+    query_generic
+)
+from rbbpython.grep import (
+    grep
+)
+
+# Global Parameters
+fullSetupPath = os.path.abspath(__file__)
+binDir = os.path.dirname(fullSetupPath)
+configDir = os.path.abspath(binDir + "/../../Config/")
+REDBACKBOTS_CHECKOUT_DIR = os.path.abspath(binDir + "/../../")
+CTC_VERSION_2_8 = "2.8.5.10"
+
+
+def installSoftware(config):
+    software = config['Software']
+    pip_software = config['PipSoftware']
+    print_status("Installing software")
+    # APT software
+    # Load this here to avoid script delays
+    from rbbpython.aptinstall import (aptcheck, aptinstallcmdline)
+
+    toInstall = []
+
+    # Load Software to install
+    counter = 0
+    for pkg in software["install"]:
+        progress = round(counter / len(software["install"]) * 100)
+        print_progress("Installing " + pkg, progress)
+        installed = aptcheck(pkg)
+        if installed:
+            print_progress("Package " + pkg + " installed. Skipping", progress)
+        else:
+            print_progress("Marking " + pkg + " for installation", progress)
+            toInstall.append(pkg)
+        counter += 1
+    print_progress("Installation checked", 100)
+    for pkg in software["ignore"]:
+        print_status("Skipping package - configuration file disables install of " + pkg)
+
+    if len(toInstall) > 0:
+        print_warning("Installation will most likely request admin privillages to complete installation")
+        print_status("Commencing Installation")
+        print_subitem("Packages: " + " ".join(toInstall))
+        aptinstallcmdline(toInstall)
+    else:
+        print_subitem("No APT packages to install")
+        
+    # Installation of pip packages
+    counter = 0
+    for package in pip_software["install"]:
+        progress = round(counter / len(pip_software["install"]) * 100)
+        if package not in pip_software["ignore"]:
+            print_progress("Installing Pip package " + package, progress)
+            command = "pip3 install " + package
+            subprocess.call([command], shell=True)
+        else:
+            print_progress("Ignoring Pip package " + package, progress)
+        counter += 1
+
+
+def setupBash():
+    print_status("Configuring Bash Environment")
+    rbbBashFile = os.path.abspath(REDBACKBOTS_CHECKOUT_DIR + "/.bashrc")
+    bashrcFile = os.path.expanduser("~/.bashrc")
+
+    # Search for ssh config block
+    found = grep(bashrcFile, "RedBackBots")
+
+    # If not found, append redbackbots to root bashrc
+    if not found:
+        print_subitem("Updating bashrc file")
+        bashFile = open(bashrcFile, "a+")
+        bashFile.write("\n")
+        bashFile.write("# RedBackBots Bashrc Source\n")
+        bashFile.write("source " + rbbBashFile + "\n")
+        bashFile.close()
+
+    # Create redbackbots source file
+    print_subitem("Updating " + rbbBashFile)
+    bashFile = open(rbbBashFile, "w+")
+    bashFile.write("\n")
+    bashFile.write("# RedBackBots Environment Settings\n")
+    bashFile.write("export REDBACKBOTS_CHECKOUT_DIR=" + REDBACKBOTS_CHECKOUT_DIR + "\n")
+    bashFile.write("export PATH=\"" + binDir + ":$PATH\"\n")
+    bashFile.close()
+
+    print()
+    print_status("**** ENSURE THAT YOU READ THE BELOW WARNING ****")
+    print_warning(".bashrc configuration has changed." +
+                  "source the new bashrc file (using below) and re-run the setup\n" +
+                  "source " + rbbBashFile)
+    print_warning(
+        "REDBACKBOTS_CHECKOUT_DIR is set to: '" + REDBACKBOTS_CHECKOUT_DIR + "'\n. If this is not correct. Then change before relaunch")
+
+
+def setupBuild():
+    print_status("Setting up build environment")
+
+    # Create and configure CMake
+    print_subitem("Create and configure CMake (robot sources)")
+    command = REDBACKBOTS_CHECKOUT_DIR + "/Make/Linux/generate"
+    shell.exec(command, hideOutput=False)
+
+    # Choose Build Config
+    print()
+    config = query_generic("Choose configuration to build (default: Release)",
+                           options=['Release', 'Develop', 'Debug'],
+                           default="Release")
+    if config != '':
+        print_subitem("Building config: " + config)
+        command = REDBACKBOTS_CHECKOUT_DIR + "/Make/Linux/compile -r " + config
+        print("Building with command: " + command)
+        shell.exec(command, hideOutput=False)
+    else:
+        print_error("Invalid config selected, not building")
+
+
+def setupCtc():
+    print_status("Setting up CTC")
+    ctcDir = os.path.abspath(REDBACKBOTS_CHECKOUT_DIR + "/ctc")
+    ctcZipName = "ctc-linux64-atom-" + CTC_VERSION_2_8 + ".zip"
+    ctcZipPath = os.path.abspath(ctcDir + "/" + ctcZipName)
+
+    # Create CTC Directory
+    if not os.path.exists(ctcDir):
+        os.makedirs(ctcDir)
+
+    # Download CTC
+    print_subitem("Checking for CTC Zip: " + ctcZipPath)
+    if not os.path.exists(ctcZipPath):
+        print_error("The CTC needs to be downloaded from our repository")
+        print_subitem(
+            "Download it from https://bitbucket.org/wileyt-rmit/redbackbots/downloads/ctc-linux64-atom-2.8.5.10.zip")
+        print_subitem("Then place the file in: " + ctcDir)
+        print_warning("Once done, rerun this script")
+        exit(-1)
+
+    # Expand CTC file
+    ctcExpandedDir = ctcDir + "/ctc-linux64-atom-" + CTC_VERSION_2_8
+    print_subitem("Checking CTC Zip is expanded")
+    if not os.path.exists(ctcExpandedDir):
+        print_subitem("Expanding CTC Zip file to (" + ctcExpandedDir + ") - this may take a while")
+        command = "unzip -q -d " + ctcDir + " " + ctcZipPath
+        subprocess.call([command], shell=True)
+
+    # Run V6 toolchain script
+    command = ctcExpandedDir + "/yocto-sdk/relocate_qitoolchain.sh"
+    print_subitem("Running V6 CTC toolchain script (" + command + ")")
+    subprocess.call([command], shell=True)
+
+    # Get pip binaries for the robot
+    pipDir = REDBACKBOTS_CHECKOUT_DIR + "/software/pip"
+    if not os.path.exists(pipDir):
+        print_subitem("Making Pip Directory: " + pipDir)
+        os.makedirs(pipDir)
+
+    # Get pip files
+    options = " --platform manylinux1_i686 --python-version 27 --implementation cp --abi cp27m "
+    commands = ["pip download msgpack --dest " + pipDir + options + "--only-binary=:all:",
+                "pip download pydevd-pycharm==222.4167.33 --dest " + pipDir + options + "--no-deps",
+                "pip wheel " + pipDir + "/pydevd-* -w " + pipDir,
+                ]
+    for command in commands:
+        subprocess.call([command], shell=True)
+
+    print_status("Setting up CTC Complete")
+
+
+def setupGit():
+    print_status("Checking your Git Configuration")
+    print("If the user info is incorrect, please configure it like (without the brackets '<'/'>'):")
+    print("\tgit config user.name <your-name>")
+    print("\tgit config user.email <your-sid>@student.rmit.edu.au")
+    gitUser = shell.capture(["git config user.name"])
+    gitEmail = shell.capture(["git config user.email"])
+    print("Your user name:", gitUser)
+    print("Your email:", gitEmail)
+
+
+def setupHostsAliases():
+    print_status("Configuring /etc/hosts with manage_hosts.py tool")
+    print_warning("Manage Hosts program must be run as an administrator. You may ba asked for an admin password")
+    manageProgram = REDBACKBOTS_CHECKOUT_DIR + "/Make/Common/manage_hosts"
+    commandBase = "sudo " + manageProgram
+
+    command = commandBase + " -g "
+    shell.exec(command, hideOutput=False)
+
+
+def setupSSHConfig(configRobots):
+    print_status("Setting up SSH Config")
+    sshDir = ssh.sshDirectory
+    sshConfig = ssh.sshConfigDirectory
+    print_subitem("SSH Dir: " + sshDir)
+    if not os.path.exists(sshDir):
+        print_subitem("Making SSH Directory")
+        os.makedirs(sshDir)
+        os.chmod(sshDir, 0o700)
+    if not os.path.exists(sshConfig):
+        print_subitem("Creating SSH Config File")
+        pathlib.Path(sshConfig).touch()
+        os.chmod(sshConfig, 0o600)
+
+    # Search for ssh config block
+    found = grep(sshConfig, "RedBackBots")
+
+    # If not found, append new block
+    robots = cfg.getKeys(configRobots)
+    if not found:
+        print_subitem("Adding Redbackbot robots to SSH Config")
+        sshFile = open(sshConfig, "a+")
+        sshFile.write("\n")
+        sshFile.write("# RedBackBots SSH Config\n")
+        sshFile.write("Host redbackbots " + " ".join(robots) + "\n")
+        sshFile.write("  Hostname %h.local\n")
+        sshFile.write("  CheckHostIP no\n")
+        sshFile.write("  User nao\n")
+        sshFile.write("  StrictHostKeyChecking no\n")
+        sshFile.close()
+    else:
+        print_warning("SSH Config already configured. Updating this is not yet implemented")
+
+
+def setupSSHKeys():
+    print_status("Setting up SSH Keys")
+    pubkeyFile = ssh.pubicKeyFile
+    authkeyFile = ssh.authKeyFile()
+    print_subitem("pub key file: " + pubkeyFile)
+    print_subitem("authorized_keys file: " + authkeyFile)
+
+    # Check SSH Args
+    check_command = 'ssh-keygen -l -f ' + pubkeyFile
+    retCode = shell.exec(check_command, True)
+    if not retCode:
+        print_subitem("No id_rsa.pub file - generating")
+        print_error("NOT IMPLEMENTED")
+    else:
+        print_subitem("Using existing id_rsa.pub file")
+
+    # Locate pub 
+    if retCode:
+        checkAuth = ssh.checkAuthKey()
+        if not checkAuth:
+            print_status("Adding key to authorized keys")
+            # add a new line to the file if it doesn't exist, or the append won't work
+            shell.exec("sed -i -e '$a\\' " + authkeyFile)
+            command = "cat " + pubkeyFile + " >> " + authkeyFile
+            shell.exec(command)
+        else:
+            print_subitem("Key already in authorized keys")
+
+
+# Main entry point
+if __name__ == "__main__":
+    # Process args with supported argument -s to only install software
+    parser = argparse.ArgumentParser(description='Setup the RBB Nao Software for your local computer')
+    parser.add_argument('-s', '--software', action='store_true', help='Only install software')
+    args = parser.parse_args()
+    # Load configs
+    config = cfg.loadConfigJSONFile(configDir + "/software.json")
+    # if -s is passed, only install software
+    if args.software:
+        print_status("Only installing software")
+        installSoftware(config)
+        exit(0)
+    # Status Message
+    print_status("Commencing Build Setup")
+    print_warning("If you are unsure about any answer, always select yes (Y)")
+
+    # Loading paths
+    print_subitem("REDBACKBOTS_CHECKOUT_DIR = " + REDBACKBOTS_CHECKOUT_DIR)
+    print_subitem("Bin Directory = " + binDir)
+    print_subitem("Config Directory = " + configDir)
+
+    # Check for env configuration, and configure bash
+    tmpEnv = cfg.getEnvParameter("REDBACKBOTS_CHECKOUT_DIR", check=True)
+    bashLoaded = tmpEnv != ""
+
+    if not bashLoaded:
+        print_warning("bashrc has not been configured. Configuring bash. Once complete, restart your terminal")
+        setupBash()
+        exit()
+
+    # Setup bash script
+    query = query_yes_no("Configure Bash?")
+    bashSetupDone = False
+    if query:
+        setupBash()
+        bashSetupDone = True
+    print()
+
+    configRobots = cfg.loadConfigJSONFile(configDir + "/Robots/robotsv2.cfg")
+    print_subitem("Configured Robots:")
+    for robot in cfg.getKeys(configRobots):
+        if robot != "**WARNING":
+            print_subitem("\t" + robot)
+    print()
+
+    # Install software
+    query = query_yes_no("Install software?")
+    if query:
+        installSoftware(config)
+    print()
+
+    # Setup Git
+    query = query_yes_no("Setup Git?")
+    if query:
+        setupGit()
+    print()
+
+    # Setup /etc/hosts Aliases
+    query = query_yes_no("Setup /etc/hosts alias?")
+    if query:
+        setupHostsAliases()
+    print()
+
+    # Setup SSH Config
+    # query = query_yes_no("Setup SSH Config?")
+    # if query:
+    #     setupSSHConfig(configRobots)
+    # print()
+
+    # Setup SSH Keys
+    query = query_yes_no("Setup SSH Keys?")
+    if query:
+        setupSSHKeys()
+    print()
+
+    # Setup CTC
+    # query = query_yes_no("Setup SoftBank Cross-Compile Toolchain (CTC)?")
+    # if query:
+    #     setupCtc()
+    # print()
+
+    # Build!
+    query = query_yes_no("Configure Build and Make?")
+    if query:
+        setupBuild()
+    print()
+
+    print_status("Build Setup Complete")
+
+    if bashSetupDone:
+        print_warning("Please close all shells.  Only new shells will have REDBACKBOTS_CHECKOUT_DIR set")

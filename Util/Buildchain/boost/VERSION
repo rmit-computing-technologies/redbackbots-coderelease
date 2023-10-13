@@ -1,0 +1,106 @@
+This is Boost v1.59
+Download from: https://www.boost.org/users/history/version_1_59_0.html
+
+Boost is built with the following libraries
+- program options
+- python
+- regex
+- system
+- thread
+
+# Python user configuration
+The Python version (2.7) must be set in bootstrap and then used in ./b2
+If a version of python different to 2.7 is to be used, the versions should be updated in the commands
+
+To configure the Python version - create a custom configuration file
+```sh
+touch ~/user-config.jam
+```
+
+Add the following lines - configuring the local python2.7 locations if different from these
+```
+using python : 2.7 : /usr/bin/python2.7 : /usr/include/python2.7 : /usr/lib/python2.7 ;
+```
+
+Remove the user-config file when finished
+
+# Linux (x86) build and configuration
+export DST_DIR=${REDBACKBOTS_CHECKOUT_DIR}/Util/Buildchain/boost
+./bootstrap.sh --prefix=${DST_DIR} --with-python-version=2.7
+./b2 --prefix=${DST_DIR} install
+
+
+# V6 build and configuration (on x86 machine)
+mkdir -p ~/software/boost
+export DST_DIR=/home/nao/software/boost
+cd <dir>/boost_1_59_....
+./bootstrap.sh --prefix=${DST_DIR}
+
+This needs to be run for both link=shared and link=static to get both
+shared and static libraries from boost
+./b2 --prefix=${DST_DIR}\
+     --with-program_options \
+     --with-python python=2.7 \
+     --with-regex \
+     --with-system \
+     --with-thread \
+     link=shared \
+     link=static \
+     cflags="-march=silvermont -mtune=silvermont" \
+     install
+     
+# For reference - Boost library configuration list
+
+Component configuration:
+
+    - atomic                   : not building
+    - chrono                   : not building
+    - container                : not building
+    - context                  : not building
+    - coroutine                : not building
+    - coroutine2               : not building
+    - date_time                : not building
+    - exception                : not building
+    - filesystem               : not building
+    - graph                    : not building
+    - graph_parallel           : not building
+    - iostreams                : not building
+    - locale                   : not building
+    - log                      : not building
+    - math                     : not building
+    - mpi                      : not building
+    - program_options          : not building
+    - python                   : not building
+    - random                   : not building
+    - regex                    : not building
+    - serialization            : not building
+    - signals                  : not building
+    - system                   : not building
+    - test                     : not building
+    - thread                   : not building
+    - timer                    : not building
+    - wave                     : not building
+
+
+# Testing on M1 - NOT WORKING
+./b2 --with-system toolset=clang
+
+./b2 --prefix=${DST_DIR}\
+     --with-system \
+     toolset=clang \
+     cxxflags="-std=c++11" \
+     cflags="--target=x86_64-linux-gnu \
+     -march=silvermont -mtune=silvermont \
+     -I/home/rescue/workspace/redbackBots/Util/Buildchain/gcc/V6/include \
+     -I/home/rescue/workspace/redbackBots/Util/Buildchain/gcc/V6/include/c++/9 \
+     -I/home/rescue/workspace/redbackBots/Util/Buildchain/gcc/V6/include/c++/9/backward \
+     -I/home/rescue/workspace/redbackBots/Util/Buildchain/gcc/V6/include/x86_64-linux-gnu \
+     -I/home/rescue/workspace/redbackBots/Util/Buildchain/gcc/V6/include/x86_64-linux-gnu/c++/9 \
+     -I/home/rescue/workspace/redbackBots/Util/Buildchain/gcc/V6/include/linux \
+     -I/usr/lib/llvm-10/lib/clang/10.0.0/include"
+
+
+-L/home/rescue/workspace/redbackBots/Util/Buildchain/gcc/V6/lib"
+
+-nostdinc -nostdinc++ 
+

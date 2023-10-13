@@ -1,0 +1,15 @@
+[Unit]
+Description=ALSA kludge
+After=sound.target
+Requires=sound.target
+Before=rbb.service
+
+#Before=bhuman.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/nao/bin/setvolume
+
+[Install]
+WantedBy=default.target

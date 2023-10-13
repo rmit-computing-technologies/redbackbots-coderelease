@@ -1,0 +1,21 @@
+# This is the base network configuration for RBB
+# Network specific settings in the "Profiles" folder addresses
+# included *after* this file, and *must* respect the indentation
+# rules for a valid YAML file, include *no* extra lines or
+# comments at the top of the profile file.
+
+# By default (at present) we use:
+# - DHCP for wired networking
+# - Static IPs for wireless networking (in default.yaml.wifi)
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      #addresses: [WIRED_IP_PLACEHOLDER/24]
+      dhcp4: true
+      dhcp6: false
+      link-local: [ ipv4 ]
+      dhcp4-overrides:
+        send-hostname: true
+        use-hostname: true

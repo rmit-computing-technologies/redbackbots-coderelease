@@ -1,0 +1,210 @@
+#! /usr/bin/env python3
+
+'''
+create_robot:
+- Reads the robots.cfg file and generates the necessary configuration(s) for a new robot
+
+@author
+- based on B-Human createRobot script(s)
+- Timothy Wiley
+- RedBackBots
+'''
+
+import argparse
+import os
+import pathlib
+import re
+import subprocess
+import sys
+
+import rbbpython.config as cfg
+from rbbpython.echo import (
+    print_error,
+    print_status,
+    print_warning,
+    print_progress,
+    print_subitem,
+    query_yes_no
+)
+import rbbpython.shellEscape as shell
+
+# Global Parameters
+REDBACKBOTS_CHECKOUT_DIR = cfg.rbbCheckoutDirectory()
+robotConfigFile = "Robots/robotsv2.cfg"
+robotConfig = cfg.loadConfigJSON(robotConfigFile)
+defaultsConfig = cfg.loadConfigJSON("defaults.cfg")
+
+def createRobot(robot, robotDir, newConfig):
+    print_status("Creating robot " + args.robot)
+
+    # Update robots config data structure
+    if not (robot in robotConfig.keys()):
+        robotConfig[robot] = {}
+    for key in ['ip', 'head', 'body']:
+        value = ""
+        if key in newConfig.keys():
+            value = newConfig[key]
+        robotConfig[robot][key] = value
+    robotConfig[robot]['version'] = 6
+    
+    # TEMPORARY: Run B-humans create robot until their scripts are replaced
+    print_warning("Running B-Human createRobot for consistency")
+    command = "{{{5}/Install/createRobot -t {0} -r {1} -s {2} -b {3} -d {4}}}".format(
+        defaultsConfig['teamNumber'],
+        robotConfig[robot]['ip'],
+        robotConfig[robot]['head'],
+        robotConfig[robot]['body'],
+        robot,
+        REDBACKBOTS_CHECKOUT_DIR
+    )
+    print_subitem(command)
+    shell.exec(command)
+
+    # Load info from config
+    print_subitem("Loading robot config")
+
+    # Check for existing config
+    if not os.path.exists(robotDir):
+        print_subitem("Creating directory" + robotDir)
+        os.makedirs(robotDir)
+
+    # Gen network
+    #genNetworkFiles(robot, robotConfig, defaultsConfig)
+
+    # Gen Image robot configuration files
+    genImageConfigFiles(robot, robotConfig, defaultsConfig)
+    
+
+def genImageConfigFiles(robot, robotConfig, defaultsConfig, robotOnly=False):
+    print_subitem("Generating Robot Image Configuration Files")
+    rootDir = cfg.robotConfigDirectory(robot)
+    templateParameters = {
+        "robot": robot,
+        "playerIP": defaultsConfig['ip']['basePlayerIP'] + "." + robotConfig[robot]['ip']
+    }
+
+    components = ['robot']
+    if not robotOnly:
+        components.append('head')
+        components.append('body')
+
+    for component in components:
+        #print_subitem("Generating Robot Image Configuration Files: " + component)
+        templateFile = cfg.templateDirectory() + "/" + component + ".cfg"
+        outputFile = rootDir + "/" + component + ".cfg"
+        genFromTemplate(templateFile, outputFile, templateParameters)
+
+def genNetworkFiles(robot, robotConfig, defaultsConfig):
+    print_subitem("Generating Network Files")
+
+    # Check network dir
+    networkDir = cfg.robotNetworkConfigDirectory(robot)
+    if not os.path.exists(networkDir):
+        print_subitem("Creating Network directory" + networkDir)
+        os.makedirs(networkDir)
+    
+    # Create Init.d Wireless file
+    print_subitem("Generating init.d wireless file")
+    wirelessTemplate = cfg.templateDirectory() + "/" + cfg.initdWirelessFile
+    templateParameters = {
+        "gateway": defaultsConfig['ip']['gateway'],
+        "netmask": defaultsConfig['ip']['netmask'],
+        "playerIP": defaultsConfig['ip']['basePlayerIP'] + "." + robotConfig[robot]['ip'],
+        "wpa_supplicant_filename": defaultsConfig['ip']['wpa_file']
+    }
+    outputFile = networkDir + "/" + cfg.initdWirelessFile
+    genFromTemplate(wirelessTemplate, outputFile, templateParameters)
+    os.chmod(outputFile, 0o777)
+
+'''
+Generate outputFile from templateFile, given the parameters
+'''
+def genFromTemplate(templateFile, outputFile, templateParameters):
+    #print_warning("gen" + templateFile + " " + outputFile)
+    template = open(templateFile, "r").read()
+    filledIn = template % templateParameters
+
+    output = open(outputFile, "w")
+    output.write(filledIn)
+    output.close()
+
+'''
+Update Configurations on all previously configured robots
+'''
+def updateConfigurations(wireless, updateall):
+    # Re-create wireless for each robot
+    print_subitem("Updating wireless")
+    robotConfig = cfg.loadConfig("robots.cfg")
+    defaultsConfig = cfg.loadConfig("defaults.cfg")
+    for robot in sorted(robotConfig.keys()):
+        if not ("**" in robot):
+            print_subitem("\tUpdating: " + robot)
+            if wireless or updateall:
+                print_subitem("\tUpdating network files")
+                print_error("Updating network files disabled")
+                #genNetworkFiles(robot, robotConfig, defaultsConfig)
+
+            if updateall:
+                print_subitem("\tUpdating robot settings")
+                genImageConfigFiles(robot, robotConfig, defaultsConfig, robotOnly=True)
+
+    return
+
+# Main entry point
+if __name__ == "__main__":
+    print_status("Create/Configure Robot Script")
+    print_subitem("REDBACKBOTS_CHECKOUT_DIR = "+ REDBACKBOTS_CHECKOUT_DIR)
+    print()
+
+    # Process args
+    parser = argparse.ArgumentParser(description='Create a robot from robots.cfg')
+    parser.add_argument('-r', dest="robot", type=str, help='The robot to create')
+    parser.add_argument('-i', dest="ip", type=str, help='The static IP for this robot')
+    parser.add_argument('-b', dest="serial_body", type=str, help='The serial number of the robot body')
+    parser.add_argument('-s', dest="serial_head", type=str, help='The serial number of the robot head')
+    parser.add_argument('-u', dest="updateall", action='store_true', help='Update Wireless AND Robot Configurations on all previously configured robots')
+    parser.add_argument('-w', dest="wireless", action='store_true', help='Update Wireless Configurations on all previously configured robots')
+    args = parser.parse_args()
+    
+    print_subitem("Configured robots:")
+    for robot in sorted(robotConfig.keys()):
+        if not ("**" in robot):
+            print_subitem("\t" + robot)
+    print()
+
+    if args.wireless or args.updateall:
+        # Reconfigure Wireless setting for all robots
+        print_status("Updating Configuration on all robots")
+        updateConfigurations(args.wireless, args.updateall)
+
+        print()
+        print_status("Update Complete")
+    else:
+        # Setup a new robot
+        print_status("Creating robot " + args.robot)
+        robot = args.robot
+        query = True
+        if robot in robotConfig.keys():
+            print_warning(robot + " config already exists")
+            query = query_yes_no("Do you wish to replace the config?")
+        else:
+            print_subitem(robot + " config does not exist, proceeding")
+        print()
+
+        if query:
+            # Load up robotsConfig
+            newConfig = {}
+            if args.ip: newConfig['ip'] = args.ip
+            if args.serial_body: newConfig['body'] = args.serial_body
+            if args.serial_head: newConfig['head'] = args.serial_head
+            robotDir = cfg.robotConfigDirectory(robot)
+            createRobot(robot, robotDir, newConfig)
+        else:
+            print_error("Not replacing the robot config")
+        print()
+
+        print_status("Setup Done")
+    
+    # Update JSON configuration
+    cfg.outputConfigJSON(robotConfigFile, robotConfig)
+    

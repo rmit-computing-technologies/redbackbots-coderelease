@@ -1,0 +1,19 @@
+[Unit]
+Description=Daemon to keep redbackbots running
+After=lola.service alsa-kludge.service multi-user.target
+Requires=lola.service alsa-kludge.service
+
+# Restarts are required for the LoLA socket to become active
+StartLimitInterval=400
+StartLimitBurst=10
+
+# Previously using multi-user
+#After=multi-user.target
+
+[Service]
+ExecStart=/home/nao/bin/daemon.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

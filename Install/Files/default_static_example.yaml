@@ -1,0 +1,22 @@
+# This is an example full netplan configuration for static networking
+# In practice (for the RBB setup) IPs should not be fixed but replaced
+# by WIRED_IP_PLACEHOLDER and WIRELESS_IP_PLACEHOLDER
+# Either a subnet of /16 or /24 should be used, dependent on the network
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: false
+      dhcp6: false
+      addresses:
+        - [WIRED_IP_PLACEHOLDER/16]
+  wifis:
+    wlan0:
+      dhcp4: false
+      dhcp6: false
+      access-points:
+        "ssid":
+          password: "password"
+      addresses:
+        - [WIRELESS_IP_PLACEHOLDER/16]

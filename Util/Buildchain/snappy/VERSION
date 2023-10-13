@@ -1,0 +1,8 @@
+# RedBackBots Snappy Version information
+
+At present Snappy is compiled into the redbackbots codebase
+as a library.
+This is done as it matches the existing use of Snappy before
+moving to the Ubuntu build system.
+
+TODO - pre-compile snappy library for all platform

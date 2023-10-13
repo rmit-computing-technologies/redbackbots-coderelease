@@ -1,0 +1,52 @@
+{
+   "Software":{
+      "install":[
+         "build-essential",
+         "ccache",
+         "clang",
+         "cmake",
+         "debootstrap",
+         "git",
+         "gdb",
+         "libasound2-dev",
+         "libboost-all-dev",
+         "libbz2-dev",
+         "libglib2.0-dev",
+         "libjpeg-dev",
+         "libpng-dev",
+         "libprotobuf-dev",
+         "lld",
+         "llvm",
+         "net-tools",
+         "ninja-build",
+         "openssh-client",
+         "paramiko-doc",
+         "patchelf",
+         "pigz",
+         "protobuf-compiler",
+         "python-is-python3",
+         "python2-dev",
+         "python3-pip",
+         "python3-paramiko",
+         "qtbase5-dev",
+         "qtdeclarative5-dev",
+         "rsync",
+         "unzip",
+         "wget",
+         "zlib1g-dev"
+      ],
+      "ignore":[
+         
+      ]
+   },
+   "PipSoftware":{
+      "install":[
+
+      ],
+      "ignore":[
+         
+      ]
+   }
+}
+
+
