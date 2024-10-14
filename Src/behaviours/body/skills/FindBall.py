@@ -4,6 +4,7 @@ from body.skills.Turn import Turn
 from util.Global import myPos
 from util.Vector2D import Vector2D
 from util.Timer import Timer
+from util import Log
 
 from util.Constants import GOAL_BOX_WIDTH, FIELD_LENGTH, FIELD_WIDTH, GOAL_BOX_LENGTH
 from util.TeamStatus import player_role, my_player_number
@@ -27,7 +28,7 @@ class FindBall(BehaviourTask):
     # ]
 
     POSITIONS = {
-        "Striker":[Vector2D(FIELD_LENGTH/2,0),
+        "Attacker":[Vector2D(FIELD_LENGTH/2,0),
                     Vector2D(FIELD_LENGTH/2,-FIELD_WIDTH/4),
                     Vector2D(FIELD_LENGTH/2,0),
                     Vector2D(FIELD_LENGTH/2,FIELD_WIDTH/4)], # left side of the middle of the attacking half
@@ -36,11 +37,6 @@ class FindBall(BehaviourTask):
                     Vector2D(-FIELD_LENGTH/2,FIELD_WIDTH/4),
                     Vector2D(-FIELD_LENGTH/2,0),
                     Vector2D(-FIELD_LENGTH/2,-FIELD_WIDTH/4)], # 
-
-        "Supporter":[Vector2D(-FIELD_LENGTH/3,0),
-                    Vector2D(FIELD_LENGTH/3,FIELD_WIDTH/4),
-                    Vector2D(-FIELD_LENGTH/3,0),
-                    Vector2D(FIELD_LENGTH/3,-FIELD_WIDTH/4)], # right side of slightly defending side of the attacking half
 
         "Midfielder":[Vector2D(-FIELD_LENGTH/3,0),
                     Vector2D(-FIELD_LENGTH/3,-FIELD_WIDTH/4),
@@ -73,22 +69,22 @@ class FindBall(BehaviourTask):
         }
 
     def _transition(self):
-        print(self.turn_timer.finished())
-        print("TIME ON TURN: " + str(self.turn_timer.elapsed()))
+        Log.debug(self.turn_timer.finished())
+        Log.debug("TIME ON TURN: " + str(self.turn_timer.elapsed()))
 
         if not self.turn_timer.finished():
-            print("TURN TIMER NOT FINISHED -> KEEP TURNING")
+            Log.debug("TURN TIMER NOT FINISHED -> KEEP TURNING")
             # If timer finished and ball not found, go back to turn
             if self.stand_timer.finished() or not self._ball_seen.is_max():
                 self._current_sub_task = "Turn"
-                print("TURN")
+                Log.debug("TURN")
             # If timer is running or the ball is confidently seen, stand
             else:
                 self._current_sub_task = "Stand"
-                print("STAND")
+                Log.debug("STAND")
         else:
             self._current_sub_task = "WalkToPoint"
-            print("WALK TO POINT")
+            Log.debug("WALK TO POINT")
 
             if self._position_close:
                 self.turn_timer.restart().start()
@@ -108,7 +104,7 @@ class FindBall(BehaviourTask):
         if self.current_role == 0:
             self.current_role = "Goalie"
         else:
-            role_priority = ["Striker", "Defender", "Supporter", "Midfielder"]
+            role_priority = ["Attacker", "Defender", "Midfielder"]
             self.current_role = role_priority[self.current_role - 1]
         # Tick hysteresis
         if canSeeBall():

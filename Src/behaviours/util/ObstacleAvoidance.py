@@ -1,7 +1,7 @@
 from util.Vector2D import Vector2D
 from util.Global import myPos, ballDistance, ballLostTime, myHeading
 from math import acos, radians
-from util.Timer import WallTimer
+from util.Timer import WallTimer, BumperTimer
 from util.Sonar import hasNearbySonarObject, LEFT, RIGHT
 from util.MathUtil import angleSignedDiff
 from robot import Sensors
@@ -24,14 +24,17 @@ rsonar_clear_timer = None
 
 # Minimum time to continue avoiding an obstacle we detected
 BUMPER_CLEAR_MINIMUM_SECONDS = 1.0
-SONAR_CLEAR_MINIMUM_SECONDS = 0.2
+SONAR_CLEAR_MINIMUM_SECONDS = 0.2 
+
+# Minimum amount of times the bumper must activate before moving backwards
+NUM_BUMPER_ACTIVATIONS = 3.0
+SECONDS_BEFORE_BUMPER_ACTIVATIONS_RESET = 1.0
 
 # assumption of headings of obstacles when detected, relative to my heading
 lfoot_bumper_obs_heading = radians(10)
 rfoot_bumper_obs_heading = radians(-10)
 lsonar_obs_heading = radians(30)
 rsonar_obs_heading = radians(-30)
-
 
 def update_obstacle_avoidance(newBlackboard):
     """
@@ -50,16 +53,24 @@ def update_obstacle_avoidance(newBlackboard):
     # Update left and right foot bumpers
     global lfoot_bumper_clear_timer, rfoot_bumper_clear_timer
     if lfoot_bumper_clear_timer is None:
-        lfoot_bumper_clear_timer = WallTimer()
+        lfoot_bumper_clear_timer = BumperTimer()
+    if lfoot_bumper_clear_seconds() > SECONDS_BEFORE_BUMPER_ACTIVATIONS_RESET:
+        lfoot_bumper_clear_timer.reset_activations()
+
     if rfoot_bumper_clear_timer is None:
-        rfoot_bumper_clear_timer = WallTimer()
+        rfoot_bumper_clear_timer = BumperTimer()
+    if rfoot_bumper_clear_seconds() > SECONDS_BEFORE_BUMPER_ACTIVATIONS_RESET:
+        rfoot_bumper_clear_timer.reset_activations()
 
     if sensorValues[Sensors.LFoot_Bumper_Left] or \
             sensorValues[Sensors.LFoot_Bumper_Right]:
         lfoot_bumper_clear_timer.restart()
+        lfoot_bumper_clear_timer.add_activation()
+
     if sensorValues[Sensors.RFoot_Bumper_Left] or \
             sensorValues[Sensors.RFoot_Bumper_Right]:
         rfoot_bumper_clear_timer.restart()
+        rfoot_bumper_clear_timer.add_activation()
 
     # Update left and right sonars
     global lsonar_clear_timer, rsonar_clear_timer
@@ -123,16 +134,19 @@ def walk_vec_with_avoidance(walk_vec):
     # rotate, depending on the obstacle
     walk_vector_forwards = Vector2D(walk_vec.length(), 0)
 
-    #
     # FOOT BUMPER AVOIDANCE - to avoid walking into fallen robots, standing
     # robots and goal posts
     # NOTE: Consider foot bumpers before sonar, as it is more important to
     # avoid walking into fallen robots, as you can get penalised for it.
-    #
-
+    
     # Check whether we have an lfoot bumper obstacle that interferes the walk
     lfoot_bumper_interferes_walk = False
-    if lfoot_bumper_clear_seconds() < BUMPER_CLEAR_MINIMUM_SECONDS:
+    lfoot_bumper_multiple_activations = False
+    
+    if lfoot_bumper_clear_timer.get_num_activations() >= NUM_BUMPER_ACTIVATIONS:
+        lfoot_bumper_multiple_activations = True
+
+    elif lfoot_bumper_clear_seconds() < BUMPER_CLEAR_MINIMUM_SECONDS:
         angle_lfoot_bumper_obs_to_walk_vec_heading = angleSignedDiff(
             walk_vec_heading, lfoot_bumper_obs_heading)
         if radians(-90) < angle_lfoot_bumper_obs_to_walk_vec_heading < radians(90):  # noqa
@@ -140,7 +154,12 @@ def walk_vec_with_avoidance(walk_vec):
 
     # Check whether we have an rfoot bumper obstacle that interferes the walk
     rfoot_bumper_interferes_walk = False
-    if rfoot_bumper_clear_seconds() < BUMPER_CLEAR_MINIMUM_SECONDS:
+    rfoot_bumper_multiple_activations = False
+
+    if rfoot_bumper_clear_timer.get_num_activations() >= NUM_BUMPER_ACTIVATIONS:
+        rfoot_bumper_multiple_activations = True
+
+    elif rfoot_bumper_clear_seconds() < BUMPER_CLEAR_MINIMUM_SECONDS:
         angle_rfoot_bumper_obs_to_walk_vec_heading = angleSignedDiff(
             walk_vec_heading, rfoot_bumper_obs_heading)
         if radians(-90) <= angle_rfoot_bumper_obs_to_walk_vec_heading < radians(90):  # noqa
@@ -157,6 +176,8 @@ def walk_vec_with_avoidance(walk_vec):
 
     # If walk interferes with the foot bumpers, we walk
     # 90 degrees to the bumper obstacle
+    if lfoot_bumper_multiple_activations or rfoot_bumper_multiple_activations:
+        return walk_vector_forwards.rotated(radians(180))
     if lfoot_bumper_interferes_walk:
         if 0 <= angle_lfoot_bumper_obs_to_walk_vec_heading < radians(90):
             return walk_vector_forwards.rotated(
@@ -224,7 +245,6 @@ def walk_vec_with_avoidance(walk_vec):
 def lsonar_clear_seconds():
     return lsonar_clear_timer.elapsedSeconds()
 
-
 def rsonar_clear_seconds():
     return rsonar_clear_timer.elapsedSeconds()
 
@@ -232,14 +252,12 @@ def rsonar_clear_seconds():
 def lfoot_bumper_clear_seconds():
     return lfoot_bumper_clear_timer.elapsedSeconds()
 
-
 def rfoot_bumper_clear_seconds():
     return rfoot_bumper_clear_timer.elapsedSeconds()
 
 
 def sonar_left_obstacle(clear_seconds=2.0):
     return lsonar_clear_seconds() < clear_seconds
-
 
 def sonar_right_obstacle(clear_seconds=2.0):
     return rsonar_clear_seconds() < clear_seconds

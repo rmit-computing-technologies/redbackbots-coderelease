@@ -10,7 +10,7 @@
  */
 constexpr int FIELD_LINE_WIDTH = 50;
 constexpr int ROBOTS_PER_TEAM = 6;
-constexpr bool USE_COMPETITION_FIELD = false;
+constexpr bool USE_COMPETITION_FIELD = true;
 #define DECLARE_CUSTOM_CONST(name, officialVal, customVal) constexpr float (name) = USE_COMPETITION_FIELD ? (officialVal) : (customVal)
 
 // Competition sizes

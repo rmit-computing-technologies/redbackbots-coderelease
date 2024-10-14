@@ -2,8 +2,11 @@
 
 #include "thread/ThreadManager.hpp"
 
-extern "C" 
-void initrobot(void);
+// extern "C" 
+// void initrobot(void);
+#define INIT_MODULE PyInit_robot
+extern "C" PyObject* INIT_MODULE();
+
 
 using namespace boost::python;
 
@@ -37,7 +40,8 @@ void PythonLandmarks::startPython()
     try
     {
         // Load robotmodule C extension module
-        initrobot();
+        // initrobot();
+        INIT_MODULE();
 
         // Get handle to the special main module and sys
         mainModule = import("__main__");
@@ -84,10 +88,10 @@ void PythonLandmarks::handlePyError(const error_already_set &ex)
             errorOccured = true;
         }
         PyErr_Print();
-        if (Py_FlushLine())
-        {
+        // Flush-line is no longer required in Python3 as softspace is removed
+        // if (Py_FlushLine()) { // Python 2.7
             PyErr_Clear();
-        }
+        // }
     }
     else
     {

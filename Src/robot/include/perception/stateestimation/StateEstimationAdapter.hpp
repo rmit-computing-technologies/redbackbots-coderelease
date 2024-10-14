@@ -1,6 +1,7 @@
 #pragma once
 
 #include "blackboard/Adapter.hpp"
+#include "types/AbsCoord.hpp"
 
 enum EstimatorsEnum
 {
@@ -36,6 +37,9 @@ class StateEstimationAdapter : Adapter
 
     void createEstimatorInfoIn();
     void writeToBlackboard();
+    void handleIncomingTeamBallUpdate();
+    void handleOutgoingTeamBallUpdate();
+
 
     Estimator *estimators[ESTIMATOR_TOTAL];
 
@@ -51,4 +55,8 @@ class StateEstimationAdapter : Adapter
     /* Functions used to calculate difference between frames */
     Odometry calculateOdometryDiff(Odometry newOdometry);
     float calculateDtInSeconds(int64_t newTimeStampInMicroSeconds);
+    int ticksSinceLastTeamBallUpdate;
+    int numOfBallSeenTicks;
+    AbsCoord lastTeamBallPos;
+    bool teamBallStillUpdating;
 };

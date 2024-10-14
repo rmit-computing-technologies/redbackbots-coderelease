@@ -93,25 +93,30 @@ void VisionAdapter::tickCamera() {
     if (combined_camera_ == NULL) {
         llog(WARNING) << "No Camera provided to the VisionAdapter" << endl;
     } else {
-         llog(TRACE) << "VisionAdapter - Get camera frames" << std::endl;
-         const uint8_t* point = combined_camera_->getFrameTop();
-         llog(TRACE) << "VisionAdapter - Got top frame" << std::endl;
-         writeTo(vision, topFrame, point);
-        //  llog(TRACE) << "VisionAdapter - write to BB (point)" << std::endl;
-         writeTo(vision, botFrame, combined_camera_->getFrameBottom());
-        //  llog(TRACE) << "VisionAdapter - write to BB (botFrame)" << std::endl;
+        // llog(TRACE) << "VisionAdapter - Get camera frames" << std::endl;
+        const uint8_t* point = combined_camera_->getFrameTop();
+        // llog(TRACE) << "VisionAdapter - Got top frame" << std::endl;
+        writeTo(vision, topFrame, point);
+        // llog(TRACE) << "VisionAdapter - write to BB (point)" << std::endl;
+        writeTo(vision, botFrame, combined_camera_->getFrameBottom());
+        // llog(TRACE) << "VisionAdapter - write to BB (botFrame)" << std::endl;
 
-         // TODO: Add comment explaining this
-        //  llog(TRACE) << "VisionAdapter - Create python object" << std::endl;
-         PyObject* py_buf = PyBuffer_FromMemory((uint8_t*) point, 2457600);
-         writeTo(vision, py_buffer, py_buf);
+        // TODO: Add comment explaining this
+        // llog(TRACE) << "VisionAdapter - Create python object" << std::endl;
+        // PyObject* py_buf = PyBuffer_FromMemory((uint8_t*) point, 2457600); // Python 2.7 API
+        // TW: The char and uint8 should be the same length
 
-         // Write the camera settings to the Blackboard
-         // for syncing with OffNao's camera tab
-        //  llog(TRACE) << "VisionAdapter - Write camera settings to BB" << std::endl;
-         CombinedCameraSettings settings = combined_camera_->getCameraSettings();
-         writeTo(vision, topCameraSettings, settings.top_camera_settings);
-         writeTo(vision, botCameraSettings, settings.bot_camera_settings);
+        if (point != nullptr) {
+            PyObject* py_buf = PyMemoryView_FromMemory((char *) point, 2457600, PyBUF_READ); // Interface has changed for Python3.8
+            writeTo(vision, py_buffer, py_buf);
+        }
+
+        // Write the camera settings to the Blackboard
+        // for syncing with OffNao's camera tab
+        // llog(TRACE) << "VisionAdapter - Write camera settings to BB" << std::endl;
+        CombinedCameraSettings settings = combined_camera_->getCameraSettings();
+        writeTo(vision, topCameraSettings, settings.top_camera_settings);
+        writeTo(vision, botCameraSettings, settings.bot_camera_settings);
     }
 }
 
@@ -158,10 +163,12 @@ void VisionAdapter::tickProcess() {
     info_in.top_camera_settings = readFrom(vision, topCameraSettings);
     info_in.bot_camera_settings = readFrom(vision, botCameraSettings);
 
+    const uint8_t* topFrame = readFrom(vision, topFrame);
+    const uint8_t* botFrame = readFrom(vision, botFrame);
     boost::shared_ptr<CombinedFrame> combined_frame_;
     combined_frame_ = boost::shared_ptr<CombinedFrame>(new CombinedFrame(
-        readFrom(vision, topFrame),
-        readFrom(vision, botFrame),
+        topFrame,
+        botFrame,
         conv_rr_,
         combined_frame_
     ));
@@ -180,7 +187,12 @@ void VisionAdapter::tickProcess() {
     pthread_yield();
     usleep(1); // force sleep incase yield sucks
 
-    VisionInfoOut info_out = vision_.processFrame(*(combined_frame_.get()), info_in);
+    VisionInfoOut info_out;
+    if (topFrame != nullptr && botFrame != nullptr) {
+        info_out = vision_.processFrame(*(combined_frame_.get()), info_in);
+    } else {
+        llog(INFO) << "NULL camera image, not processing vision" << std::endl;
+    }
 
     llog(TRACE) << "Vision processFrame() took " << t.elapsed_us() << " us" << endl;
     t.restart();

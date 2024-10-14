@@ -96,6 +96,18 @@ def loadConfig(file):
     return config
 
 '''
+Load file by name from root of config directory
+'''
+def loadRawConfig(file):
+    fullPath = configDirectory() + "/" + file
+    if not os.path.exists(fullPath):
+        print_error("Cannot locate config file: " + fullPath)
+        return None
+    
+    config = loadRawConfigFile(fullPath)
+    return config
+
+'''
 Load a JSON formatted file by name from root of config directory
 '''
 def loadConfigJSON(file):
@@ -113,6 +125,15 @@ Load file by full path
 '''
 def loadConfigFile(file):
     config = configparser.ConfigParser()
+    config.read(file)
+    return config
+
+'''
+Load raw file by full path
+'''
+def loadRawConfigFile(file):
+    config = configparser.ConfigParser(strict=False)
+    config.optionxform=str
     config.read(file)
     return config
 
@@ -196,3 +217,28 @@ Location of sub-directory for config templates
 '''
 def templateDirectory():
     return configDirectory() + "/Templates"
+
+
+def writeConfig(file, section, new_values):
+    # Load the existing config file
+    config = loadRawConfig(file)
+    fullPath = configDirectory() + "/" + file
+
+    # Check if the file is valid
+    if config is None:
+        print_error("Cannot write to an invalid config file.")
+        return
+
+    # Check if the section exists in the config
+    if section not in config:
+        print_error(f"Section '{section}' not found in the config file.")
+        return
+
+    # Update the existing values with the new values
+    for key, value in new_values.items():
+        config[section][key] = str(value)
+
+    # Save the updated config file
+    with open(fullPath, 'w') as config_file:
+        config_file.write('\n')
+        config.write(config_file, space_around_delimiters=False)

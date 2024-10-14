@@ -1,9 +1,12 @@
 #pragma once
 
-#include <boost/thread.hpp>
-#include <deque>
 #include "readers/reader.hpp"
+
+#include <boost/thread.hpp>
+#include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <deque>
+
 
 typedef int64_t msg_t;
 typedef std::deque<msg_t> chat_message_queue;
@@ -59,11 +62,11 @@ class NetworkReader : public Reader {
       void do_close();
 
       chat_message_queue write_msgs_;
-      public slots:
+      public Q_SLOTS:
          virtual void stopMediaTrigger();
-      virtual void recordMediaTrigger();
-      /**
-       * sends a command line string to the Nao
-       */
-      virtual void sendCommandLineString(QString item);
+         virtual void recordMediaTrigger();
+         /**
+         * sends a command line string to the Nao
+         */
+         virtual void sendCommandLineString(QString item);
 };

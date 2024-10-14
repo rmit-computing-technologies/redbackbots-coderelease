@@ -9,7 +9,7 @@
 // #include "tabs/jointsTab.hpp"
 // #include "tabs/temperatureTab.hpp"
 // #include "tabs/aroundFeetTab.hpp"
-// #include "tabs/cameraTab.hpp"
+#include "tabs/cameraTab.hpp"
 #include "tabs/overviewTab.hpp"
 // #include "tabs/visionTab.hpp"
 // #include "tabs/sensorTab.hpp"
@@ -59,6 +59,7 @@ Visualiser::Visualiser(QWidget *parent)
       // widgets for connecting to the naos
       connectionBar = new QDockWidget;
       cb.setupUi(connectionBar);
+      readHostnamesFromJson(QString::fromUtf8(getenv("REDBACKBOTS_CHECKOUT_DIR")) + "/Config/Robots/robotsv2.cfg");
       connect(cb.cbHost, SIGNAL(activated(const QString &)),
               this, SLOT(connectToNao(const QString &)));
       connect(cb.bgMasks, SIGNAL(buttonClicked(QAbstractButton *)),
@@ -70,7 +71,7 @@ Visualiser::Visualiser(QWidget *parent)
 
       overviewTab =  new OverviewTab(tabs, ui->menuBar, vision);
       // visionTab = new VisionTab(tabs, ui->menuBar, vision);
-      // cameraTab = new CameraTab(tabs, ui->menuBar, vision);
+      cameraTab = new CameraTab(tabs, ui->menuBar, vision);
       // sensorTab = new SensorTab(tabs, ui->menuBar, vision);
       // cameraPoseTab = new CameraPoseTab(tabs, ui->menuBar, vision);
       // graphTab = new GraphTab(tabs, ui->menuBar, vision);
@@ -82,7 +83,7 @@ Visualiser::Visualiser(QWidget *parent)
 
       tabVector.push_back(overviewTab);
       // tabVector.push_back(visionTab);
-      // tabVector.push_back(cameraTab);
+      tabVector.push_back(cameraTab);
       // tabVector.push_back(sensorTab);
       // tabVector.push_back(cameraPoseTab);
       // tabVector.push_back(graphTab);
@@ -97,7 +98,7 @@ Visualiser::Visualiser(QWidget *parent)
 
 
       /* Set up the tabs */
-      foreach (Tab *t, tabVector) {
+      Q_FOREACH (Tab *t, tabVector) {
          tabs->addTab(t, QString(t->metaObject()->className()).
                            remove(QRegExp("Tab$", Qt::CaseInsensitive)));
          connect(t, SIGNAL(showMessage(QString, int)),
@@ -288,12 +289,11 @@ void Visualiser::currentTabChanged(int tabIndex) {
    }
    tabVector[tabIndex]->tabSelected();
 
-   emit refreshNaoData();
+   Q_EMIT refreshNaoData();
 }
 
 OffNaoMask_t Visualiser::transmissionMask(const QAbstractButton *) {
    OffNaoMask_t mask = 0;
-   // TODO(jayen): make more efficient by just twiddling qab in the prior mask
    QList<QAbstractButton *> buttons = cb.bgMasks->buttons();
    while (!buttons.isEmpty()) {
       QAbstractButton *button = buttons.takeFirst();
@@ -340,10 +340,10 @@ void Visualiser::connectToNao(const QString &naoName, const uint16_t naoPort) {
       Q_ASSERT(reader);
       connect(this, SIGNAL(sendCommandLineString(const QString&)), reader,
               SLOT(sendCommandLineString(QString)));
+      connect(cameraTab, SIGNAL(sendCommandToRobot(QString)),
+              reader, SLOT(sendCommandLineString(QString)));
       // TODO: ADD BACK WITH TABS
       // connect(cameraPoseTab, SIGNAL(sendCommandToRobot(QString)),
-      //         reader, SLOT(sendCommandLineString(QString)));
-      // connect(cameraTab, SIGNAL(sendCommandToRobot(QString)),
       //         reader, SLOT(sendCommandLineString(QString)));
       // connect(logsTab, SIGNAL(sendCommandToRobot(QString)),
       //         reader, SLOT(sendCommandLineString(QString)));
@@ -357,9 +357,9 @@ void Visualiser::connectToNao(const QString &naoName, const uint16_t naoPort) {
 }
 
 void Visualiser::writeToNao(QAbstractButton *qab) {
-   if (reader)
-      // TODO(jayen): check reader is a networkreader
+   if (reader) {
       ((NetworkReader*)reader)->write(transmissionMask(qab));
+   }
 }
 
 void Visualiser::connectToNao() {
@@ -377,7 +377,7 @@ void Visualiser::connectToNao(const QString &naoName) {
 void Visualiser::commandLineString() {
    QString item = QInputDialog::getText(NULL, "Send String",
                                            tr("Command FieldEdge String:"));
-   emit sendCommandLineString(item);
+   Q_EMIT sendCommandLineString(item);
 }
 
 void Visualiser::disconnectFromNao() {
@@ -386,7 +386,7 @@ void Visualiser::disconnectFromNao() {
       reader->finishUp();
       qDebug("Try to destroy reader. Wait for thread to exit.");
    } else if (reader) {
-      emit readerClosed();
+      Q_EMIT readerClosed();
       delete reader;
       reader = 0;
       qDebug("Finished destroying reader");
@@ -432,4 +432,47 @@ void Visualiser::setUpReaderSignals(Reader *reader) {
    connect(reader, SIGNAL(disconnectFromNao()), this,
            SLOT(disconnectFromNao()));
    mediaPanel->recordButton->setFocus();
+}
+
+void Visualiser::readHostnamesFromJson(const QString& filename) {
+   QStringList hostnames;
+
+   // Open the JSON file
+   QFile file(filename);
+   if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+      qDebug() << "Failed to open file:" << filename;
+      return;
+   }
+
+   // Read JSON data from the file
+   QByteArray jsonData = file.readAll();
+   file.close();
+
+   // Parse JSON data
+   QJsonParseError error;
+   QJsonDocument doc = QJsonDocument::fromJson(jsonData, &error);
+   if (doc.isNull()) {
+      qDebug() << "Failed to parse JSON:" << error.errorString();
+      return;
+   }
+
+   // Check if the JSON document is an object
+   if (!doc.isObject()) {
+      qDebug() << "JSON document is not an object";
+      return;
+   }
+
+   // Get the root object
+   QJsonObject root = doc.object();
+
+   // Iterate over the object keys (hostnames)
+   for (const QString& hostname : root.keys()) {
+      if (hostname != "**WARNING"){
+         hostnames.append(hostname);
+      }
+   }
+
+   // Add robots from config file to widget
+   cb.cbHost->clear(); // Clear existing items
+   cb.cbHost->addItems(hostnames); // Add new hostnames
 }

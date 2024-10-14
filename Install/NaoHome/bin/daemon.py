@@ -42,8 +42,8 @@ os.environ["PYTHONPATH"] = PYTHONPATH
 
 
 def say(s):
-    # TODO: Add back
-    #os.system("/opt/aldebaran/bin/say " + s)
+    # os.system('echo "%s" | python /home/nao/bin/say.py' % s)
+    os.system(f'/bin/espeak "{s}"')
     print(s)
 
 

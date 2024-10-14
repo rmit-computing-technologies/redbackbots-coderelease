@@ -46,7 +46,7 @@ class Demo(BehaviourTask):
 
     def _tick(self):
         if self._current_sub_task == "WalkToBall":
-            self._tick_sub_task(final_pos=ballWorldPos(), speed=0.2)
+            self._tick_sub_task(final_pos=ballWorldPos(), speed=0.2, prevent_leaving_field=False)
         elif self._current_sub_task == "Kick" and ballRelPos().y < 0:
             self._tick_sub_task(kicking_foot = robot.Foot.RIGHT)
         else:

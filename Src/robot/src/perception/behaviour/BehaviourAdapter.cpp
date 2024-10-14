@@ -44,7 +44,7 @@ BehaviourAdapter::BehaviourAdapter(Blackboard *bb) : Adapter(bb), calibrationSki
    getline (hostfile, hostname);
    pythonSkill = new PythonSkill(bb);
 
-   // Alert runswift team - whistle detection requires 4 channels, not 2
+   // Alert redbackbots team - whistle detection requires 4 channels, not 2
    std::string noHearWhistles = "";
    int ret = system("python $HOME/whistle/alert_pulseaudio.py");
    if (ret != 0) {

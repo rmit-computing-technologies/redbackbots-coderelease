@@ -31,7 +31,6 @@ Blackboard::Blackboard() {
    mask = INITIAL_MASK;
    readOptions(vm);
    thread->configCallbacks["Blackboard"] = bind(&Blackboard::readOptions, this, _1);
-    llog(INFO) << "Blackboard created" << std::endl;
 }
 
 // TODO: Make the constructors depend on each other rather than duplicate
@@ -45,7 +44,6 @@ Blackboard::Blackboard(const program_options::variables_map &vm) :
    readOptions(vm);
    thread->configCallbacks["Blackboard"] = bind(&Blackboard::readOptions, this, _1);
    thread->configCallbacks["Logger"] = &Logger::readOptions;
-    llog(INFO) << "Blackboard created" << std::endl;
 }
 
 Blackboard::~Blackboard() {
@@ -127,7 +125,7 @@ StateEstimationBlackboard::StateEstimationBlackboard() {
    // one flag per teammate, include ourselves for simplicity.
    havePendingIncomingSharedBundle = std::vector<bool>(5, false);
 
-   hadTeamBallUpdate = false;
+   haveTeamBallUpdate = false;
 }
 
 VisionBlackboard::VisionBlackboard()
@@ -191,7 +189,7 @@ GameControllerBlackboard::GameControllerBlackboard() {
    memset(&data, 0, sizeof data);
    lastGameControllerIPAddress = NULL;
    gameState = 0;
-   whistleDetected = false;
+   whistleDetection = false;
 }
 
 static const int NUM_TEAM_COLOURS = 10;
@@ -245,6 +243,7 @@ void GameControllerBlackboard::readOptions(const program_options::variables_map&
    gcStateMap["SET"] = STATE_SET;
    gcStateMap["PLAYING"] = STATE_PLAYING;
    gcStateMap["FINISHED"] = STATE_FINISHED;
+   gcStateMap["STANDBY"] = STATE_STANDBY;
    data.state = gcStateMap[config["gamecontroller.state"].as<std::string>()];
    data.firstHalf = config["gamecontroller.firsthalf"].as<bool>();
    data.kickingTeam = static_cast<uint8_t>(config["gamecontroller.kickingteam"].as<int>());
@@ -256,6 +255,7 @@ void GameControllerBlackboard::readOptions(const program_options::variables_map&
    data.gamePhase = gcGamePhaseMap[
       config["gamecontroller.gamephase"].as<std::string>()];
    data.secsRemaining = config["gamecontroller.secsremaining"].as<int>();
+   data.secondaryTime = config["gamecontroller.secondaryTime"].as<int>();
    // I hate introducing hard-to-reproduce elements, but we should be testing both scenarios
    srand(time(NULL));
    if (rand() % 2) {

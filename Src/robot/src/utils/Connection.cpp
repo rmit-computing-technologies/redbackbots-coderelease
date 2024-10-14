@@ -1,7 +1,5 @@
 #include "utils/Connection.hpp"
 
-using namespace std;
-
 Connection::Connection(boost::asio::io_service* io_service) :
       socket_(*io_service), curr_buffer_size_(0), inbound_compressed_data_(), inbound_data_() {}
 
@@ -17,13 +15,11 @@ void Connection::clear_buffer(int i) {
     if (i < OUTBOUND_BUFFER_SIZE) {
         buffered_outbound_data_[i].clear();
         clear_buffer(i + 1);
-        curr_buffer_size_ = max(0, curr_buffer_size_ - 1);
+        curr_buffer_size_ = std::max(0, curr_buffer_size_ - 1);
     }
 }
 
-boost::system::error_code Connection::sync_send(string& data) {
-   llog(DEBUG) << data.size();
-
+boost::system::error_code Connection::sync_send(std::string& data) {
    // Compress it
    size_t compressedSize;
    char* compressedBuffer = new char[snappy::MaxCompressedLength(data.size())];
@@ -31,15 +27,14 @@ boost::system::error_code Connection::sync_send(string& data) {
       data.c_str(), data.size(),
       compressedBuffer, &compressedSize
    );
-
+   llog(DEBUG) << "sync_send: compressed size: " << compressedSize << std::endl;
+   
    // Format the header.
-   ostringstream header_stream;
-   header_stream << setw(kHeaderLength) << hex << compressedSize <<
-   setw(kHeaderLength) << data.size();
+   std::ostringstream header_stream;
+   header_stream << std::setw(kHeaderLength) << std::hex << compressedSize << std::setw(kHeaderLength) << data.size();
    if (!header_stream || header_stream.str().size() != kHeaderLength * 2) {
       // Something went wrong, inform the caller.
-      llog(ERROR) << "Header only contains \"" << header_stream.str() << "\"" <<
-      endl;
+      llog(ERROR) << "Header only contains \"" << header_stream.str() << "\"" << std::endl;
       boost::system::error_code error(boost::asio::error::invalid_argument);
       return error;
    }
@@ -47,22 +42,22 @@ boost::system::error_code Connection::sync_send(string& data) {
 
    // Write the serialized data to the socket. We use "gather-write" to send
    // both the header and the data in a single write operation.
-   vector<boost::asio::const_buffer> buffers;
+   std::vector<boost::asio::const_buffer> buffers;
    buffers.push_back(boost::asio::buffer(outbound_header_));
-   if (compressedSize)
+   if (compressedSize) {
       buffers.push_back(boost::asio::buffer(compressedBuffer, compressedSize));
-   else
+   } else {
       buffers.push_back(boost::asio::buffer(data));
-   llog(DEBUG) << outbound_header_ << endl;
+   }
    try {
       boost::asio::write(socket_, buffers);
       delete [] compressedBuffer;
-   } catch(const exception & e) {
+   } catch(const std::exception & e) {
       if (strcmp(e.what(), "write: Broken pipe") == 0) {
-         cout << "[You can safely ignore this, a client disconnected "
+         std::cout << "[You can safely ignore this, a client disconnected "
                    << "in the middle of sending data - "
                    << "broken_pipe exception caught: "
-                   << e.what() << "]" << endl;
+                   << e.what() << "]" << std::endl;
          return boost::system::errc::make_error_code(
             boost::system::errc::broken_pipe
          );
@@ -74,26 +69,26 @@ boost::system::error_code Connection::sync_send(string& data) {
 
 Connection::ErrorCategory::ErrorCategory(const char *name) : _name(name) {}
 const char* Connection::ErrorCategory::name() const BOOST_SYSTEM_NOEXCEPT {return _name.data();}
-string Connection::ErrorCategory::message(int ev) const {return _name + ": " + strerror(ev);}
+std::string Connection::ErrorCategory::message(int ev) const {return _name + ": " + strerror(ev);}
 
 template<>
-void Connection::serialise<string>(const string &ps, ostream &os) {
+void Connection::serialise<std::string>(const std::string &ps, std::ostream &os) {
    os << ps;
 }
 
 template<>
-void Connection::serialise<ProtobufSerialisable>(const ProtobufSerialisable &ps, ostream &os) {
+void Connection::serialise<ProtobufSerialisable>(const ProtobufSerialisable &ps, std::ostream &os) {
    ps.serialise(os);
 }
 
 template<>
-string &Connection::deserialise<string>(string &ps, istream &is) {
+std::string &Connection::deserialise<std::string>(std::string &ps, std::istream &is) {
    getline(is, ps);
    return ps;
 }
 
 template<>
-ProtobufSerialisable &Connection::deserialise<ProtobufSerialisable>(ProtobufSerialisable &ps, istream &is) {
+ProtobufSerialisable &Connection::deserialise<ProtobufSerialisable>(ProtobufSerialisable &ps, std::istream &is) {
    ps.deserialise(is);
    return ps;
 }

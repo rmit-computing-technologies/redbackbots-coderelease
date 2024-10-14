@@ -212,6 +212,17 @@ static void serialise(const ActionCommand::rgb &cpp, offnao::ActionCommandAll_LE
    pb.set_blue(cpp.blue);
 }
 
+static void serialise(const ActionCommand::rgbSegments &cpp, offnao::ActionCommandAll_LED_rgbSegments &pb) {
+   for (size_t i = 0; i < cpp.segments.size(); ++i) {
+      const ActionCommand::rgb &segment = cpp.segments[i];
+      offnao::ActionCommandAll_LED_rgb* pbSegment = pb.add_segments();
+
+      pbSegment->set_red(segment.red);
+      pbSegment->set_green(segment.green);
+      pbSegment->set_blue(segment.blue);
+   }
+}
+
 static void serialise(const ActionCommand::LED &cpp, offnao::ActionCommandAll_LED &pb) {
    pb.set_leftear(cpp.leftEar);
    pb.set_rightear(cpp.rightEar);
@@ -271,6 +282,7 @@ static void serialise(const SharedStateEstimationBundle &cpp, offnao::SharedStat
    serialise(cpp.ballPosRRC, *pb.mutable_ballposrrc());
    serialise(cpp.ballVelRRC, *pb.mutable_ballvelrrc());
    pb.set_haveballupdate(cpp.haveBallUpdate);
+   pb.set_haveteamballupdate(cpp.haveTeamBallUpdate);
 }
 
 static void serialise(const RobotObstacle &cpp, offnao::StateEstimation_RobotObstacle &pb) {
@@ -384,6 +396,7 @@ static void serialise(const SPLStandardMessage &cpp, offnao::Receiver_SPLStandar
 static void serialise(const BehaviourSharedData &cpp, offnao::BehaviourSharedData &pb) {
    pb.set_role(cpp.role);
    pb.set_playingball(cpp.playingBall);
+   pb.set_playingballscore(cpp.playingBallScore);
    pb.set_needassistance(cpp.needAssistance);
    pb.set_isassisting(cpp.isAssisting);
    pb.set_secondssincelastkick(cpp.secondsSinceLastKick);
@@ -858,6 +871,20 @@ static void deserialise(ActionCommand::rgb &cpp, const offnao::ActionCommandAll_
    cpp.blue  = pb.blue();
 }
 
+static void deserialise(ActionCommand::rgbSegments &cpp, const offnao::ActionCommandAll_LED_rgbSegments &pb) {
+   cpp = ActionCommand::rgbSegments(); 
+    for (int i = 0; i < pb.segments_size(); ++i) {
+        const offnao::ActionCommandAll_LED_rgb &pbSegment = pb.segments(i);
+
+        ActionCommand::rgb segment;
+
+        segment.red = pbSegment.red();
+        segment.green = pbSegment.green();
+        segment.blue = pbSegment.blue();
+        cpp.segments[i] = segment;
+    }
+}
+
 static void deserialise(ActionCommand::LED &cpp, const offnao::ActionCommandAll_LED &pb) {
    deserialise(cpp.leftEar, pb.leftear());
    deserialise(cpp.rightEar, pb.rightear());
@@ -915,6 +942,7 @@ static void deserialise(SharedStateEstimationBundle &cpp, const offnao::SharedSt
    deserialise(cpp.ballPosRRC, pb.ballposrrc());
    deserialise(cpp.ballVelRRC, pb.ballvelrrc());
    cpp.haveBallUpdate = pb.haveballupdate();
+   cpp.haveTeamBallUpdate = pb.haveteamballupdate();
 }
 
 static void deserialise(RobotObstacle &cpp, const offnao::StateEstimation_RobotObstacle &pb) {
@@ -1037,6 +1065,7 @@ static void deserialise(SPLStandardMessage &cpp, const offnao::Receiver_SPLStand
 static void deserialise(BehaviourSharedData &cpp, const offnao::BehaviourSharedData &pb) {
    deserialise(cpp.role, pb.role());
    deserialise(cpp.playingBall, pb.playingball());
+   deserialise(cpp.playingBallScore, pb.playingballscore());
    deserialise(cpp.needAssistance, pb.needassistance());
    deserialise(cpp.isAssisting, pb.isassisting());
    deserialise(cpp.secondsSinceLastKick, pb.secondssincelastkick());

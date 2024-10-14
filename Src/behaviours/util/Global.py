@@ -1,7 +1,9 @@
-from util.Constants import PENALTY_BOX_WIDTH, FIELD_LENGTH, PENALTY_BOX_LENGTH, GOAL_BOX_LENGTH, GOAL_BOX_WIDTH, GOAL_WIDTH
+from util.Constants import PENALTY_BOX_WIDTH, FIELD_LENGTH, PENALTY_BOX_LENGTH, GOAL_BOX_LENGTH, GOAL_BOX_WIDTH, GOAL_WIDTH, MAX_TEAM_BALL_UPDATE_TIME
 from util.Vector2D import Vector2D
 from util.Timer import WallTimer
-
+from util import Log
+from util.MathUtil import normalisedTheta
+# from util.GameStatus import enemy_goal
 
 # Object caches.
 _robotObstacles = None
@@ -70,8 +72,11 @@ def update_global(newBlackboard):
         _ballLostTime.restart()
 
     global _timerSinceLastTeamBallUpdate
-    if blackboard.stateEstimation.hadTeamBallUpdate:
+    if _timerSinceLastTeamBallUpdate is None:
         _timerSinceLastTeamBallUpdate = WallTimer()
+    
+    if teamBallUpdate():
+        _timerSinceLastTeamBallUpdate.restart()
 
     global _lastSeenEgoBallPosRRC
     if len(blackboard.vision.balls) > 0 or \
@@ -90,6 +95,14 @@ def ballWorldPos():
         return teamBallWorldPos()
     return egoBallWorldPos()
 
+global _previous_if_kicking_right_foot
+_previous_if_kicking_right_foot = False
+
+def previous_if_kicking_right_foot():
+    return _previous_if_kicking_right_foot
+
+def set_previous_if_kicking_right_foot(kicking_foot):
+    _previous_if_kicking_right_foot = kicking_foot
 
 # Vector2D RRC coordinates of the ball.
 def ballRelPos():
@@ -123,6 +136,25 @@ def believeMoreInTeamBallPos(time_padding=1.5):
     else:
         return False
 
+
+def can_see_ball_or_team_ball_updated():
+    """
+    Returns true if robot can see ball, or team ball timer is less than 5 seconds
+    """
+    if canSeeBall() or timeSinceLastTeamBallUpdate() < 5:
+        return True
+    else:
+        return False
+
+def isBallLost(time=MAX_TEAM_BALL_UPDATE_TIME):
+    """
+    Checks both ballLostTime() and timeSinceLastTeamBallUpdate() timers are greater than given seconds (Default: 13 - TeamBall can be updated from 1-12 seconds).\n
+    Replacement for HeadAware._ball_lost.is_max() with updates to teamBall.
+    Return True if both timers are above, assuming then the ball location is unknown.
+    """
+    if ballLostTime() > time and timeSinceLastTeamBallUpdate() > time:
+        return True
+    return False
 
 def egoBallDistance():
     return blackboard.stateEstimation.ballPosRR.distance
@@ -206,6 +238,9 @@ def canSeeBall(frames=1):
     return _ballSeenCount >= frames
 
 
+def teamBallUpdate():
+    return blackboard.stateEstimation.lastTeamBallUpdate == 0
+
 # Robot Obstacles.
 def robotObstaclesList():
     # Convert blackboard array to an easier to use list
@@ -261,20 +296,30 @@ def lastSeenEgoBallPosRRC():
 def numBallsSeenInLastXFrames(x=30):
     return sum(_ballSeenBuffer[-x:])
 
+def proportionOfBallsSeenInLastXFrames(x=30) -> float:
+    return sum(_ballSeenBuffer[-x:]) / x
 
-def is_ball_in_box():
+def is_ball_in_box(extra_buffer = 0):
     """
     is the ball in the goal box or penalty box? Returns a tuple with these answers
     """
-    in_penalty_box = -PENALTY_BOX_WIDTH / 2 < ballWorldPos().y < PENALTY_BOX_WIDTH / 2 and abs(ballWorldPos().x) > FIELD_LENGTH / 2 - PENALTY_BOX_LENGTH + 100
-    in_goal_box = -GOAL_BOX_WIDTH / 2 < ballWorldPos().y < GOAL_BOX_WIDTH / 2 and abs(ballWorldPos().x) > FIELD_LENGTH / 2 - GOAL_BOX_LENGTH
+    in_penalty_box = -(PENALTY_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (PENALTY_BOX_WIDTH / 2 + extra_buffer) and abs(ballWorldPos().x) > (FIELD_LENGTH / 2 - PENALTY_BOX_LENGTH - extra_buffer)+ 100
+    in_goal_box = -(GOAL_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (GOAL_BOX_WIDTH / 2 + extra_buffer) and abs(ballWorldPos().x) > (FIELD_LENGTH / 2 - GOAL_BOX_LENGTH - extra_buffer)
+    return in_penalty_box, in_goal_box
+
+def is_ball_in_our_box(extra_buffer = 0):
+    """
+    is the ball in our goal box or penalty box? Returns a tuple with these answers
+    """
+    in_penalty_box = -(PENALTY_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (PENALTY_BOX_WIDTH / 2 + extra_buffer) and ballWorldPos().x < -FIELD_LENGTH / 2 + PENALTY_BOX_LENGTH + extra_buffer + 100
+    in_goal_box = -(GOAL_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (GOAL_BOX_WIDTH / 2 + extra_buffer) and ballWorldPos().x < -FIELD_LENGTH / 2 + GOAL_BOX_LENGTH + extra_buffer
     return in_penalty_box, in_goal_box
 
 def is_ball_in_goal_box_and_between_goal_posts():
     """
     is the ball in the goal box or penalty box? Returns a boolean
     """
-    BUFFER = 200
+    BUFFER = 300
     HALF_GOAL_WIDTH_WITH_BUFFER = (GOAL_WIDTH / 2)-BUFFER
     in_goal_box_and_between_goal_posts = -HALF_GOAL_WIDTH_WITH_BUFFER < ballWorldPos().y < HALF_GOAL_WIDTH_WITH_BUFFER and abs(ballWorldPos().x) > FIELD_LENGTH / 2 - GOAL_BOX_LENGTH
     return in_goal_box_and_between_goal_posts

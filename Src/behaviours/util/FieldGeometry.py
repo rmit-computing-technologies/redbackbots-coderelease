@@ -9,6 +9,8 @@ from util.Constants import (
     GOAL_POST_DIAMETER,
     GOAL_POST_ABS_X,
     GOAL_POST_ABS_Y,
+    HALF_FIELD_LENGTH,
+    HALF_FIELD_WIDTH,
     PENALTY_CROSS_ABS_X,
     GOAL_BOX_LENGTH
 )
@@ -194,3 +196,9 @@ def ball_near_our_goal():
 
 def ball_in_front_of_enemy_goal():
     return _ball_in_front_of_enemy_goal
+
+def in_role_position(pos, north=HALF_FIELD_WIDTH, east=HALF_FIELD_WIDTH, south=-HALF_FIELD_WIDTH, west=-HALF_FIELD_LENGTH):
+    if pos.y < north and pos.x < east and pos.y > south and pos.x > west:
+        return True
+    else:
+        return False

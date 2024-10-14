@@ -1,5 +1,5 @@
 #include "transmitter/OffNao.hpp"
-#include <zlib.h>
+
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/shared_ptr.hpp>
@@ -86,8 +86,7 @@ void OffNaoTransmitter::handle_accept(offnao_session_ptr session,
                                           boost::asio::placeholders::error));
       session->start(blackboard);
       session->socket().set_option(tcp::no_delay(true));
-      boost::asio::socket_base::non_blocking_io command(false);
-      session->socket().io_control(command);
+      session->socket().non_blocking(false);
       llog(DEBUG) << "Created wireless link." << endl;
    } else {
       llog(ERROR) << error.message() << endl;
@@ -116,22 +115,19 @@ void OffNaoTransmitter::offnao_session::start(Blackboard *blackboard) {
 
 void OffNaoTransmitter::offnao_session::deliver(Blackboard *blackboard) {
    // mask set before delivery to attempt to allow multiple clients to stream different things
-   // writeTo(, mask, sendingMask);
    blackboard->write(&(blackboard->mask), sendingMask);
-   /*
-   connection_.async_write(*blackboard,
-                           boost::bind(&offnao_session::handle_write,
-                                       shared_from_this(),
-                                       boost::asio::placeholders::error));
-   */
+
+   // Set send type through protobuf
    boost::system::error_code e;
+   llog(DEBUG) << "OffnaoTransmitter::deliver" << std::endl;
    if (sendingMask & USE_BATCHED_MASK) {
         e = connection_.batch_write((ProtobufSerialisable&)*blackboard);
    } else {
         e = connection_.sync_write((ProtobufSerialisable&)*blackboard);
    }
-   if (e)
+   if (e) {
       llog(ERROR) << "Failed to write: " << e << endl;
+   }
 }
 
 void OffNaoTransmitter::offnao_room::join(offnao_participant_ptr participant) {
@@ -150,8 +146,9 @@ void OffNaoTransmitter::offnao_room::deliver(Blackboard *blackboard) {
 
 void OffNaoTransmitter::offnao_session::
 handle_write(boost::system::error_code const& error) {
-   if (error)
+   if (error) {
       room_.leave(shared_from_this());
+   }
 }
 
 void OffNaoTransmitter::offnao_session::
@@ -167,12 +164,6 @@ handle_read(boost::system::error_code const& error, Blackboard *blackboard) {
             vector<string> command_argv;
             split(command_argv, command, is_space());
 
-            // Kenneth addition
-            //cout << "Vector" <<endl;
-            //std::vector<string>::iterator i;
-            //for (i = command_argv.begin(); i != command_argv.end(); ++i)
-             //  cout << *i << "\t";
-
             //cout << "Command: " << command << endl;
 
             po::variables_map vm;
@@ -186,7 +177,7 @@ handle_read(boost::system::error_code const& error, Blackboard *blackboard) {
                NaoCamera *bot = (NaoCamera*)(CombinedCamera::getCameraBot());
                vector<string> commands;
                split(commands,command,boost::is_any_of(" .-="),boost::token_compress_on);
-               //cout << "Starting loop" << endl;
+               
                bool isTop = !commands[2].compare("top");
                for(int i = 0;i < cNUM_CAM_CONTROLS; i++) {
             	   if(commands[3].compare(ControlNames[i]) == 0){
@@ -200,7 +191,7 @@ handle_read(boost::system::error_code const& error, Blackboard *blackboard) {
 
             	   }
                }
-               //cout << "Loop finished" << endl;
+               
                po::options_description cmdline_options = store_and_notify(command_argv, vm);
                //blackboard->config = vm;
                //options_print(vm);
@@ -219,8 +210,7 @@ handle_read(boost::system::error_code const& error, Blackboard *blackboard) {
                      ci->second(vm);
                   }
             } catch (program_options::error& e) {
-               llog(WARNING) << "Error when parsing command line arguments: " <<
-               e.what() << endl;
+               llog(WARNING) << "Error when parsing command line arguments: " << e.what() << endl;
             }
          }
       } else {

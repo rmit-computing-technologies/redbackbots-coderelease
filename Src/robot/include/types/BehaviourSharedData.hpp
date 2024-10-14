@@ -15,6 +15,7 @@ public:
         int secondsSinceLastKick,
         int role,
         bool playingBall,
+        float playingBallScore,
         bool needAssistance,
         bool isAssisting,
         bool isKickedOff,
@@ -26,6 +27,7 @@ public:
         secondsSinceLastKick(secondsSinceLastKick),
         role(role),
         playingBall(playingBall),
+        playingBallScore(playingBallScore),
         needAssistance(needAssistance),
         isAssisting(isAssisting),
         isKickedOff(isKickedOff),
@@ -43,6 +45,9 @@ public:
 
     // Whether the robot is playing the ball or not
     bool playingBall;
+
+    // Score of how well the robot is in a position to play the ball
+    float playingBallScore;
 
     // Whether the robot needs assistance
     bool needAssistance;

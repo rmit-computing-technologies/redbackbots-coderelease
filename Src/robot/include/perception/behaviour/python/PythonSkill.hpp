@@ -44,7 +44,7 @@ class PythonSkill : Adapter {
       boost::python::object initial_modules;
       boost::python::object behaviour_module;
       boost::python::object behaviour_tick;
-      boost::python::object pyKeyboardInterrupt;
+      // boost::python::object pyKeyboardInterrupt;
 
       /* Start watching a directory with inotify */
       void startInotify();

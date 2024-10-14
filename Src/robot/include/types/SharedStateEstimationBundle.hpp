@@ -5,13 +5,14 @@
 class SharedStateEstimationBundle
 {
   public:
-    SharedStateEstimationBundle() : haveBallUpdate(false) {}
+    SharedStateEstimationBundle() : haveBallUpdate(false), haveTeamBallUpdate(false) {}
 
-    SharedStateEstimationBundle(AbsCoord robotPos, AbsCoord ballPosRRC, AbsCoord ballVelRRC, bool haveBalUpdate):
+    SharedStateEstimationBundle(AbsCoord robotPos, AbsCoord ballPosRRC, AbsCoord ballVelRRC, bool haveBalUpdate, bool haveTeamBallUpdate):
     robotPos(robotPos),
     ballPosRRC(ballPosRRC),
     ballVelRRC(ballVelRRC),
-    haveBallUpdate(haveBallUpdate)
+    haveBallUpdate(haveBallUpdate),
+    haveTeamBallUpdate(haveTeamBallUpdate)
     {
     }
 
@@ -21,4 +22,5 @@ class SharedStateEstimationBundle
     AbsCoord ballPosRRC;
     AbsCoord ballVelRRC;
     bool haveBallUpdate;
+    bool haveTeamBallUpdate;
 };

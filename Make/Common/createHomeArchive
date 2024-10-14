@@ -24,6 +24,7 @@ from rbbpython.echo import (
     print_status,
     print_warning,
     print_progress,
+    print_success,
     print_subitem,
     query_yes_no
 )
@@ -139,7 +140,7 @@ if __name__ == "__main__":
         vFile.write('---end---\n')
 
     # Set default values for hostname, wiredIP, wireless IP
-    # These are over-ridden by install.sh if a robot is detected from the robots.cfg using the head serial number
+    # These are over-ridden by install.sh if a robot is detected from the robotsv2.cfg using the head serial number
     with open(homeDir + "/nao/.config/hostname", 'w') as vFile:
         vFile.write("Default")
     with open(homeDir + "/nao/.config/wirelessIp", 'w') as vFile:
@@ -170,4 +171,4 @@ if __name__ == "__main__":
         shutil.rmtree(homeDir)
 
     print()
-    print_status("createHomeArchive done - output in " + homeArchive)
+    print_success("createHomeArchive done - output in " + homeArchive)

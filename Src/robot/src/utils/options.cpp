@@ -38,6 +38,15 @@ void populate_options(po::options_description &config_file_options) {
    if (offNao) {
       defaultLogDir = "/tmp/rbb";
    }
+
+   po::options_description whistles_config("Whistle options"); // This took 5 years to implement
+   whistles_config.add_options()
+      ("whistle.act_on_whistle_kickoff", po::value<bool>()->default_value(true),
+      "Acts when whistle heard - Go to PLAYING state when in SET state and whistle heard - for kickoff")
+      ("whistle.act_on_whistle_goal", po::value<bool>()->default_value(true),
+      "Acts when whistle heard - Go to READY state when in PLAYING state and whistle heard - for Goal")
+      ;
+
    po::options_description debug_config("Debugging options");
    debug_config.add_options()
       ("debug.log,l", po::value<std::string>()->default_value(std::string("SILENT")),
@@ -52,9 +61,6 @@ void populate_options(po::options_description &config_file_options) {
        "logging directory")
       ("debug.log.stdout", po::value<bool>()->default_value(false),
        "allow llog to log to the terminal/screen (standard output)")
-      // TODO: TW: Why is this option in debug?
-      ("debug.act_on_whistle", po::value<bool>()->default_value(true),
-       "Go to PLAYING state when in SET state and whistle heard")
       ("debug.dump,D", po::value<std::string>()->default_value(""),
       "Dump blackboard in .bbd2 format. Empty std::string disables.")
       ("debug.mask", po::value<int>()->default_value(INITIAL_MASK),
@@ -426,13 +432,16 @@ void populate_options(po::options_description &config_file_options) {
        "which team kicks off if gamecontroller not connected")
       ("gamecontroller.secsremaining", po::value<int>()->default_value(600),
        "seconds left in the half if gamecontroller not connected")
+       ("gamecontroller.secondaryTime", po::value<int>()->default_value(45),
+       "secondary timer used for ball free")
+      ;
       ;
 
    po::options_description network_config("Networking options");
    network_config.add_options()
       ("network.ssid", po::value<std::string>()->default_value(std::string("redbackbots")),
        "WiFi network name (SSID) to connect to")
-      ("network.transmitter_address", po::value<std::string>()->default_value(std::string("192.168.255.255")),
+      ("network.transmitter_address", po::value<std::string>()->default_value(std::string("10.0.255.255")),
        "address to broadcast to")
       ("network.transmitter_base_port", po::value<int>()->default_value(10000),
        "port to which we add team number, and then broadcast on")
@@ -455,6 +464,7 @@ void populate_options(po::options_description &config_file_options) {
       .add(game_config)
       .add(player_config)
       .add(gamecontroller_config)
+      .add(whistles_config)
       .add(debug_config)
       .add(thread_config)
       .add(stateestimation_config)

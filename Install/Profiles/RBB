@@ -1,0 +1,5 @@
+        "<WIFI NAME>":
+          password: "<WIFI PASSWORD>"
+      gateway4: <GATEWAY IP>
+      nameservers:
+        addresses: [8.8.8.8,4.4.4.4]

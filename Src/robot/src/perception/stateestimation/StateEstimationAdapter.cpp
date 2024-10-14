@@ -48,6 +48,9 @@ StateEstimationAdapter::StateEstimationAdapter(Blackboard *bb)
         (bb->config)["stateestimation.handle_referee_mistakes"].as<bool>());
 
     initEstimators();
+    ticksSinceLastTeamBallUpdate = 0;
+    numOfBallSeenTicks = 0;
+    lastTeamBallPos = AbsCoord();
 }
 
 StateEstimationAdapter::~StateEstimationAdapter()
@@ -98,12 +101,18 @@ Estimator *StateEstimationAdapter::getEstimator(unsigned index)
 
 void StateEstimationAdapter::tick()
 {
+    teamBallStillUpdating = readFrom(stateEstimation, haveTeamBallUpdate);
+
     createEstimatorInfoIn();
     estimatorInfoMiddle = new EstimatorInfoMiddle();
     estimatorInfoOut = new EstimatorInfoOut();
-
+    
+    handleIncomingTeamBallUpdate();
+    
     runEstimators();
 
+    handleOutgoingTeamBallUpdate();
+    
     writeToBlackboard();
 
     // Delete objects
@@ -154,26 +163,58 @@ void StateEstimationAdapter::createEstimatorInfoIn()
         readFrom(motion, sensors));
 }
 
-void StateEstimationAdapter::writeToBlackboard()
+void StateEstimationAdapter::handleIncomingTeamBallUpdate()
 {
+    // Update team ball if received new packet and team ball is different.
+    for (size_t i = 0; i < estimatorInfoIn->incomingBroadcastData.size(); ++i) {
+        if (estimatorInfoIn->incomingBroadcastData[i].sharedStateEstimationBundle.haveTeamBallUpdate) {
+            lastTeamBallPos = estimatorInfoIn->incomingBroadcastData[i].ballPosAbs;
+            ticksSinceLastTeamBallUpdate = 0;
+        }
+    }
+
+    // Update regardless if new update or not. Ticks have been updated so push it through
+    estimatorInfoOut->ticksSinceTeamBallUpdate = ticksSinceLastTeamBallUpdate;
+    estimatorInfoOut->teamBallPos = lastTeamBallPos;
+    estimatorInfoOut->numOfBallSeenTicks = numOfBallSeenTicks;
+}
+
+void StateEstimationAdapter::handleOutgoingTeamBallUpdate()
+{
+    numOfBallSeenTicks = estimatorInfoOut->numOfBallSeenTicks;
+    if (teamBallStillUpdating || estimatorInfoOut->sharedStateEstimationBundle.haveTeamBallUpdate) 
+    {
+        ticksSinceLastTeamBallUpdate = 0;
+        lastTeamBallPos = estimatorInfoOut->ballPos;
+    } 
+    else {
+        ticksSinceLastTeamBallUpdate++;
+    }
+}
+
+void StateEstimationAdapter::writeToBlackboard()
+{   
     acquireLock(serialization);
     writeTo(stateEstimation, robotPos, estimatorInfoOut->robotPos);
     writeTo(stateEstimation, robotPosUncertainty, estimatorInfoOut->robotPosUncertainty);
     writeTo(stateEstimation, robotHeadingUncertainty, estimatorInfoOut->robotHeadingUncertainty);
     writeTo(stateEstimation, allRobotPos, estimatorInfoOut->allRobotPos);
+    writeTo(stateEstimation, ballPos, estimatorInfoOut->ballPos);
     writeTo(stateEstimation, ballPosRR, estimatorInfoOut->ballPosRR);
     writeTo(stateEstimation, ballPosRRC, estimatorInfoOut->ballPosRRC);
     writeTo(stateEstimation, ballVelRRC, estimatorInfoOut->ballVelRRC);
-    writeTo(stateEstimation, ballPos, estimatorInfoOut->ballPos);
     writeTo(stateEstimation, ballVel, estimatorInfoOut->ballVel);
     writeTo(stateEstimation, teamBallPos, estimatorInfoOut->teamBallPos);
     writeTo(stateEstimation, teamBallVel, estimatorInfoOut->teamBallVel);
     writeTo(stateEstimation, teamBallPosUncertainty, estimatorInfoOut->teamBallPosUncertainty);
-    writeTo(stateEstimation, sharedStateEstimationBundle, estimatorInfoOut->sharedStateEstimationBundle);
+    writeTo(stateEstimation, lastTeamBallUpdate, estimatorInfoOut->ticksSinceTeamBallUpdate);
     writeTo(stateEstimation, havePendingOutgoingSharedBundle, true);
     writeTo(stateEstimation, havePendingIncomingSharedBundle, std::vector<bool>(5, false));
     writeTo(stateEstimation, robotObstacles, estimatorInfoOut->robotObstacles);
-    writeTo(stateEstimation, hadTeamBallUpdate, estimatorInfoOut->hadTeamBallUpdate);
+    if (!teamBallStillUpdating) {
+        writeTo(stateEstimation, haveTeamBallUpdate, estimatorInfoOut->sharedStateEstimationBundle.haveTeamBallUpdate);
+        writeTo(stateEstimation, sharedStateEstimationBundle, estimatorInfoOut->sharedStateEstimationBundle);
+    }
     releaseLock(serialization);
 }
 

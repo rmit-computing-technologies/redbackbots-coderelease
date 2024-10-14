@@ -2,7 +2,7 @@
 
 '''
 create_robot:
-- Reads the robots.cfg file and generates the necessary configuration(s) for a new robot
+- Reads the robotsv2.cfg file and generates the necessary configuration(s) for a new robot
 
 @author
 - based on B-Human createRobot script(s)
@@ -24,6 +24,7 @@ from rbbpython.echo import (
     print_warning,
     print_progress,
     print_subitem,
+    print_success,
     query_yes_no
 )
 import rbbpython.shellEscape as shell
@@ -47,18 +48,19 @@ def createRobot(robot, robotDir, newConfig):
         robotConfig[robot][key] = value
     robotConfig[robot]['version'] = 6
     
-    # TEMPORARY: Run B-humans create robot until their scripts are replaced
-    print_warning("Running B-Human createRobot for consistency")
-    command = "{{{5}/Install/createRobot -t {0} -r {1} -s {2} -b {3} -d {4}}}".format(
-        defaultsConfig['teamNumber'],
-        robotConfig[robot]['ip'],
-        robotConfig[robot]['head'],
-        robotConfig[robot]['body'],
-        robot,
-        REDBACKBOTS_CHECKOUT_DIR
-    )
-    print_subitem(command)
-    shell.exec(command)
+
+    # Turned off below since we probably no longer need it
+    # print_warning("Running B-Human createRobot for consistency")
+    # command = "{{{5}/Install/createRobot -t {0} -r {1} -s {2} -b {3} -d {4}}}".format(
+    #     defaultsConfig['teamNumber'],
+    #     robotConfig[robot]['ip'],
+    #     robotConfig[robot]['head'],
+    #     robotConfig[robot]['body'],
+    #     robot,
+    #     REDBACKBOTS_CHECKOUT_DIR
+    # )
+    # print_subitem(command)
+    # shell.exec(command)
 
     # Load info from config
     print_subitem("Loading robot config")
@@ -87,6 +89,7 @@ def genImageConfigFiles(robot, robotConfig, defaultsConfig, robotOnly=False):
     if not robotOnly:
         components.append('head')
         components.append('body')
+        components.append('network')
 
     for component in components:
         #print_subitem("Generating Robot Image Configuration Files: " + component)
@@ -134,8 +137,8 @@ Update Configurations on all previously configured robots
 def updateConfigurations(wireless, updateall):
     # Re-create wireless for each robot
     print_subitem("Updating wireless")
-    robotConfig = cfg.loadConfig("robots.cfg")
-    defaultsConfig = cfg.loadConfig("defaults.cfg")
+    robotConfig = cfg.loadConfigJSON("robotsv2.cfg")
+    defaultsConfig = cfg.loadConfigJSON("defaults.cfg")
     for robot in sorted(robotConfig.keys()):
         if not ("**" in robot):
             print_subitem("\tUpdating: " + robot)
@@ -152,19 +155,28 @@ def updateConfigurations(wireless, updateall):
 
 # Main entry point
 if __name__ == "__main__":
-    print_status("Create/Configure Robot Script")
-    print_subitem("REDBACKBOTS_CHECKOUT_DIR = "+ REDBACKBOTS_CHECKOUT_DIR)
-    print()
 
     # Process args
-    parser = argparse.ArgumentParser(description='Create a robot from robots.cfg')
+    parser = argparse.ArgumentParser(description='Create a robot from robotsv2.cfg')
     parser.add_argument('-r', dest="robot", type=str, help='The robot to create')
-    parser.add_argument('-i', dest="ip", type=str, help='The static IP for this robot')
+    parser.add_argument('-i', dest="ip", type=str, help='The last octet of the static IP for this robot (eg 151 not 192.168.100.151)')
     parser.add_argument('-b', dest="serial_body", type=str, help='The serial number of the robot body')
     parser.add_argument('-s', dest="serial_head", type=str, help='The serial number of the robot head')
     parser.add_argument('-u', dest="updateall", action='store_true', help='Update Wireless AND Robot Configurations on all previously configured robots')
     parser.add_argument('-w', dest="wireless", action='store_true', help='Update Wireless Configurations on all previously configured robots')
     args = parser.parse_args()
+
+    if len(sys.argv) == 1:
+        print()
+        print_error("Arguments not supplied")
+        print()
+        parser.print_help()
+        print()
+        sys.exit()
+    
+    print_status("Create/Configure Robot Script")
+    print_subitem("REDBACKBOTS_CHECKOUT_DIR = "+ REDBACKBOTS_CHECKOUT_DIR)
+    print()
     
     print_subitem("Configured robots:")
     for robot in sorted(robotConfig.keys()):
@@ -178,7 +190,7 @@ if __name__ == "__main__":
         updateConfigurations(args.wireless, args.updateall)
 
         print()
-        print_status("Update Complete")
+        print_success("Update Complete")
     else:
         # Setup a new robot
         print_status("Creating robot " + args.robot)
@@ -203,7 +215,7 @@ if __name__ == "__main__":
             print_error("Not replacing the robot config")
         print()
 
-        print_status("Setup Done")
+        print_success("Setup Done")
     
     # Update JSON configuration
     cfg.outputConfigJSON(robotConfigFile, robotConfig)

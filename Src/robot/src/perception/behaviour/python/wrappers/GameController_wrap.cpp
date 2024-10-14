@@ -36,6 +36,7 @@ class_<TeamInfo>("TeamInfo")
    scope().attr("STATE_SET"                         ) = STATE_SET;
    scope().attr("STATE_PLAYING"                     ) = STATE_PLAYING;
    scope().attr("STATE_FINISHED"                    ) = STATE_FINISHED;
+   scope().attr("STATE_STANDBY"                     ) = STATE_STANDBY;
    scope().attr("GAME_PHASE_NORMAL"                 ) = GAME_PHASE_NORMAL;
    scope().attr("GAME_PHASE_PENALTYSHOOT"           ) = GAME_PHASE_PENALTYSHOOT;
    scope().attr("GAME_PHASE_OVERTIME"               ) = GAME_PHASE_OVERTIME;

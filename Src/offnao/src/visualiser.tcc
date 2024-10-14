@@ -8,14 +8,14 @@ bool Visualiser::reconnect(const Void &constructorArg1) {
       r = new ReaderClass(constructorArg1);
    } else if (reader->isFinished()) {
       r = new ReaderClass(constructorArg1, reader->naoData);
-      emit readerClosed();
+      Q_EMIT readerClosed();
       delete reader;
    } else {
       reader->finishUp();
       qDebug("Try to destroy reader. Wait for thread to exit.");
       if(reader->wait(2000)) {
          r = new ReaderClass(constructorArg1, reader->naoData);
-         emit readerClosed();
+         Q_EMIT readerClosed();
          delete reader;
       } else {
          ui->statusBar->showMessage(QString("Failed to close reader."));

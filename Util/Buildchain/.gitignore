@@ -1,0 +1,26 @@
+# Save files
+*~
+*.log
+*.nnmc
+*.ofn
+*.pyc
+*.pyo
+*.orig
+*.pydevproject
+*.swp
+*.swo
+*.swn
+*.swm
+*.swl
+*.swj
+*.swk
+
+# IDE Files
+*.code-workspace
+.cproject
+cscope*
+.idea
+.project
+.tags*
+.settings
+.vscode

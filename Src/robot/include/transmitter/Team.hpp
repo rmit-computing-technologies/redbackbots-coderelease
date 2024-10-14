@@ -21,7 +21,8 @@ class TeamTransmitter : Adapter, NaoTransmitter {
       void sendToTeam();
       void sendToGameController();
 
-      int tickCounter;
+      bool haveTeamBallUpdate;
+      bool haveBallScoreUpdate;
       boost::asio::io_service service;
       boost::asio::ip::udp::socket socket;
       boost::asio::ip::udp::endpoint gameControllerEndpoint;

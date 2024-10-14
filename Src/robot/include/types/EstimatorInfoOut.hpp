@@ -21,9 +21,11 @@ class EstimatorInfoOut
     AbsCoord teamBallPos;
     AbsCoord teamBallVel;
     float teamBallPosUncertainty;
+    int ticksSinceTeamBallUpdate;
+    int numOfBallSeenTicks;
     SharedStateEstimationBundle sharedStateEstimationBundle;
     std::vector<RobotObstacle> robotObstacles;
-    bool hadTeamBallUpdate;
+    bool haveTeamBallUpdate;
 };
 
 #endif // ESTIMATOR_INFO_OUT_HPP

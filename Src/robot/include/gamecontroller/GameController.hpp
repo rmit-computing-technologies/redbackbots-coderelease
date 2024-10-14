@@ -24,6 +24,7 @@ class GameController : Adapter {
         TeamInfo *our_team;
         bool connected;
         int sock;
+        bool whistleDetected;
 
         /**
          * Connect to the GameController
@@ -42,7 +43,7 @@ class GameController : Adapter {
 
         /**
          * Update the robot's state to do things like leave the WiFi and
-         * self-terminate on `runswift` start.
+         * self-terminate on `redbackbots` start.
          */
         void handleFinishedPacket();
 
@@ -51,9 +52,11 @@ class GameController : Adapter {
          * Should be a mirror of whistle_detector.py:whistle_heard function.
          */
         bool whistleHeard(int numSeconds);
+        int numWhistles = 0;
 
         /* Flag to turn off acting on whistle if game does not need it */
-        bool actOnWhistle;
+        bool actOnWhistleKickOff;
+        bool actOnWhistleGoal;
 
         /**
          * Parse data from the GameController

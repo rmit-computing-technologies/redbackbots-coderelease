@@ -46,11 +46,14 @@ class Vector2D:
     def normalised(self, length=1):
         return self.clone().normalise(length)
 
-    def dotProduct(self, var):
+    def dot_product(self, var):
         return self.x * var.x + self.y * var.y
+    
+    def cross_product(self, var):
+        return (self.x*var.y)-(self.y*var.x)
 
     def absThetaTo(self, var):
-        dp = self.dotProduct(var)
+        dp = self.dot_product(var)
         if dp > 1.0:
             return 0.0
 

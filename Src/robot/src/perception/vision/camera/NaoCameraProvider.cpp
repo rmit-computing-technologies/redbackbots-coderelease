@@ -16,17 +16,16 @@
 #include "perception/vision/camera/NaoCameraV6.hpp"
 #include "utils/Timer.hpp"
 
-// thread_local NaoCameraProvider *NaoCameraProvider::theInstance = nullptr;
-// #ifdef CAMERA_INCLUDED
-// Semaphore NaoCameraProvider::performingReset = Semaphore(1);
-bool NaoCameraProvider::resetPending = false;
-// #endif
+// Static shared trigger communication
+bool NaoCameraProvider::triggerSharedReset = false;
+
 
 NaoCameraProvider::NaoCameraProvider(Blackboard *blackboard,
                                      const std::string filename,
                                      const std::string cameraChoice,
                                      const int format)
-    : filename(filename), cameraChoice(cameraChoice), format(format) {
+    : filename(filename), cameraChoice(cameraChoice), format(format),
+      resetPending(false) {
 
     // TODO: get resetDelay from blackboard config
     // Default to 2000ms
@@ -115,7 +114,7 @@ const uint8_t *NaoCameraProvider::get(const __u32 colourSpace) {
         throw std::runtime_error("only yuv422 is supported!");
     }
 
-    llog(TRACE) << "Get image for " << cameraChoice << std::endl;
+    // llog(TRACE) << "Get image for " << cameraChoice << std::endl;
     Timer t;
 
     // Check for camera reset
@@ -124,18 +123,28 @@ const uint8_t *NaoCameraProvider::get(const __u32 colourSpace) {
     }
 
     // Reset Camera if required
-    if (resetPending) {
+    if (resetPending || triggerSharedReset) {
+        if (triggerSharedReset) {
+            llog(INFO) << cameraChoice << ": triggerSharedReset" << std::endl;
+        }
+        // We've now triggered shared reset, so clear flag
+        triggerSharedReset = false;
+
+        // Remove the old camera
         delete camera;
         camera = nullptr;
+
+        // If this camera needs to reset, then clear the I2C bus
         if (resetPending) {
+            // Only do this if this camera needs to trigger
+            //      if reset is triggered from the other place, then don't do this
             NaoCameraV6::resetCamera();
-            llog(INFO) << "Camera reset" << std::endl;
+            llog(INFO) << cameraChoice << ": Camera reset (#1)" << std::endl;
+            triggerSharedReset = true;
             resetPending = false;
         }
+
         setupCamera();
-        // TODO:
-        // B-human had continue here - should we wait for image?
-        //continue
     }
 
     // Ensure we get the latest possible image
@@ -146,7 +155,7 @@ const uint8_t *NaoCameraProvider::get(const __u32 colourSpace) {
     while (!camera->hasImage()) {
         cameraOk = camera->captureNew(maxWaitForImage);
         if (!cameraOk) {
-            llog(INFO) << "Camera broken" << std::endl;
+            llog(INFO) << cameraChoice << ": Camera is broken (#1)" << std::endl;
             break;
         }
     }
@@ -157,29 +166,46 @@ const uint8_t *NaoCameraProvider::get(const __u32 colourSpace) {
         t.restart();
         image = camera->getImage();
     } else if (t.elapsed_ms() > resetDelay) {
+        // Try resetting here if the camera read image above fails
+        //     so we can avoid a null image on this loop
+
+        // Delete camera (and close file handle)
         delete camera;
-        camera = new NaoCameraV6(filename, cameraChoice, cameraWidth, cameraHeight, cameraSettings);
+        camera = nullptr;
+
+        // Send reset
+        NaoCameraV6::resetCamera();
+        llog(INFO) << cameraChoice << ": Camera reset (#2)" << std::endl;
+        resetPending = false;
+        triggerSharedReset = true;
+
+        // Setup the camera
+        setupCamera();
+
+        // Try to reach the image again
         t.restart();
         while (!camera->hasImage()) {
             cameraOk = camera->captureNew(maxWaitForImage);
             if (!cameraOk) {
-                llog(INFO) << "Camera broken" << std::endl;
+                llog(INFO) << cameraChoice << ": Camera broken (#2)" << std::endl;
                 break;
             }
         }
+
         if (camera->hasImage()) {
             image = camera->getImage();
+            llog(INFO) << cameraChoice << ": Successfully got image after reset (#2)" << std::endl;
         }
     }
 
     if (image != nullptr) {
-        llog(DEBUG) << "Image returning from NaoCamera: " << (void *)image << std::endl;
-    //     writeFrame(image);
+    //     llog(DEBUG) << "Image returning from NaoCamera: " << (void *)image << std::endl;
     } else {
-        llog(DEBUG) << "Image not retrieved: " << (void *)image << std::endl;
+        llog(INFO) << cameraChoice << ": Image not retrieved: " << (void *)image << std::endl;
     }
 
-   return image;
+    // image = nullptr; // Test for null image handling
+    return image;
 }
 
 
@@ -198,131 +224,7 @@ void NaoCameraProvider::setAutoExposureTarget(int fd, uint8_t high) {
     NaoCameraV6::setAutoExposureTarget(fd, high);
 }
 
-
-
-
-// void NaoCameraProvider::update(CameraImage &theCameraImage)
-// {
-// #ifdef CAMERA_INCLUDED
-//     unsigned timestamp = static_cast<long long>(camera->getTimestamp() / 1000) > static_cast<long long>(Time::getSystemTimeBase())
-//                              ? static_cast<unsigned>(camera->getTimestamp() / 1000 - Time::getSystemTimeBase())
-//                              : 100000;
-//     if (camera->hasImage())
-//     {
-//         theCameraImage.setReference(cameraInfo.width / 2, cameraInfo.height, const_cast<unsigned char *>(camera->getImage()), std::max(lastImageTimestamp + 1, timestamp));
-
-//         if (theCameraImage.timestamp - timestampLastRowChange > 3000)
-//         {
-//             timestampLastRowChange = theCameraImage.timestamp;
-//             currentRow = Random::uniformInt(1, cameraInfo.height - 2);
-//             rowBuffer.clear();
-//         }
-//         std::string res = MD5().digestMemory(reinterpret_cast<unsigned char *>(theCameraImage[currentRow]), cameraInfo.width * sizeof(CameraImage::PixelType));
-//         rowBuffer.push_front(res);
-
-//         int appearances = 0;
-//         for (auto i = rowBuffer.begin(); i != rowBuffer.end(); ++i)
-//             if (*i == res && ++appearances > 25)
-//             {
-//                 OUTPUT_ERROR("Probably encountered a distorted image!");
-//                 camera->resetRequired = true;
-//                 return;
-//             }
-//     }
-//     else if (theCameraImage.isReference())
-//     {
-//         theCameraImage.setResolution(cameraInfo.width / 2, cameraInfo.height);
-//         theCameraImage.timestamp = std::max(lastImageTimestamp + 1, timestamp);
-//     }
-
-//     if (whichCamera == CameraInfo::upper)
-//     {
-//         DEBUG_RESPONSE_ONCE("module:NaoCameraProvider:doWhiteBalanceUpper")
-//         camera->doAutoWhiteBalance();
-//         DEBUG_RESPONSE_ONCE("module:NaoCameraProvider:readCameraSettingsUpper")
-//         camera->readCameraSettings();
-//     }
-//     else
-//     {
-//         DEBUG_RESPONSE_ONCE("module:NaoCameraProvider:doWhiteBalanceLower")
-//         camera->doAutoWhiteBalance();
-//         DEBUG_RESPONSE_ONCE("module:NaoCameraProvider:readCameraSettingsLower")
-//         camera->readCameraSettings();
-//     }
-//     lastImageTimestampLL = camera->getTimestamp();
-
-//     ASSERT(theCameraImage.timestamp >= lastImageTimestamp);
-//     lastImageTimestamp = theCameraImage.timestamp;
-// #else
-//     theCameraImage.setResolution(cameraInfo.width / 2, cameraInfo.height);
-//     theCameraImage.timestamp = Time::getCurrentSystemTime();
-// #endif // CAMERA_INCLUDED
-// }
-
-// void NaoCameraProvider::update(JPEGImage &jpegImage)
-// {
-//     jpegImage = theCameraImage;
-// }
-
-// void NaoCameraProvider::update(CameraInfo &cameraInfo)
-// {
-//     cameraInfo = this->cameraInfo;
-// }
-
-// void NaoCameraProvider::update(CameraStatus &cameraStatus)
-// {
-//     if (!cameraOk)
-//     {
-//         if (cameraStatus.ok)
-//         {
-//             ANNOTATION("NaoCameraProvider", "Could not acquire new image.");
-//             SystemCall::playSound("sirene.wav");
-//             SystemCall::say("Camera broken");
-//         }
-// #ifdef NDEBUG
-//         else if (!SystemCall::soundIsPlaying())
-//         {
-//             SystemCall::playSound("sirene.wav");
-//             SystemCall::say("Camera broken");
-//         }
-// #endif
-//     }
-
-//     cameraStatus.ok = cameraOk;
-// }
-
-// bool NaoCameraProvider::processResolutionRequest()
-// {
-//     if (SystemCall::getMode() == SystemCall::Mode::physicalRobot && theCameraResolutionRequest.resolutions[whichCamera] != lastResolutionRequest)
-//     {
-//         lastResolutionRequest = theCameraResolutionRequest.resolutions[whichCamera];
-//         switch (theCameraResolutionRequest.resolutions[whichCamera])
-//         {
-//         case CameraResolutionRequest::noRequest:
-//             return false;
-//         case CameraResolutionRequest::defaultRes:
-//             if (!readCameraResolution())
-//                 cameraResolutionRequest.resolutions[whichCamera] = whichCamera == CameraInfo::upper
-//                                                                        ? CameraResolutionRequest::w640h480
-//                                                                        : CameraResolutionRequest::w320h240;
-//             return true;
-//         case CameraResolutionRequest::w320h240:
-//         case CameraResolutionRequest::w640h480:
-//         case CameraResolutionRequest::w1280h960:
-//             cameraResolutionRequest.resolutions[whichCamera] = theCameraResolutionRequest.resolutions[whichCamera];
-//             return true;
-//         default:
-//             FAIL("Unknown resolution.");
-//             return false;
-//         }
-//     }
-//     else
-//         return false;
-// }
-
-
-bool NaoCameraProvider::hasImage()
-{
+bool NaoCameraProvider::hasImage() {
     if (resetPending) {
         return false;
     } else if (camera != nullptr) {
@@ -330,78 +232,3 @@ bool NaoCameraProvider::hasImage()
     }
     return false;
 }
-
-// void NaoCameraProvider::takeImages()
-// {
-// #ifdef CAMERA_INCLUDED
-//     BH_TRACE_INIT(whichCamera == CameraInfo::upper ? "UpperNaoCameraProvider" : "LowerNaoCameraProvider");
-//     Thread::nameCurrentThread("NaoCameraProvider");
-//     thread.setPriority(11);
-//     unsigned imageReceived = Time::getRealSystemTime();
-//     while (thread.isRunning())
-//     {
-//         if (camera->resetRequired)
-//             resetPending = true;
-//         if (resetPending)
-//         {
-//             delete camera;
-//             camera = nullptr;
-//             performingReset.wait();
-//             if (resetPending)
-//             {
-//                 NaoCamera::resetCamera();
-//                 SystemCall::playSound(headName.c_str());
-//                 SystemCall::say("Camera reset");
-//                 resetPending = false;
-//             }
-//             setupCamera();
-//             performingReset.post();
-//             continue;
-//         }
-
-//         takeNextImage.wait();
-
-//         if (camera->hasImage())
-//             camera->releaseImage();
-
-//         // update resolution
-//         if (processResolutionRequest())
-//         {
-//             delete camera;
-//             camera = nullptr;
-//             setupCamera();
-//         }
-
-//         while (!camera->hasImage())
-//         {
-//             cameraOk = camera->captureNew(maxWaitForImage);
-
-//             if (!cameraOk)
-//             {
-//                 BH_TRACE_MSG("Camera broken");
-//                 break;
-//             }
-//         }
-
-//         if (camera->hasImage())
-//             imageReceived = Time::getRealSystemTime();
-//         else if (Time::getRealTimeSince(imageReceived) > resetDelay)
-//         {
-//             delete camera;
-//             camera = new NaoCamera(whichCamera == CameraInfo::upper ? "/dev/video-top" : "/dev/video-bottom",
-//                                    cameraInfo.camera,
-//                                    cameraInfo.width, cameraInfo.height, whichCamera == CameraInfo::upper,
-//                                    theCameraSettings.cameras[whichCamera], theAutoExposureWeightTable.tables[whichCamera]);
-//             imageReceived = Time::getRealSystemTime();
-//         }
-
-//         if (camera->hasImage())
-//             camera->setSettings(theCameraSettings.cameras[whichCamera], theAutoExposureWeightTable.tables[whichCamera]);
-
-//         imageTaken.post();
-
-//         if (camera->hasImage())
-//             camera->writeCameraSettings();
-//     }
-// #endif
-// }

@@ -29,6 +29,7 @@ from rbbpython.echo import (
     print_warning,
     print_progress,
     print_subitem,
+    print_success,
     query_yes_no
 )
 import rbbpython.shellEscape as shell
@@ -79,4 +80,4 @@ if __name__ == "__main__":
     subprocess.check_call([command], shell=True)
 
     print()
-    print_status("nao_build done")
+    print_success("nao_build done")

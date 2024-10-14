@@ -57,8 +57,12 @@ struct StateEstimationBlackboard {
     /** filtered positions of visual robots */
     std::vector<RobotObstacle> robotObstacles;
 
-    // Whether we have had a recent team ball update
-    bool hadTeamBallUpdate;
+    // Whether robot has a team ball update
+    bool haveTeamBallUpdate;
+
+    int lastTeamBallUpdate;
 
     float ballAge;
+
+    bool haveBallScoreUpdate;
 };

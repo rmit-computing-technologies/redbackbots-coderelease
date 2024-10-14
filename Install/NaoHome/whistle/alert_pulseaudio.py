@@ -25,8 +25,6 @@ print(cmd_out)
 if cmd_out.count('Capture'.encode('utf-8')) != MAGIC_CAPTURE_COUNT:
     print('WHISTLES WILL NOT BE HEARD!')
     
-    
-
     taken = time.time() - start
 
     # Construct a non-zero exit code

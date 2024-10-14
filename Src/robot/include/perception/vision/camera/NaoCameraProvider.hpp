@@ -1,4 +1,4 @@
-/**
+ /**
  * This file declares a module that handles the communication with the two
  * cameras. This implementation starts a separate thread to avoid blocking
  * calls to slow down processing.
@@ -105,49 +105,18 @@ private:
     int maxWaitForImage;
     int resetDelay;
 
-    // static thread_local NaoCameraProvider* theInstance; /**< Points to the only instance of this class in this thread or is 0 if there is none. */
-
-
-    // CameraInfo::Camera whichCamera;
-    // CameraInfo cameraInfo;
-    // CameraIntrinsics cameraIntrinsics;
-    // CameraResolutionRequest cameraResolutionRequest;
-    // CameraResolutionRequest::Resolutions lastResolutionRequest = CameraResolutionRequest::defaultRes;
-
     volatile bool cameraOk = true;
     
-// #ifdef CAMERA_INCLUDED
-//     static Semaphore performingReset;
-    static bool resetPending;
-//     RingBuffer<std::string, 120> rowBuffer;
-//     unsigned int currentRow = 0, timestampLastRowChange = 0;
-//     std::string headName;
-//     unsigned int lastImageTimestamp = 0;
-//     unsigned long long lastImageTimestampLL = 0;
-// #endif
+    // True if *this* camera needs to reset
+    bool resetPending;
 
-    // Thread thread;
-    // Semaphore takeNextImage;
-    // Semaphore imageTaken;
+    // Static reset communication between camera
+    //     True if the *other* camera tells *this* camera is needs to reset
+    static bool triggerSharedReset;
 
     void readCameraSettings(Blackboard *blackboard);
     void readCameraSettings(Blackboard *blackboard, CameraSettings &settings, std::string cameraName);
 
     void setupCamera();
 
-    /**
-     * This method is called when the representation provided needs to be updated.
-     * @param theCameraImage The representation updated.
-     */
-    // void update(CameraImage& theCameraImage) override;
-
-    // void update(CameraInfo& cameraInfo) override;
-    // void update(CameraIntrinsics& cameraIntrinsics) override {cameraIntrinsics = this->cameraIntrinsics;}
-    // void update(CameraStatus& cameraStatus) override;
-    // void update(FrameInfo& frameInfo) override {frameInfo.time = theCameraImage.timestamp;}
-    // void update(JPEGImage& jpegImage) override;
-
-    // bool processResolutionRequest();
-
-    // void takeImages();
 };

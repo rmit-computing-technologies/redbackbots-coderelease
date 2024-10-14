@@ -60,9 +60,11 @@ class SshScp:
         self.hostname = ''
         self.hideOutput = False
         self.use_ip = False
+        self.robot_name = ''
 
     def setHostname(self, robot):
         self.hostname = "nao@" + robot
+        self.robot_name = robot
         self.use_ip = False
 
     # For the purposes of this interface, hostname & ip are interchangeable
@@ -80,7 +82,7 @@ class SshScp:
         if sudo:
             prepend += SUDO
         fullCommand = prepend + fullCommand + dest
-        echo.print_subitem(fullCommand)
+        echo.print_subitem(fullCommand, self.robot_name)
         
         return self.sshCommand(fullCommand)
 
@@ -92,7 +94,7 @@ class SshScp:
         if chmod is not None:
             append += RSYNC_CHMOD + chmod + " "
         fullCommand = fullCommand + append + src + " " + self.hostname + ":" + dest
-        echo.print_subitem(fullCommand)
+        echo.print_subitem(fullCommand, self.robot_name)
         
         success = True
         if not self.debug:
@@ -101,7 +103,7 @@ class SshScp:
 
     def scpFile(self, src, dest):
         fullCommand = "scp " + src + " " + self.hostname + ":" + dest
-        echo.print_subitem(fullCommand)
+        echo.print_subitem(fullCommand, self.robot_name)
         
         success = True
         if not self.debug:
@@ -110,7 +112,7 @@ class SshScp:
 
     def sshCommand(self, command):
         fullCommand = "ssh -o ConnectTimeout=2 " + self.hostname + " \"" + command + "\""
-        echo.print_subitem(fullCommand)
+        echo.print_subitem(fullCommand, self.robot_name)
         
         success = True
         if not self.debug:
@@ -125,7 +127,7 @@ class SshScp:
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(self.hostname.split('@')[1], username='nao', password='nao')
         ssh.exec_command(command)
-        echo.print_subitem(command)
+        echo.print_subitem(command, self.robot_name)
 
     def makePath(self, path):
         command = "mkdir -p " + path

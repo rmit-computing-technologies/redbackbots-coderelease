@@ -10,6 +10,7 @@
 #include "types/BroadcastData.hpp"
 #include "types/RobotVisionInfo.hpp"
 #include "types/ActionCommand.hpp"
+#include "types/AbsCoord.hpp"
 
 class EstimatorInfoIn
 {

@@ -58,7 +58,7 @@ void DumpReader::run() {
 			 naoData.appendFrame(frame);
 			 std::stringstream s;
 			 s << "Loading frame " << frameLoaded << " from YUV dump.";
-			 emit showMessage(s.str().c_str(), 2000);
+			 Q_EMIT showMessage(s.str().c_str(), 2000);
 			 frameLoaded++;
          }
       }
@@ -66,22 +66,22 @@ void DumpReader::run() {
    std::stringstream s;
    s << "Finshed loading YUV dump which consisted of " <<
         frameLoaded << " frames.";
-   emit showMessage(s.str().c_str(), 5000);
-   emit newNaoData(&naoData);
+   Q_EMIT showMessage(s.str().c_str(), 5000);
+   Q_EMIT newNaoData(&naoData);
 
    isAlive = true;
    while (isAlive) {
       if (!naoData.getIsPaused() && naoData.getCurrentFrameIndex() <
            naoData.getFramesTotal() - 1) {
          naoData.nextFrame();
-         emit newNaoData(&naoData);
+         Q_EMIT newNaoData(&naoData);
       } else if (currentIndex != naoData.getCurrentFrameIndex()) {
-         emit newNaoData(&naoData);
+         Q_EMIT newNaoData(&naoData);
       }
       currentIndex = naoData.getCurrentFrameIndex();
       msleep(500);
    }
-   emit newNaoData(NULL);
+   Q_EMIT newNaoData(NULL);
 }
 
 

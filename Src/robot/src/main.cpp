@@ -19,8 +19,9 @@
 #include "gamecontroller/GameController.hpp"
 #include "perception/PerceptionThread.hpp"
 #include "perception/vision/Vision.hpp"
-#include "perception/vision/camera/NaoCamera.hpp"
-#include "perception/vision/camera/NaoCameraV4.hpp"
+// #include "perception/vision/camera/NaoCamera.hpp"
+// #include "perception/vision/camera/NaoCameraV4.hpp"
+#include "perception/vision/camera/NaoCameraProvider.hpp"
 #include "perception/vision/camera/CombinedCamera.hpp"
 
 #define TICK_AS_FAST_AS_POSSIBLE 0
@@ -119,12 +120,14 @@ int main(int argc, char **argv) {
    Camera *botCamera = NULL;
    if (vm["thread.vision"].as<bool>()) {
       llog(INFO) << "Initialising v4 " << VIDEO_TOP << std::endl;
-      topCamera = new NaoCameraV4(blackboard, VIDEO_TOP, "camera.top");
+      // topCamera = new NaoCameraV4(blackboard, VIDEO_TOP, "camera.top");
+      topCamera = new NaoCameraProvider(blackboard, VIDEO_TOP, "camera.top");
 
       llog(INFO) << "Initialising v4 " << VIDEO_BOTTOM << std::endl;
-      botCamera = new NaoCameraV4(blackboard, VIDEO_BOTTOM, "camera.bot",
-                                    IO_METHOD_MMAP,
-                                    AL::kVGA);
+      // botCamera = new NaoCameraV4(blackboard, VIDEO_BOTTOM, "camera.bot",
+                                    // IO_METHOD_MMAP,
+                                    // AL::kVGA);
+      botCamera = new NaoCameraProvider(blackboard, VIDEO_BOTTOM, "camera.bot", AL::kVGA);
 
       CombinedCamera::setCameraTop(topCamera);
       CombinedCamera::setCameraBot(botCamera);
@@ -180,7 +183,6 @@ int main(int argc, char **argv) {
 
    llog(INFO) << "Shutting Down" << std::endl;
    
-   system("sudo pkill -9 -f /home/nao/whistle/whistle_detector.py");
    // sys.exit(python3)
 
    teamReceiver.join();

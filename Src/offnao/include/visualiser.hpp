@@ -2,6 +2,13 @@
 
 #include <QAbstractButton>
 #include <QMainWindow>
+
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QFile>
+#include <QDebug>
+
 #include <stdint.h>
 
 #include "ui_ConnectionBar.h"
@@ -13,7 +20,7 @@ class OverviewTab;
 // class JointsTab;
 // class AroundFeetTab;
 // class TemperatureTab;
-// class CameraTab;
+class CameraTab;
 // class VisionTab;
 // class SensorTab;
 // class CameraPoseTab;
@@ -46,7 +53,7 @@ class Visualiser : public QMainWindow {
 
       void connectToNao(const QString &naoName, const uint16_t naoPort);
 
-   public slots:
+   public Q_SLOTS:
       /* This slot is received when the reader aquires more data   */
       void newNaoData(NaoData *naoData);
 
@@ -97,7 +104,7 @@ class Visualiser : public QMainWindow {
 
       void close();
 
-   signals:
+   Q_SIGNALS:
       /* Used to tell a widget to refresh after a certain event occurs.
        * Currently is used to redraw a tab when we switch to it
        */
@@ -126,7 +133,7 @@ class Visualiser : public QMainWindow {
       /* Tabs */
       OverviewTab *overviewTab;
       // VisionTab *visionTab;
-      // CameraTab *cameraTab;
+      CameraTab *cameraTab;
       // SensorTab *sensorTab;
       // CameraPoseTab *cameraPoseTab;
       // GraphTab *graphTab;
@@ -176,4 +183,5 @@ class Visualiser : public QMainWindow {
        */
       template<class ReaderClass, typename Void>
       bool reconnect(const Void &constructorArg1);
+      void readHostnamesFromJson(const QString& filename);
 };

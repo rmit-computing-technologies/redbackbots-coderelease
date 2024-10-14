@@ -42,16 +42,21 @@ void TeamReceiver::naoHandler(const boost::system::error_code &error,
       const AbsCoord &ballPosRRC = AbsCoord(ntm->ballPosRRC[0],ntm->ballPosRRC[1],ntm->ballPosRRC[2]);
       const AbsCoord &ballVelRRC = AbsCoord(ntm->ballVelRRC[0], ntm->ballVelRRC[1], ntm->ballVelRRC[2]);
       const bool &haveBallUpdate = ntm->haveBallUpdate;
+      const bool &haveTeamBallUpdate = ntm->haveTeamBallUpdate;
       SharedStateEstimationBundle sharedStateEstimationBundle = SharedStateEstimationBundle(
                      robotPos,
                      ballPosRRC,
                      ballVelRRC,
-                     haveBallUpdate
+                     haveBallUpdate,
+                     haveTeamBallUpdate
       );
 
       const int secondsSinceLastKick = ntm->secondsSinceLastKick;
       const int role = ntm->role;
       const bool playingBall = ntm->playingBall;
+      const float playingBallScore = ntm->playingBallScore;
+      llog(INFO) << "Playing ball score received: " << playingBallScore << std::endl;
+      llog(INFO) << "From player: " << playerNum << std::endl;
       const bool needAssistance = ntm->needAssistance;
       const bool isAssisting = ntm->isAssisting;
       const bool isKickedOff = ntm->isKickedOff;
@@ -63,6 +68,7 @@ void TeamReceiver::naoHandler(const boost::system::error_code &error,
                                                       secondsSinceLastKick,
                                                       role,
                                                       playingBall,
+                                                      playingBallScore,
                                                       needAssistance,
                                                       isAssisting,
                                                       isKickedOff,
@@ -97,7 +103,7 @@ void TeamReceiver::naoHandler(const boost::system::error_code &error,
                                  );
 
       SPLStandardMessage m = SPLStandardMessage(
-                              playerNum,
+                              ntm->playerNum,
                               ntm->teamNum,
                               ntm->fallen,
                               robotPos,
@@ -150,7 +156,7 @@ void TeamReceiver::stdoutHandler(const boost::system::error_code &error,
                                  std::size_t size) {
    SPLStandardMessage* m = (SPLStandardMessage*)recvBuffer;
    BroadcastData* bd = (BroadcastData*)m->data;
-   cout << "Received data from player " << bd->playerNum << endl;
+   llog(INFO) << "Received data from player " << bd->playerNum << endl;
    startReceive(this, &TeamReceiver::stdoutHandler);
 }
 

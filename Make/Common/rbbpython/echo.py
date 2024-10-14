@@ -5,35 +5,60 @@ Custom colour-based reporting to terminal
 '''
 
 import sys
-
+import os
+# import art
 class unix_colours:
-    RED    = "\033[31;1m"
-    GREEN  = "\033[32;1m"
-    ORANGE = "\033[33;1m" 
-    BLUE   = "\033[1;34m"
-    CYAN   = "\033[1;36m"
-    RESET  = "\033[0;0m"
+    RED     = "\033[31;1m"
+    GREEN   = "\033[32;1m"
+    ORANGE  = "\033[33;1m" 
+    BLUE    = "\033[1;34m"
+    MAGENTA = "\033[1;35m"
+    CYAN    = "\033[1;36m"
+    RESET   = "\033[3;0m"
 
-def print_error(msg):
+def print_error(msg, robot=None):
     sys.stdout.write(unix_colours.RED)
-    print(" [!] ", msg)
+    if robot:
+        print(f"\t{'['+robot+']':<12} [!]    {msg}")
+    else:
+        print(" [!]   ", msg)
     sys.stdout.write(unix_colours.RESET)
 
-def print_status(msg):
-    sys.stdout.write(unix_colours.GREEN)
-    print(" [+] ", msg)
+def print_status(msg, robot=None):
+    sys.stdout.write(unix_colours.CYAN)
+    if robot:
+        print(f"\t{'['+robot+']':<12} [+]    {msg}")
+    else:
+        print(" [+]   ", msg)
     sys.stdout.write(unix_colours.RESET)
 
-def print_warning(msg):
+def print_warning(msg, robot=None):
     sys.stdout.write(unix_colours.ORANGE)
-    print(" [-] ", msg)
+    if robot: 
+        print(f"\t{'['+robot+']':<12} [-]    {msg}")
+    else:    
+        print(" [-]   ", msg)
     sys.stdout.write(unix_colours.RESET)
 
-def print_progress(msg, progress):
-    print(" [{prog}%] {msg}".format(prog=progress, msg=msg))
+def print_progress(msg, progress, robot=None):
+    if robot:
+        print(f"\t{'['+robot+']':<12} {'['+str(progress)+'%]':<6} {msg}")
+    else:    
+        print(f" {'['+str(progress)+'%]':<6} {msg}")
 
-def print_subitem(msg):
-    print("  -  ", msg)
+def print_subitem(msg, robot=None):
+    if robot:
+        print(f"\t{'['+robot+']':<12}  -     {msg}")
+    else:    
+        print("  -    ", msg)
+
+def print_success(msg, robot=None):
+    sys.stdout.write(unix_colours.GREEN)
+    if robot:
+        print(f"\t{'['+robot+']':<12} [*]    {msg}")
+    else:    
+        print(" [*]   ", msg)
+    sys.stdout.write(unix_colours.RESET)
 
 
 def query_yes_no(question, default="no"):
@@ -70,4 +95,40 @@ def query_generic(question, options=["yes", "no"], default="no"):
     elif choice not in options:
         choice = ''
     return choice
-    
+
+def print_banner(message, colour=unix_colours.RESET):
+    sys.stdout.write(colour)
+    # art.tprint(message)
+    frame = "#"*(len(message))
+    inside_spacing = " "*len(message)
+    print()
+    print(f"        ###{frame}###")
+    print(f"        #  {inside_spacing}  #")
+    print(f"        #  {message}  #")
+    print(f"        #  {inside_spacing}  #")
+    print(f"        ###{frame}###")
+    print()
+    sys.stdout.write(unix_colours.RESET)
+
+
+if __name__ == "__main__":
+    print_error("This is an error")
+    print_progress("This is progress", 1)
+    print_progress("This is progress", 17)
+    print_progress("This is progress", 100)
+    print_status("This is a status")
+    print_subitem("This is a subitem")
+    print_warning("This is a warning")
+    print_success("This is a success")
+
+    print_error("This is an error", "jupiter")
+    print_progress("This is progress", 1, "jarlaxle")
+    print_progress("This is progress", 12, "jarlaxle")
+    print_progress("This is progress", 100, "jarlaxle")
+    print_status("This is a status", "joy")
+    print_subitem("This is a subitem", "journey")
+    print_warning("This is a warning", "Joule")
+    print_success("This is a success", "Joule")
+
+    sys.stdout.write(unix_colours.MAGENTA)
+    print("This is magenta")

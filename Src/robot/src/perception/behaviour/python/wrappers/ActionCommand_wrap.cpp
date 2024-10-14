@@ -42,9 +42,13 @@ class_<ActionCommand::rgb>("rgb")
     .def_readwrite("green", &ActionCommand::rgb::green)
     .def_readwrite("blue", &ActionCommand::rgb::blue);
 
+class_<ActionCommand::rgbSegments>("rgbSegments")
+    .def(init<list>())
+    .def_readwrite("segments", &ActionCommand::rgbSegments::segments);
+
 class_<ActionCommand::LED>("LEDCommand")
-    .def(init<ActionCommand::rgb,
-              ActionCommand::rgb,
+    .def(init<ActionCommand::rgbSegments,
+              ActionCommand::rgbSegments,
               ActionCommand::rgb,
               ActionCommand::rgb,
               ActionCommand::rgb>())

@@ -7,6 +7,7 @@
 #include "blackboard/modules/GameControllerBlackboard.hpp"
 #include "blackboard/modules/MotionBlackboard.hpp"
 #include "blackboard/modules/StateEstimationBlackboard.hpp"
+#include "utils/Logger.hpp"
 #include "types/SPLStandardMessage.hpp"
 #include "types/NewTeamMessage.hpp"
 #include "utils/incapacitated.hpp"
@@ -20,19 +21,32 @@ TeamTransmitter::TeamTransmitter(Blackboard *bb) :
                   + (bb->config)["player.team"].as<int>(),
                   (bb->config)["network.transmitter_address"].as<string>()),
    service(),
-   tickCounter(4),
    socket(service, ip::udp::v4())
 {}
 
 void TeamTransmitter::tick() {
-   tickCounter += 1;
-   if (tickCounter % 12 == 0){
-      std::cout << "Message budget: " << readFrom(gameController,our_team).messageBudget << std::endl;
-      if (readFrom(gameController,our_team).messageBudget>50){ //Only send to team if we have at least 50 messages left
-         sendToTeam();  // Only send to team every 12 ticks (every 6 seconds)
-      }         
-      tickCounter = 0;
+   haveTeamBallUpdate = readFrom(stateEstimation, haveTeamBallUpdate);
+   haveBallScoreUpdate = readFrom(stateEstimation, haveBallScoreUpdate);
+
+   // Only send to team if we have at least 50 messages left
+   if (readFrom(gameController,our_team).messageBudget>50) {   
+      if (haveTeamBallUpdate || haveBallScoreUpdate) {
+         sendToTeam();
+         if (haveBallScoreUpdate) {
+            llog(INFO) << "============================ Sending ball score update ============================" << std::endl;
+         }
+         else {
+            llog(INFO) << "============================ Sending Team ball update ============================" << std::endl;
+         }
+         writeTo(stateEstimation, haveTeamBallUpdate, false);
+         writeTo(stateEstimation, haveBallScoreUpdate, false);
+      }
+   } else {
+      // If we can't send a message, need to set it back to false otherwise it will stay set True for the rest of the match
+      writeTo(stateEstimation, haveTeamBallUpdate, false);
+      writeTo(stateEstimation, haveBallScoreUpdate, false);
    }
+              
    sendToGameController();    // Send to GC every tick
  }
 
@@ -166,7 +180,7 @@ void TeamTransmitter::sendToGameController() {
    d.pose[2] = robot_pos.theta();
    RRCoord ball_rel_pos = readFrom(stateEstimation, ballPosRR);
    d.ball[0] = ball_rel_pos.distance();
-   d.ball[1] = ball_rel_pos.heading();
+   d.ball[1] = ball_rel_pos.heading() * 1000;
    d.ballAge = readFrom(stateEstimation, ballAge);
 
 

@@ -1,4 +1,4 @@
-A pos file to test the joints of the arms, use this when you have to determine all broken joints in the arms. run via `runswift -s TestArms`.
+A pos file to test the joints of the arms, use this when you have to determine all broken joints in the arms. run via `redbackbots -s TestArms`.
 
   HY    HP    LSP   LSR   LEY   LER   LWY   LHYP  LHR   LHP   LKP   LAP   LAR   RHR   RHP   RKP   RAP   RAR   RSP   RSR   REY   RER   RWY   LH    RH    DUR
 ! 0     0     90    0     0     0     0     0     0     0     0     0     0     0     0     0     0     0     90    0     0     0     0     0     0     3000

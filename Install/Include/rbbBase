@@ -10,6 +10,7 @@ export installDir="${bhDir}/Install/"
 export makeDir="${bhDir}/Make/"
 
 export robotsFile="${configDir}/Robots/robots.cfg"
+# We might not need this anymore?
 
 export privateKeySource="${installDir}/Keys/id_rsa_nao"
 export privateKey=/tmp/id_rsa_nao

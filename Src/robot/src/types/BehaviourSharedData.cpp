@@ -17,6 +17,7 @@ BehaviourSharedData::BehaviourSharedData() {
    secondsSinceLastKick = -1;
    role = POSITIONING_NONE;
    playingBall = false;
+   playingBallScore = -1.f;
    needAssistance = false;
    isAssisting = false;
    isKickedOff = false;

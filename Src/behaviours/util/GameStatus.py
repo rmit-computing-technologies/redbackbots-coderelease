@@ -1,18 +1,25 @@
 import robot
 from util.TeamStatus import my_player_number, is_first_team
-from util.Constants import PENALTY_BOX_WIDTH, FIELD_WIDTH, CENTER_CIRCLE_DIAMETER
+from util.Constants import PENALTY_BOX_WIDTH, FIELD_WIDTH, CENTER_CIRCLE_DIAMETER, DEFENDING_QUARTER, GOAL_BOX_LENGTH, FIELD_LENGTH
 from util.FieldGeometry import (
     OWN_GOAL_CENTER, ENEMY_GOAL_CENTER, OUR_LEFT_POST, OUR_RIGHT_POST, 
-    ENEMY_LEFT_POST, ENEMY_RIGHT_POST, isInOurGoalBox, isInOpponentGoalBox, ballWorldPos, 
+    ENEMY_LEFT_POST, ENEMY_RIGHT_POST, isInOurGoalBox, isInOpponentGoalBox,
     OUR_RIGHT_CORNER, OUR_LEFT_CORNER, ENEMY_LEFT_CORNER, ENEMY_RIGHT_CORNER,
     )
+from util.Vector2D import Vector2D
+
+from util import LedOverride
+from util.Constants import LEDColour
+from util.MathUtil import normalisedTheta
+from util.Global import myHeading, ballWorldPos, myPos
 
 blackboard = None
 gamestate = None
+gc_gamestate = None # Used to get raw gc gamestate
 prev_gamestate = None  # Useful for detecting gamestate transitions
+whistle_status = False #True when whistle heard
 
 TESTING_WITH_HALF_FIELD = False
-
 
 def update_game_status(new_blackboad):
     """
@@ -28,8 +35,10 @@ def update_game_status(new_blackboad):
 
     global prev_gamestate
     global gamestate
+    global gc_gamestate
     prev_gamestate = gamestate
-    gamestate = blackboard.gameController.data.state
+    gamestate = blackboard.gameController.gameState
+    gc_gamestate = blackboard.gameController.data.state
 
 
 # Game State for GameController.
@@ -39,6 +48,7 @@ class GameState(object):
     SET = robot.STATE_SET
     PLAYING = robot.STATE_PLAYING
     FINISHED = robot.STATE_FINISHED
+    STANDBY = robot.STATE_STANDBY
 
 
 class GamePhase(object):
@@ -77,6 +87,10 @@ class Penalty(object):
 
 def game_state():
     return gamestate
+
+
+def gc_game_state():
+    return gc_gamestate
 
 
 def prev_game_state():
@@ -137,8 +151,10 @@ def in_corner_kick():
 def in_kick_in():
     return set_play() == SetPlay.SET_PLAY_KICK_IN
 
+
 def in_penalty_kick():
     return set_play() == SetPlay.SET_PLAY_PENALTY_KICK
+
 
 def in_initial():
     return game_state() == GameState.INITIAL
@@ -151,12 +167,41 @@ def in_ready():
 def in_set():
     return game_state() == GameState.SET
 
+
 def in_playing():
     return game_state() == GameState.PLAYING
 
 
 def in_finished():
     return game_state() == GameState.FINISHED
+
+
+def in_standby():
+    return game_state() == GameState.STANDBY
+
+# Raw GC states
+def gc_in_initial():
+    return gc_game_state() == GameState.INITIAL
+
+
+def gc_in_ready():
+    return gc_game_state() == GameState.READY
+
+
+def gc_in_set():
+    return gc_game_state() == GameState.SET
+
+
+def gc_in_playing():
+    return gc_game_state() == GameState.PLAYING
+
+
+def gc_in_finished():
+    return gc_game_state() == GameState.FINISHED
+
+
+def gc_in_standby():
+    return gc_game_state() == GameState.STANDBY
 
 
 def secs_remaining():
@@ -171,9 +216,11 @@ def secs_till_unpenalised():
     return blackboard.gameController.our_team.players[
           my_player_number() - 1].secsTillUnpenalised
 
-
 def whistle_detected():
-    return blackboard.gameController.whistleDetected
+    return blackboard.gameController.whistleDetection
+
+def testing_with_half_field():
+    return TESTING_WITH_HALF_FIELD
 
 # OWN GOAL is the left side of the field and has a negative x
 def own_goal():
@@ -184,14 +231,19 @@ def own_goal():
         return ENEMY_GOAL_CENTER
     return OWN_GOAL_CENTER
 
+# Place robot just outside own goal
+def just_outside_own_goal():
+    if TESTING_WITH_HALF_FIELD and not is_first_team():
+        return Vector2D(OWN_GOAL_CENTER.x-(GOAL_BOX_LENGTH/2), OWN_GOAL_CENTER.y)
+    else:
+        return Vector2D(OWN_GOAL_CENTER.x+(GOAL_BOX_LENGTH/2), OWN_GOAL_CENTER.y)
+
 # ENEMY GOAL is the right side of the field and has a postive x
 def enemy_goal():
-    if TESTING_WITH_HALF_FIELD:
-        if is_first_team():
-            return ENEMY_GOAL_CENTER
-        
+    if TESTING_WITH_HALF_FIELD and not is_first_team():
         return OWN_GOAL_CENTER
-    return ENEMY_GOAL_CENTER
+    else:
+        return ENEMY_GOAL_CENTER
 
 # TODO: Change this to be called enemy Right Corner
 def own_left_corner():
@@ -261,19 +313,44 @@ def is_in_enemy_goalbox(pos, buffx = 0, buffy = 0):
     return isInOpponentGoalBox(pos=pos, buffx=buffx, buffy=buffy)
 
 def is_in_goal_kicking_area():
-    """
-    if ball.x is in the attacking half, and ball.y is between the Penalty area width, then we're in the corridor and lets try to kick a goal
-    """
-    # Need to implemenet for 
-    # if TESTING_WITH_HALF_FIELD:
-    # OWN_GOAL_POSITIVE = own_goal().x >= 0
-    # in_attacking_half = False
+    if ballWorldPos().x < (FIELD_LENGTH / 3.0):
+        return True
+    else:
+        # First check if the ball is close to the sidelines
+        if abs(ballWorldPos().y) > (PENALTY_BOX_WIDTH / 2.0):
+            return False
+        else:
+            return True
 
-    # if OWN_GOAL_POSITIVE:
-    #     print("OWN_GOAL_POSITIVE")
-    #     in_attacking_half = ballWorldPos().x < 0
-    # else:
-    #     print("NOT_OWN_GOAL_POSITIVE")
-    #     in_attacking_half = ballWorldPos().x > 0
+def superstar_in_goal_kicking_area():
+    if ballWorldPos().x < (FIELD_LENGTH / 3.0):
+        return True
+    else:
+        # First check if the ball is close to the sidelines
+        if abs(ballWorldPos().y) > (PENALTY_BOX_WIDTH / 2.0):
+            return False
+        else:
+            return True
+
+def our_defending_quarter():
+    if TESTING_WITH_HALF_FIELD:
+        if is_first_team():
+            return DEFENDING_QUARTER
+        return -DEFENDING_QUARTER
+    return DEFENDING_QUARTER
+
+def isBallInAttackingHalf():
+    """
+    Returns True if ball is in the attacking half, else False
+    """
+    if TESTING_WITH_HALF_FIELD and not is_first_team():
+        return ballWorldPos().x < 0
+    else:
+        return ballWorldPos().x > 0
     
-    return ((ballWorldPos().y > -(PENALTY_BOX_WIDTH / 2)) and (ballWorldPos().y < (PENALTY_BOX_WIDTH / 2))) and ballWorldPos().x > -(CENTER_CIRCLE_DIAMETER / 2.0)
+def enemy_goal_heading():
+    """
+    Provides heading error for facing forward
+    """
+    return normalisedTheta(
+            enemy_goal().minus(myPos()).heading() - myHeading())

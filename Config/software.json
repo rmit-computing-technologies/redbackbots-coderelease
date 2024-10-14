@@ -6,6 +6,7 @@
          "clang",
          "cmake",
          "debootstrap",
+         "g++-12",
          "git",
          "gdb",
          "libasound2-dev",
@@ -15,6 +16,7 @@
          "libjpeg-dev",
          "libpng-dev",
          "libprotobuf-dev",
+         "libqglviewer-dev-qt5",
          "lld",
          "llvm",
          "net-tools",
@@ -25,7 +27,6 @@
          "pigz",
          "protobuf-compiler",
          "python-is-python3",
-         "python2-dev",
          "python3-pip",
          "python3-paramiko",
          "qtbase5-dev",
@@ -41,10 +42,16 @@
    },
    "PipSoftware":{
       "install":[
-
       ],
       "ignore":[
          
+      ]
+   },
+   "Repositories":{
+      "install":[
+      ],
+      "ignore":[
+
       ]
    }
 }

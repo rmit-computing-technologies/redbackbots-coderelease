@@ -27,7 +27,7 @@ namespace LoLAData {
 
          // connect
          if (socket == nullptr) {
-            static io_service ioservice;
+            static io_context ioservice;
             socket = new local::stream_protocol::socket(ioservice);
          }
          boost::system::error_code ec;

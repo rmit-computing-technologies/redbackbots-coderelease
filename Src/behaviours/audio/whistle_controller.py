@@ -1,9 +1,17 @@
+"""
+NOTHING SHOULD CALL OR USE THESE FUNCTIONS
+CAN BE USED TO TEST WHISTLE DETECTOR
+"""
+
+
+### ---- TO BE DELETED ---- ###
+
 import os
 
 
 def kill_all_python_processes():
     """
-    killall whistle_detector
+    kill all whistle_detector
     """
     print("Killing all whistle detectors AAA")
     # this readable version does not work on 2.1

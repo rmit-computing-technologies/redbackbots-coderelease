@@ -21,6 +21,9 @@ from rbbpython.echo import (
     print_status,
     print_warning,
     print_subitem,
+    print_success,
+    print_banner,
+    unix_colours
 )
 import rbbpython.install as install
 import rbbpython.shellEscape as shell
@@ -28,6 +31,8 @@ import rbbpython.sshscp as scp
 
 # Global Parameters
 REDBACKBOTS_CHECKOUT_DIR = cfg.rbbCheckoutDirectory()
+WHISTLE_DIR_HEARD = "whistle/heard_whistles"
+WHISTLE_DIR_OLD = "whistle/old_whistles"
 remote = None
 #remote = scp.SshScp()
 
@@ -80,15 +85,14 @@ def compileRBB(config, debug):
     print()
 
 def setDateandTime():
-    print_subitem("Set Date and Time on Nao")
+    print_subitem("Set Date and Time on Nao", remote.robot_name)
     command = "date -u \"+%Y-%m-%d %H:%M:%S\""
     dateStr = shell.capture(command)
 
     command = "sudo date -u \\\"+%Y-%m-%d %H:%M:%S\\\" --set=\\\"" + dateStr + "\\\""
     success = remote.sshCommand(command)
     if not success:
-        print_warning("Could not set date and time")
-    print()
+        print_warning("Could not set date and time", remote.robot_name)
     return success
 
 def set_local_ip():
@@ -96,14 +100,14 @@ def set_local_ip():
     Stores on the robot the IP of the last machine to sync with it
     Used for establishing robot->PC connections (e.g a debugger)
     """
-    print_subitem("Grabbing IP from SSH session")
+    print_subitem("Grabbing IP from SSH session", remote.robot_name)
     # https://stackoverflow.com/a/996286/5279269
     remote.sshCommandWithSession("echo $SSH_CLIENT | awk '{print $1}' > /tmp/last_sync_ip")
     return
 
 
 def setupRobot(robot, robotConfig):
-    print_status("Setting up " + robot)
+    print_status("Setting up " + robot, robot)
     naoImageDir = cfg.naoImageDirectory()
     naoHomeDir = cfg.naoImageHomeDirectory()
 
@@ -111,8 +115,8 @@ def setupRobot(robot, robotConfig):
     # checkAuth = scp.checkAuthKey()
     checkAuth = True
     if checkAuth:
-        print_status("Copying SSH authorized keys")
-        print_subitem("If prompted echo nao's password")
+        print_status("Copying SSH authorized keys", robot)
+        print_subitem("If prompted echo nao's password", robot)
 
         # Make directory on remote
         remote.sshCommand("mkdir -p .ssh; chmod 700 .ssh")
@@ -123,62 +127,62 @@ def setupRobot(robot, robotConfig):
         # Set file permission
         remote.sshCommand("chmod 600 .ssh/authorized_keys")
     else:
-        print_error("Your SSH Key is not configured for RBBots. Please re-run build setup before continuing")
+        print_error("Your SSH Key is not configured for RBBots. Please re-run build setup before continuing", robot)
         exit()
 
     # Grant sudo access
-    print_status("Granting sudo access: Enter the root password (probably 'root')")
+    print_status("Granting sudo access: Enter the root password (probably 'root')", robot)
     success = remote.sshCommand("su -c 'tee /etc/sudoers <<< \\\"nao     ALL=(ALL) NOPASSWD:ALL\\\" && chmod 0440 /etc/sudoers'")
     if not success:
-        print_warning("Error running su command, execute from on robot and re-run this script")
+        print_warning("Error running su command, execute from on robot and re-run this script", robot)
         # print_error("**SEE ABOVE: Run command: su -c 'tee /etc/sudoers <<< \"nao     ALL=(ALL) NOPASSWD:ALL\" && chmod 0440 /etc/sudoers'")
         # exit()
 
     # Modify ssh config
-    print_status("Modifying sshd_config and restarting sshd")
+    print_status("Modifying sshd_config and restarting sshd", robot)
     success = remote.sshCommand("sudo sed -i '/UseDNS/s/.*/UseDNS no/'  /etc/ssh/sshd_config && " +
                                 "sudo sed -i /PermitRootLogin/s/no/yes/ /etc/ssh/sshd_config")
     if not success:
-        print_error("Modifying failed")
+        print_error("Modifying failed", robot)
         exit()
 
     # Copy /etc folder with all settings
-    print_status("Install /etc folder components")
+    print_status("Install /etc folder components", robot)
     src = "--no-owner --no-group --exclude=home " + naoImageDir + "/etc/"
     dest = "/etc"
     success = remote.rsyncFiles(src, dest, sudo=True)
     if not success:
-        print_error("RSync /etc failed")
+        print_error("RSync /etc failed", robot)
         exit()
 
     # Copy RBB Services
-    print_status("Copy .config files")
+    print_status("Copy .config files", robot)
     src = naoHomeDir + "/.config/"
     success = remote.rsyncFiles(src, "/home/nao/.config/", chmod=CHMOD_GO_NONE)
     if not success:
-        print_error("RSync failed")
+        print_error("RSync failed", robot)
         exit()
 
     # We don't trust connman so we do wireless ourselves
-    print_status("Configure and Enable Wireless")
+    print_status("Configure and Enable Wireless", robot)
     src = cfg.robotNetworkConfigDirectory(robot) + "/" + cfg.initdWirelessFile
     success = remote.rsyncFiles(src, "/etc/init.d/rbbwireless.sh", sudo=True)
     if not success:
-        print_warning("RSync Failed")
+        print_warning("RSync Failed", robot)
     success = remote.sshCommand("systemctl --user enable wireless")
     if not success:
-        print_error("Starting Wireless Service failed")
+        print_error("Starting Wireless Service failed", robot)
         exit()
 
     # fix the issue where the robot sometimes comes on the network as nao.local instead of $robot.local
-    print_status("Configure Boot order")
+    print_status("Configure Boot order", robot)
     success = remote.sshCommand("sudo sed -i 's/^Before=.*/Before=network.target avahi-daemon.service/' /etc/systemd/system/hostname.service")
     if not success:
-        print_error("Modifying boot order failed")
+        print_error("Modifying boot order failed", robot)
         exit()
 
     # Copy and setup Pip packages
-    print_status("Setup Pip package")
+    print_status("Setup Pip package", robot)
     src = REDBACKBOTS_CHECKOUT_DIR + "/software/pip/"
     dest = "pip/"
     remote.rsyncFiles(src, dest)
@@ -186,31 +190,31 @@ def setupRobot(robot, robotConfig):
     # for each file in pip/ install package
     for file in os.listdir('software/pip'):
         if file.endswith(".whl"):
-            print_subitem("Installing " + file)
+            print_subitem("Installing " + file, robot)
             success = remote.sshCommand("pip --disable-pip-version-check install --user pip/" + file)
             if not success:
-                print_error("Installing pip package " + file + " failed")
+                print_error("Installing pip package " + file + " failed", robot)
                 exit()
 
     # Enable RedBackBots python service launch on startup
-    print_status("Enable RBB Daemon Service")
+    print_status("Enable RBB Daemon Service", robot)
     success = remote.sshCommand("systemctl --user enable rbb")
     if not success:
-        print_error("Starting RBB Daemon Service failed")
+        print_error("Starting RBB Daemon Service failed", robot)
         exit()
 
     # setup lola and restart naoqi
-    print_status("Restart Naoqi")
+    print_status("Restart Naoqi", robot)
     src = naoHomeDir + "/robocup.conf"
     remote.rsyncFiles(src, "/home/nao/robocup.conf", chmod=CHMOD_GO_NONE)
     success = remote.sshCommand("nao restart")
     if not success:
-        print_warning("Nao restart failed, continuing anyway")
+        print_warning("Nao restart failed, continuing anyway", robot)
 
-    print_status("Setup finished")
+    print_status("Setup finished", robot)
 
 def deleteRBB(config):
-    print_status("Deleting existing files on the Robot")
+    print_status("Deleting existing files on the Robot", remote.robot_name)
 
     # TODO: fix this when whistle sync'ed correctly
     dest = "/home/nao/whistle"
@@ -227,28 +231,37 @@ def deleteRBB(config):
     print()
 
 def setWirelessProfile(wireless):
-    print_status("Setting wireless profile to: " + wireless)
+    print_status("Setting wireless profile to: " + wireless, remote.robot_name)
     
     # Checking profile exists
     profilePath = REDBACKBOTS_CHECKOUT_DIR + "/Install/Profiles/" + wireless
     if os.path.exists(profilePath):
         remote.sshCommand("/home/nao/bin/setprofile " + wireless)
     else:
-        print_warning("Cannot find wireless profile " + wireless + ". Not setting wireless profile")
+        print_warning("Cannot find wireless profile " + wireless + ". Not setting wireless profile", remote.robot_name)
 
+def create_whistle_dir():
+    """
+    Creates a directory that whistle detector expects to exists
+    """
+    print_status("Creating dir for whistle detector")
+
+    remote.sshCommand(f"mkdir -p {WHISTLE_DIR_HEARD}")
+    remote.sshCommand(f"mkdir -p {WHISTLE_DIR_OLD}")
+    remote.sshCommand(f"rm {WHISTLE_DIR_OLD}/*")
 
 def syncRBB(config, syncAll, volume):
-    print_status("Synching Robot")
+    print_status("Syncing Robot", remote.robot_name)
 
     # Remove Compiled Python Files
-    print_subitem("Removing compiled python files, as new python code is copied")
+    print_subitem("Removing compiled python files, as new python code is copied", remote.robot_name)
     remote.sshCommand("shopt -s globstar; rm -rf data/**/*.pyc data/**/*.pyo")
 
     # Iterate through collection of files to install
     for element in install.installFiles:
         if (element["naosync"]) and \
            (syncAll or element["naosync"] == "Always"):
-            print_subitem("Syncing: " + element["description"])
+            print_subitem("Syncing: " + element["description"], remote.robot_name)
             src = REDBACKBOTS_CHECKOUT_DIR + "/" + element["src"]
             dest = "/home/nao/" + element["dest"]
             if element["directory"]:
@@ -260,7 +273,7 @@ def syncRBB(config, syncAll, volume):
                 remote.sshCommand(command)
             remote.rsyncFiles(src, dest, chmod=element["chmod"])
         else:
-            print_subitem("Skipping: " + element["description"])
+            print_subitem("Skipping: " + element["description"], remote.robot_name)
     
     # Iterate through services
     if syncAll:
@@ -268,7 +281,7 @@ def syncRBB(config, syncAll, volume):
         servicesDefaultDir = servicesDir + "default.target.wants/"
         remote.sshCommand("mkdir -p " + servicesDefaultDir)
         for element in install.services:
-            print_subitem("Syncing: " + element + ".service")
+            print_subitem("Syncing: " + element + ".service", remote.robot_name)
             src = REDBACKBOTS_CHECKOUT_DIR + "/Install/Files/" + element + ".service"
             
             # Sync service
@@ -280,24 +293,20 @@ def syncRBB(config, syncAll, volume):
                     "ln -s ../" + element + ".service " + symLinkPath
             remote.sshCommand(command)
     else:
-        print_subitem("Skipping: Services")
-    print()
+        print_subitem("Skipping: Services", remote.robot_name)
 
     # Whistle audio simlink
-    print_warning("Whistle audio simlink not done. TODO - if necessary")
-    print()
+    print_warning("Whistle audio simlink not done. TODO - if necessary", remote.robot_name)
 
     # Sync CPP code
     src = cfg.getCppExecutablePath(config)
     dest = "/home/nao/"
-    print_status("Syncing RedBackBots Code (build config: " + config + ")")
+    print_status("Syncing RedBackBots Code (build config: " + config + ")", remote.robot_name)
     remote.rsyncFiles(src, dest, chmod=CHMOD_GO_NONE)
-    print()
     
     # Set Volume Setting
-    print_status("Setting volume")
+    print_status("Setting volume", remote.robot_name)
     remote.sshCommand("/home/nao/bin/setvolume " + (str(volume) if volume is not None else ''))
-    print()
 
 def syncToRobot(robot):
     remote.setHostname(robot)
@@ -307,28 +316,20 @@ def syncToRobot(robot):
     if robot in robotConfig:
         robotConfig = robotConfig[robot]
     else:
-        print()
-        print_error("Robot Config does not contain: " + robot)
-        # unsuccesful.append(robot)
-        print()
+        print_error("Robot Config does not contain: " + robot, robot)
         return False
-    print()
 
     # Select the IP to sync to 
     if args.ip:
-        print_status("Using provided IP")
-        print_subitem("Using IP: " + args.ip)
+        print_status("Using provided IP", robot)
+        print_subitem("Using IP: " + args.ip, robot)
         remote.setIp(args.ip)
-        print()
     else:
-        print_status("Using Robot IP from configuration")
+        print_status("Using Robot IP from configuration", robot)
         individualConfig = cfg.loadConfigFile(cfg.robotConfigDirectory(robot) + "/robot.cfg")
         playerIp = individualConfig['player']['playerIp']
-        print_subitem("Using IP: " + playerIp)
+        print_subitem("Using IP: " + playerIp, robot)
         remote.setIp(playerIp)
-        print()
-
-    
 
     # Setup robot - DISABLED
     # if args.s:
@@ -336,30 +337,34 @@ def syncToRobot(robot):
         # print()
 
     # Set Date & Time
-    print_status("Setting Data & Time")
+    print_status("Setting Data & Time", robot)
 
     is_online = setDateandTime()
     if is_online:
 
         # Store the IP of this machine in the robot
-        # print_status("Setting Local IP")
-        # set_local_ip()
+        print_status("Setting Local IP", robot)
+        set_local_ip()
 
         # Do delete
         if args.d:
             deleteRBB(args.config)
 
+        # Make whistle detector dir
+        create_whistle_dir()
+
         # Do robot sync
         syncRBB(args.config, args.a, args.volume)
-        
+
         # Set wireless profile
         if args.wireless:
             setWirelessProfile(args.wireless)
 
         # successful.append(robot)
+        print_success(f"{robot} succesfuly synced!", robot)
         return True
     else:
-        print_error(f"{robot} seems to be offline, sync aborted")
+        print_error(f"{robot} seems to be offline, sync aborted", robot)
         print()
         # unsuccesful.append(robot)
         return False
@@ -376,7 +381,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', action='store_true', help='Create deployable image instead of deploying')
     parser.add_argument('-ip', dest='ip', type=str, help='Provide the robot IP to sync')
     parser.add_argument('-m', action='store_true', help='Use multiple processes to sync faster')
-    parser.add_argument('-nc', action='store_true', help='If set, do not compile before creating image or synching (no-compile)')
+    parser.add_argument('-nc', action='store_true', help='If set, do not compile before creating image or syncing (no-compile)')
     parser.add_argument('-r', dest="robot", action='append', help='Sync RedBackBots Software to the robot using the robot IP stored in the configuration. Multiple robots may be specified')
     parser.add_argument('-s', action='store_true', help='(DISABLED) Setup the robot')
     parser.add_argument('-t', action='store_true', help='Sync RedbackBots software to entire team')
@@ -385,10 +390,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
+        print_banner("RedbackBots - Nao Sync", unix_colours.MAGENTA)
         parser.print_help()
         sys.exit()
     
-    print_status("Nao Sync")
+    print_banner("RedbackBots - Nao Sync", unix_colours.MAGENTA)
     print_subitem("REDBACKBOTS_CHECKOUT_DIR = "+ REDBACKBOTS_CHECKOUT_DIR)
     print()
 
@@ -418,7 +424,7 @@ if __name__ == "__main__":
         createImage(args.config, args.volume, args.wireless, args.b)
     else:
         if args.t:
-            print("Team Sync!")
+            print_status("Team Sync!")
             robotConfig = cfg.loadConfigJSON("Robots/robotsv2.cfg")
             robotConfig.pop("**WARNING")
             team = []
@@ -427,7 +433,7 @@ if __name__ == "__main__":
         successful = []
         unsuccessful = []
         if args.m:
-            print("Syncing with multiple processes!")
+            print_status("Syncing with multiple processes!")
             with multiprocessing.Pool(processes = 8) as pool:
                 targets = team if args.t else args.robot
                 results = pool.map(syncToRobot, targets)
@@ -445,11 +451,11 @@ if __name__ == "__main__":
                     unsuccessful.append(robot)
 
     print()
-    print_status("nao_sync done")
+    print_success("nao_sync done")
     print()
     
     if len(successful) > 0:
-        print_status(f"Succesfully synced to: {' '.join(successful)}") 
+        print_success(f"Succesfully synced to: {' '.join(successful)}") 
     if len(unsuccessful) > 0:
         print_error(f"Failed to sync to: {' '.join(unsuccessful)}")
     print()

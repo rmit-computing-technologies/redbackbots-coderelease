@@ -1,20 +1,33 @@
+
+/**
+ * These examples are derived from the following repository:
+ * https://github.com/TNG/boost-python-examples
+*/
+
 #include <iostream>
 #include <string>
+#include <thread>
 
-#include <boost/chrono.hpp>
 #include <boost/program_options.hpp>
 #include <boost/python.hpp>
 #include <boost/regex.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/thread.hpp>
 
+#include "my_module.hpp"
+
 namespace bpy = boost::python;
 namespace bsys = boost::system;
 namespace po = boost::program_options;
 
+#define INIT_MODULE PyInit_mymodule
+extern "C" PyObject* INIT_MODULE();
+
 void thread() {
     for (int i = 0; i < 3; ++i) {
-        boost::this_thread::sleep_for(boost::chrono::seconds{1});
+        std::chrono::seconds duration(1);
+        std::this_thread::sleep_for(duration);
+        
         std::cout << "Thread iterate: " << i << std::endl;
     }
 }
@@ -54,15 +67,21 @@ int main(int argc, char *argv[]) {
     std::cout << std::endl;
 
     std::cout << "Testing Python" << std::endl;
-    std::string REDBACKBOTS_CHECKOUT_DIR = std::getenv("REDBACKBOTS_CHECKOUT_DIR");
-    std::string testFile = REDBACKBOTS_CHECKOUT_DIR + "/Src/boost_test/py_boosttest.py";
-    std::cout << "- REDBACKBOTS_CHECKOUT_DIR: " << REDBACKBOTS_CHECKOUT_DIR << std::endl;
+    // std::string REDBACKBOTS_CHECKOUT_DIR = std::getenv("REDBACKBOTS_CHECKOUT_DIR");
+    // std::string testFile = REDBACKBOTS_CHECKOUT_DIR + "/Src/boost_test/py_boosttest.py";
+    std::string testFile = "py_boosttest.py";
+    // std::cout << "- REDBACKBOTS_CHECKOUT_DIR: " << REDBACKBOTS_CHECKOUT_DIR << std::endl;
     std::cout << "- testFile: " << testFile << std::endl;
     try {
+        PyImport_AppendInittab((char*)"mymodule", INIT_MODULE);
         Py_Initialize();
         std::cout << "Python major version: " << PY_MAJOR_VERSION << std::endl;        
+
         bpy::object main_module = bpy::import("__main__");
         bpy::dict main_namespace = bpy::extract<bpy::dict>(main_module.attr("__dict__"));
+        bpy::object mymodule = bpy::import("mymodule");
+        
+        main_namespace["precreated_object"] = Base("created on C++ side");
         bpy::exec_file(testFile.c_str(), main_namespace, main_namespace);
     } catch (bpy::error_already_set& e) {
         PyErr_PrintEx(0);

@@ -202,10 +202,10 @@ namespace boost {
        }
 
       template <class L>
-      bool is_a_unique_type_for_nil(const L& l) {
+      bool is_a_unique_type_for_nil(const L& /*l*/) {
          return false;
       }
-  
+
       template <>
       bool is_a_unique_type_for_nil<a_unique_type_for_nil>
       (const a_unique_type_for_nil& /* n */) {
@@ -388,8 +388,7 @@ void intrusive_ptr_release( const strict_cons<T>* p ) {
 }
 
 template <class T>
-class strict_list_iterator
-: public std::iterator<std::input_iterator_tag,T,ptrdiff_t> {
+class strict_list_iterator {
    typedef boost::intrusive_ptr<strict_cons<T> > rep_type;
    rep_type l;
    bool is_nil;
@@ -406,6 +405,12 @@ class strict_list_iterator
       const T* operator->() const { return &x; }
    };
 public:
+   typedef std::input_iterator_tag iterator_category;
+   typedef T value_type;
+   typedef ptrdiff_t difference_type;
+   typedef T* pointer;
+   typedef T& reference;
+
    strict_list_iterator() : l(), is_nil(true) {}
    explicit strict_list_iterator( const rep_type& ll ) : l(ll), is_nil(!ll) {}
    
@@ -991,8 +996,7 @@ template <class T, class F> struct ListHelp<T,F,odd_list<T> > {
 };
 
 template <class T>
-class list_iterator
-: public std::iterator<std::input_iterator_tag,T,ptrdiff_t> {
+class list_iterator {
    list<T> l;
    bool is_nil;
    void advance() {
@@ -1008,6 +1012,12 @@ class list_iterator
       const T* operator->() const { return &x; }
    };
 public:
+   typedef std::input_iterator_tag iterator_category;
+   typedef T value_type;
+   typedef ptrdiff_t difference_type;
+   typedef T* pointer;
+   typedef T& reference;
+
    list_iterator() : l(), is_nil(true) {}
    explicit list_iterator( const list<T>& ll ) : l(ll), is_nil(!ll) {}
    
@@ -1277,7 +1287,6 @@ bool operator<( a_unique_type_for_nil, const list<T>& b ) {
         template <typename T, typename L>
         typename result<Cons(T,L)>::type
         operator()( const T& x, const L& l ) const {
-           typedef typename result<Cons(T,L)>::type LL;
            typedef typename result_of::ListType<L>::LType LType;
            typedef ConsHelp1<T,LType,
            boost::is_base_and_derived<ListLike,LType>::value> help;
@@ -1304,28 +1313,28 @@ bool operator<( a_unique_type_for_nil, const list<T>& b ) {
       template <class L, class M, bool b>
       struct CatHelp0;
 
-      template <class L>
-      struct CatHelp0<L,a_unique_type_for_nil,true> {
-        typedef typename result_of::template ListType<L>::LType type;
+      template <class LL>
+      struct CatHelp0<LL,a_unique_type_for_nil,true> {
+        typedef typename result_of::template ListType<LL>::LType type;
       };
 
-      template <class L>
-      struct CatHelp0<const L &,const a_unique_type_for_nil &,true> {
-        typedef typename result_of::template ListType<L>::LType type;
+      template <class LL>
+      struct CatHelp0<const LL &,const a_unique_type_for_nil &,true> {
+        typedef typename result_of::template ListType<LL>::LType type;
         //typedef L type;
       };
 
-      template <class L>
-      struct CatHelp0<L &,a_unique_type_for_nil &,true> {
-        typedef typename result_of::template ListType<L>::LType type;
+      template <class LL>
+      struct CatHelp0<LL &,a_unique_type_for_nil &,true> {
+        typedef typename result_of::template ListType<LL>::LType type;
         //typedef L type;
       };
 
-      template <class L, class M>
-      struct CatHelp0<L,M,false> {
+      template <class LL, class MM>
+      struct CatHelp0<LL,MM,false> {
           // This removes any references from L for correct return type
           // identification.
-        typedef typename result_of::template ListType<L>::LType type;
+        typedef typename result_of::template ListType<LL>::LType type;
         //    typedef typename ConsHelp1<T,LType,
         //   boost::is_base_and_derived<ListLike,LType>::value>::type type;
       };

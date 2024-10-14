@@ -5,6 +5,7 @@ from math import radians, pi
 from util.Sensors import angles
 from robot import Joints
 from util.Hysteresis import Hysteresis
+from util import Log
 
 import time
 
@@ -30,9 +31,9 @@ class HeadTrackBall(BehaviourTask):
     _head_pitch = 0
 
     # LOOK RIGHT
-    MAX_YAW = radians(40)
+    MAX_YAW = radians(60)
     # LOOK LEFT
-    MIN_YAW = radians(-40)
+    MIN_YAW = radians(-60)
 
     # Dont want pitch Looking up away from field
     MAX_PITCH = radians(0)
@@ -83,7 +84,7 @@ class HeadTrackBall(BehaviourTask):
             self._tick_sub_task(yaw=self._head_yaw, pitch=self._head_pitch)
 
     def _log_angle(self):
-        print("[{}] Camera: {}\t Pitch: {}\tYaw: {}\t PD: {}\t NewPitch: {}".format(
+        Log.debug("[{}] Camera: {}\t Pitch: {}\tYaw: {}\t PD: {}\t NewPitch: {}".format(
             str(round((time.time() - self._start_time), 1)),
             round(self.blackboard.vision.balls[0].imageCoords[1], 5),
             self._head_pitch,
@@ -93,7 +94,7 @@ class HeadTrackBall(BehaviourTask):
         ))
 
     def _log_pitch2rad(self):
-        print("[{}] P:{}, CS:{}, PS:{}, R:{}, P/C:{}, *S:{}, *R:{}, FUNCTION:{}".format(
+        Log.debug("[{}] P:{}, CS:{}, PS:{}, R:{}, P/C:{}, *S:{}, *R:{}, FUNCTION:{}".format(
             str(round((time.time() - self._start_time), 1)),
             self._pitch_diff,
             self.LOWER_CAMERA_VERTICAL_SIZE,

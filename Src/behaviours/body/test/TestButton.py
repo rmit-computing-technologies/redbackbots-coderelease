@@ -1,4 +1,7 @@
 from util.actioncommand import stand
+from util import LedOverride
+from util.Constants import LEDColour
+from util import Log
 
 from BehaviourTask import BehaviourTask
 
@@ -17,14 +20,19 @@ class TestButton(BehaviourTask):
         bhead = sensorValues[Sensors.Head_Touch_Rear]
 
 
-        print("Left foot:", lfoot)
-        print("Right foot:", rfoot)
+        # Log.debug("Left foot:", lfoot)
+        # Log.debug("Right foot:", rfoot)
 
 
-        print("Head front:", fhead)
-        print("Head middle:", mhead)
-        print("Head back:", bhead)
+        # Log.debug("Head front:", fhead)
+        # Log.debug("Head middle:", mhead)
+        # Log.debug("Head back:", bhead)
 
-        print(sensorValues)
+        # Log.debug(sensorValues)
+
+        if lfoot:
+            LedOverride.override_eye_segment(LedOverride.rightEye, [0,1,2,3], LEDColour.red)
+        if rfoot:
+            LedOverride.override_eye_segment(LedOverride.rightEye, [5,6,7], LEDColour.red)
 
         self.world.b_request.actions.body = stand()

@@ -116,10 +116,14 @@ message ActionCommandAll {
       optional bool blue = 3;
     }
 
+    message rgbSegments {
+      repeated rgb segments = 1;
+    }
+
     optional uint32 leftEar = 1;
     optional uint32 rightEar = 2;
-    optional rgb leftEye = 3;
-    optional rgb rightEye = 4;
+    optional rgbSegments leftEye = 3;
+    optional rgbSegments rightEye = 4;
     optional rgb chestButton = 5;
     optional rgb leftFoot = 6;
     optional rgb rightFoot = 7;
@@ -166,6 +170,7 @@ message SharedStateEstimationBundle {
   optional AbsCoord ballPosRRC = 2;
   optional AbsCoord ballVelRRC = 3;
   optional bool haveBallUpdate = 4;
+  optional bool haveTeamBallUpdate = 5;
 }
 
 message JointValues {
@@ -329,6 +334,7 @@ message BehaviourSharedData {
   optional float walkingToX = 19;
   optional float walkingToY = 20;
   optional float walkingToH = 21;
+  optional float playingBallScore = 22;
 }
 
 message Vision {

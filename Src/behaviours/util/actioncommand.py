@@ -3,6 +3,8 @@ import robot
 
 blankRGB = robot.rgb()
 
+blankRGBSegemnts = robot.rgbSegments()
+
 
 def head(yaw=0, pitch=0, isYawRelative=False, yawSpeed=1.0, pitchSpeed=1.0):
     return robot.HeadCommand(yaw, pitch, isYawRelative, yawSpeed, pitchSpeed)
@@ -163,7 +165,7 @@ def _type_only_body_command(action_type):
     )
 
 
-def leds(leye=blankRGB, reye=blankRGB, chest=blankRGB,
+def leds(leye=blankRGBSegemnts, reye=blankRGBSegemnts, chest=blankRGB,
          lfoot=blankRGB, rfoot=blankRGB):
     return robot.LEDCommand(leye, reye, chest, lfoot, rfoot)
 

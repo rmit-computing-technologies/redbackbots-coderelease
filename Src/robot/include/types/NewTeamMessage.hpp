@@ -62,6 +62,8 @@ struct NewTeamMessage
   float ballVelRRC[3];
                       // bool haveBallUpdate;
   uint8_t haveBallUpdate;
+  // bool haveTeamBallUpdate;
+  uint8_t haveTeamBallUpdate;
 
                 // const BehaviourSharedData &behaviourSharedData,
 
@@ -75,6 +77,10 @@ struct NewTeamMessage
                         // // Whether the robot is playing the ball or not
                         // bool playingBall;
   uint8_t playingBall;
+
+                        // // Score of how well the robot is in a position to play the ball
+                        // float playingBallScore;
+  float playingBallScore;
 
                         // // Whether the robot needs assistance
                         // bool needAssistance;
@@ -120,9 +126,11 @@ struct NewTeamMessage
     ballPosRRC{0},
     ballVelRRC{0},
     haveBallUpdate(-1),
+    haveTeamBallUpdate(-1),
     secondsSinceLastKick(-1),
     role(-1),
     playingBall(-1),
+    playingBallScore(-1.f),
     needAssistance(-1),
     isAssisting(-1),
     isKickedOff(-1),
@@ -182,9 +190,17 @@ struct NewTeamMessage
         haveBallUpdate = 0;
       }
 
+      if (broadcast.sharedStateEstimationBundle.haveTeamBallUpdate){
+        haveTeamBallUpdate = 1;
+      }
+      else{
+        haveTeamBallUpdate = 0;
+      }
+
       secondsSinceLastKick = broadcast.behaviourSharedData.secondsSinceLastKick;
       role = broadcast.behaviourSharedData.role;
       playingBall = broadcast.behaviourSharedData.playingBall;
+      playingBallScore = broadcast.behaviourSharedData.playingBallScore;
       needAssistance = broadcast.behaviourSharedData.needAssistance;
       isAssisting = broadcast.behaviourSharedData.isAssisting;
       isKickedOff = broadcast.behaviourSharedData.isKickedOff;

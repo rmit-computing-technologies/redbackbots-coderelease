@@ -1,3 +1,5 @@
+from util import LedOverride
+from util.Constants import LEDColour
 from util.Hysteresis import Hysteresis
 import robot
 
@@ -26,14 +28,22 @@ def update_sonar(newBlackboard):
     global blackboard
     blackboard = newBlackboard
     updateNearbySonarValues()
+
     if hasNearbySonarObject(LEFT):
         # TODO alert we're near something WITHOUT flooding the console or speech
         # (LEDs maybe?)
         # robot.say("sonar left")
-        pass
+        LedOverride.override(LedOverride.leftFoot, LEDColour.yellow)
+    
+    else:
+        LedOverride.override(LedOverride.leftFoot, LEDColour.off)
+
     if hasNearbySonarObject(RIGHT):
         # robot.say("sonar right")
-        pass
+        LedOverride.override(LedOverride.rightFoot, LEDColour.yellow)
+    
+    else:
+        LedOverride.override(LedOverride.rightFoot, LEDColour.off)
 
 
 def hasNearbySonarObject(i):

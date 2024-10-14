@@ -56,7 +56,7 @@ class OverviewTab : public Tab {
       Colour botSaliency[BOT_SALIENCY_ROWS][BOT_SALIENCY_COLS];
       Blackboard *blackboard;
 
-   public slots:
+   public Q_SLOTS:
       void newNaoData(NaoData *naoData);
       void setNao(const QString &naoName);
 };

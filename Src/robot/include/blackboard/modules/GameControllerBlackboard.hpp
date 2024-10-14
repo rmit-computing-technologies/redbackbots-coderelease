@@ -19,5 +19,5 @@ struct GameControllerBlackboard {
     int player_number;
     uint8_t gameState;
     char* lastGameControllerIPAddress;
-    bool whistleDetected;
+    bool whistleDetection;
 };

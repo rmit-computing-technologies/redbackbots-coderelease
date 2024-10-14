@@ -3,6 +3,7 @@
 #include <Python.h>
 #include <iostream>
 #include <stdexcept>
+#include <boost/python.hpp>
 #include <boost/regex.hpp>
 #include <csignal>
 #include "utils/speech.hpp"
@@ -14,8 +15,10 @@
 
 class Blackboard;
 
-extern "C"
-void initrobot(void);
+// extern "C"
+// void initrobot(void);
+#define INIT_MODULE PyInit_robot
+extern "C" PyObject* INIT_MODULE();
 
 using namespace std;
 using namespace boost::python;
@@ -68,13 +71,17 @@ void PythonSkill::startPython() {
       Py_Finalize();
    }
 
+   // Import robot module?
+   PyImport_AppendInittab((char*)"robot", INIT_MODULE);
+
    // Start interpreter
    Py_Initialize();
 
    // This try block is peculiar to the interpreter initialisation
    try {
       // Load robotmodule C extension module
-      initrobot();
+      // initrobot();
+      // INIT_MODULE();
 
       // Get handle to the special main module and sys
       main_module = import("__main__");
@@ -85,12 +92,14 @@ void PythonSkill::startPython() {
       sys_path.attr("append")(path);
 
       // Obtain KeyboardInterrupt exception
-      object exceptions_module = import("exceptions");
-      pyKeyboardInterrupt      = exceptions_module.attr("KeyboardInterrupt");
+      // object exceptions_module = import("exceptions");
+      // pyKeyboardInterrupt      = exceptions_module.attr("KeyboardInterrupt");
+      // pyKeyboardInterrupt = new PyExc_KeyboardInterrupt();
 
       // Import robot
       // Implements 'import robot' at the top of each Python behaviour file
-      object robotModule = import(robotModuleName);
+      // object robotModule = import(robotModuleName);
+      object robotModule = import("robot");
 
    } catch (const error_already_set &ex) {
       handlePyError(ex);
@@ -270,15 +279,17 @@ bool PythonSkill::inotify_Check() {
 void PythonSkill::handlePyError(const error_already_set &ex) {
    PyObject *pyException = PyErr_Occurred();
    if (pyException != NULL) {
-      if (PyErr_GivenExceptionMatches(pyException, pyKeyboardInterrupt.ptr())) {
+      // if (PyErr_GivenExceptionMatches(pyException, pyKeyboardInterrupt.ptr())) {
+      if (PyErr_GivenExceptionMatches(pyException, PyExc_KeyboardInterrupt)) {
          handleSignals(SIGINT, NULL, NULL);
       } else {
          errorOccured = true;
       }
       PyErr_Print();
-      if (Py_FlushLine()) {
+      // Flush-line is no longer required in Python3 as softspace is removed
+      // if (Py_FlushLine()) { // Python 2.7
          PyErr_Clear();
-      }
+      // }
    } else {
       /* We received an exception but PyErr was clear. Since we don't know what
        * to do, throw the exception and likely cause the perception thead to be

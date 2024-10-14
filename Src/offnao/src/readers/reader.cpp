@@ -5,13 +5,13 @@
 
 void Reader::forwardMediaTrigger() {
    naoData.nextFrame();
-   emit newNaoData(&naoData);
+   Q_EMIT newNaoData(&naoData);
    naoData.setPaused(true);
 }
 
 void Reader::backwardMediaTrigger() {
    naoData.prevFrame();
-   emit newNaoData(&naoData);
+   Q_EMIT newNaoData(&naoData);
    naoData.setPaused(true);
 }
 
@@ -31,7 +31,7 @@ void Reader::sliderMoved(int amount) {
 
 void Reader::refreshNaoData() {
    if (naoData.getFramesTotal() > 0) {
-      emit newNaoData(&naoData);
+      Q_EMIT newNaoData(&naoData);
    }
 }
 

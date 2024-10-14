@@ -1,6 +1,6 @@
   wifis:
     wlan0:
-      addresses: [WIRELESS_IP_PLACEHOLDER/24]
+      addresses: [WIRELESS_IP_PLACEHOLDER/16]
       dhcp4-overrides:
         send-hostname: true
         use-hostname: true

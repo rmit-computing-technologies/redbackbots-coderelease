@@ -68,7 +68,12 @@ class Timer(object):
     # Returns whether we have reached our target time or not
     def finished(self):
         return self.elapsed() >= self.timeTarget
-
+    
+    def force_expire(self):
+        self.stop()
+        self.running = True
+        self.elapsedTime = self.timeTarget
+        return
 
 class WallTimer(object):
     def __init__(self, timeTarget=0):
@@ -86,5 +91,38 @@ class WallTimer(object):
     def elapsedSeconds(self):
         return self.elapsed() / 1000000.0
 
+    def finished(self):
+        return blackboard.vision.timestamp - self.startTime >= self.timeTarget
+    
+
+class BumperTimer(object):
+    """
+    For exclusive use in ObstacleAvoidance.py
+    Used to record the amount of times a bumper hits and object
+    """
+    def __init__(self, timeTarget=0):
+        self.timeTarget = timeTarget
+        self.startTime = blackboard.vision.timestamp
+        self.bumperActivations = 0
+
+    def restart(self):
+        self.startTime = blackboard.vision.timestamp
+        return self
+
+    def elapsed(self):
+        return blackboard.vision.timestamp - self.startTime
+
+    def elapsedSeconds(self):
+        return self.elapsed() / 1000000.0
+    
+    def add_activation(self):
+        self.bumperActivations += 1
+
+    def reset_activations(self):
+        self.bumperActivations = 0
+
+    def get_num_activations(self):
+        return self.bumperActivations
+    
     def finished(self):
         return blackboard.vision.timestamp - self.startTime >= self.timeTarget

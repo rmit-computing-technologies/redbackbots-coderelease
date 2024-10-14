@@ -14,6 +14,6 @@ class DumpReader : public Reader {
       virtual void run();
    private:
       FILE *dumpFile;
-   public slots:
+   public Q_SLOTS:
       virtual void stopMediaTrigger();
 };

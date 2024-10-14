@@ -23,7 +23,9 @@ if (BUILD_RBB_TEST)
     # External dependent libraries
     target_link_libraries(LolaTest PRIVATE BoostInterface)
     target_link_libraries(LolaTest PRIVATE Boost::System)
+    target_link_libraries(LolaTest PRIVATE Boost::Thread)
     target_link_libraries(LolaTest PRIVATE MsgpackInterface)
+    target_link_libraries(LolaTest PRIVATE -lpthread-2.31)
 
     target_compile_definitions(LolaTest PRIVATE TARGET_ROBOT __STRICT_ANSI__ CONFIGURATION=$<CONFIG>)
 

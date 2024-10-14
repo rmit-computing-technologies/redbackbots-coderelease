@@ -9,8 +9,8 @@ using namespace std;
 NaoTransmitter::NaoTransmitter(int port, string address)
    : service(),
      socket(service, ip::udp::v4()),
-   //   broadcast_endpoint(ip::address_v4::broadcast(), port) 
-        broadcast_endpoint(ip::address::from_string(address.c_str()), port)
+     // broadcast_endpoint(ip::address_v4::broadcast(), port) 
+     broadcast_endpoint(ip::address::from_string(address.c_str()), port)
         {
    // TW: The address was not being used so now use the transmitter_address
    // TODO: The transmitter address set in options.cpp isn't saving from redbackbots.cfg

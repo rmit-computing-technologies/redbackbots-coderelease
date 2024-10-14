@@ -101,10 +101,16 @@ mount -t proc /proc "${rootDir}/proc"
 LANG=C chroot "${rootDir}" /bin/bash <<EOF
 set -eu
 
-apt-get update
-apt-get dist-upgrade
+DEBIAN_FRONTEND=noninteractive apt-get update -y
+DEBIAN_FRONTEND=noninteractive apt-get install -y dialog apt-utils
+DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y
 
-DEBIAN_FRONTEND=noninteractive apt-get install -y alsa beignet-opencl-icd gdb htop i2c-tools libusb-1.0-0 ocl-icd-libopencl1 openssh-server pciutils python-is-python2 python-u-msgpack python-numpy python3-numpy python3-alsaaudio python3-msgpack rsync ubuntu-minimal vim wpasupplicant
+DEBIAN_FRONTEND=noninteractive apt-get install -y alsa gdb htop i2c-tools libusb-1.0-0 openssh-server pciutils rsync ubuntu-minimal vim wpasupplicant
+DEBIAN_FRONTEND=noninteractive apt-get install -y python-is-python2 python-u-msgpack python-numpy python3-numpy python3-alsaaudio python3-msgpack
+
+#DEBIAN_FRONTEND=noninteractive apt-get install -y beignet-opencl-icd
+DEBIAN_FRONTEND=noninteractive apt-get install -y ocl-icd-libopencl1
+#DEBIAN_FRONTEND=noninteractive apt-get install -y intel-opencl-icd
 
 # wpa_supplicant does not need to run by itself, it will be started by netplan if necessary.
 systemctl disable wpa_supplicant.service

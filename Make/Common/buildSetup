@@ -24,6 +24,7 @@ from rbbpython.echo import (
     print_warning,
     print_progress,
     print_subitem,
+    print_success,
     query_yes_no,
     query_generic
 )
@@ -42,15 +43,22 @@ CTC_VERSION_2_8 = "2.8.5.10"
 def installSoftware(config):
     software = config['Software']
     pip_software = config['PipSoftware']
+    repositories = config['Repositories']
     print_status("Installing software")
     # APT software
     # Load this here to avoid script delays
-    from rbbpython.aptinstall import (aptcheck, aptinstallcmdline)
+    from rbbpython.aptinstall import (aptcheck, aptinstallcmdline, addAptRepository)
 
     toInstall = []
 
     # Load Software to install
     counter = 0
+
+    for repo in repositories["install"]:
+        progress = round(counter / len(software["install"]) * 100)
+        print_progress("Adding " + repo, progress)
+        addAptRepository(repo)
+
     for pkg in software["install"]:
         progress = round(counter / len(software["install"]) * 100)
         print_progress("Installing " + pkg, progress)
@@ -123,6 +131,15 @@ def setupBash():
 
 def setupBuild():
     print_status("Setting up build environment")
+    
+    if os.listdir(REDBACKBOTS_CHECKOUT_DIR + "/Util/Buildchain") == []:
+        print_warning("Submodules have not been cloned")
+        print_status("Cloning Now")
+        command = "git submodule init && git submodule update"
+        shell.exec(command, hideOutput=False)
+    else:
+        print_subitem("Required submodules are present")
+    
 
     # Create and configure CMake
     print_subitem("Create and configure CMake (robot sources)")
@@ -199,8 +216,19 @@ def setupGit():
     print("If the user info is incorrect, please configure it like (without the brackets '<'/'>'):")
     print("\tgit config user.name <your-name>")
     print("\tgit config user.email <your-sid>@student.rmit.edu.au")
-    gitUser = shell.capture(["git config user.name"])
-    gitEmail = shell.capture(["git config user.email"])
+    try:
+        gitUser = shell.capture(["git config user.name"])
+        gitEmail = shell.capture(["git config user.email"])
+    except subprocess.CalledProcessError:
+        print_warning("Your Git has not been configured")
+        print_subitem("Configuring now")
+        gitUser = input("Enter your name (eg. Jane Smith): ")
+        gitEmail = input("Enter your email (eg. s1234567@student.rmit.edu.au): ")
+        shell.exec(f"git config user.name \"{gitUser}\" && git config user.email {gitEmail}")
+        gitUser = shell.capture(["git config user.name"])
+        gitEmail = shell.capture(["git config user.email"])
+
+        
     print("Your user name:", gitUser)
     print("Your email:", gitEmail)
 
@@ -366,7 +394,7 @@ if __name__ == "__main__":
         setupBuild()
     print()
 
-    print_status("Build Setup Complete")
+    print_success("Build Setup Complete")
 
     if bashSetupDone:
         print_warning("Please close all shells.  Only new shells will have REDBACKBOTS_CHECKOUT_DIR set")

@@ -6,14 +6,15 @@ template <typename T, typename Handler>
 void Connection::async_write(const T& t, Handler handler) {
    // Serialise the data first so we know how large it is.
    serialize(t, outbound_data_);
-   llog(DEBUG) << outbound_data_.size();
 
    // Compress it
    size_t compressedSize;
    char* compressedBuffer = new char[snappy::MaxCompressedLength(outbound_data_.size())];
    snappy::RawCompress(
-      outbound_data_.c_str(), outbound_data_.size(),
-      compressedBuffer, &compressedSize
+      outbound_data_.c_str(), 
+      outbound_data_.size(),
+      compressedBuffer, 
+      &compressedSize
    );
 
    // Format the header.
@@ -23,6 +24,7 @@ void Connection::async_write(const T& t, Handler handler) {
    if (!header_stream || header_stream.str().size() != kHeaderLength * 2) {
       // Something went wrong, inform the caller.
       // static so it still exists when it's read
+      llog(DEBUG) << "stream error" << std::endl;
       static const ErrorCategory &category = ErrorCategory("async_write");
       boost::system::error_code error(boost::asio::error::invalid_argument, category);
       socket_.get_io_service().post(boost::bind(handler, error));
@@ -34,11 +36,12 @@ void Connection::async_write(const T& t, Handler handler) {
    // both the header and the data in a single write operation.
    std::vector<boost::asio::const_buffer> buffers;
    buffers.push_back(boost::asio::buffer(outbound_header_));
-   if (compressedSize)
+   if (compressedSize) {
       buffers.push_back(boost::asio::buffer(compressedBuffer, compressedSize));
-   else
+   } else {
       buffers.push_back(boost::asio::buffer(outbound_data_));
-   llog(DEBUG) << outbound_header_ << std::endl;
+   }
+   llog(DEBUG) << "outbound header: " << outbound_header_ << std::endl;
    boost::asio::async_write(socket_, buffers, handler);
    // TODO (Peter): We don't know when the async_write will complete and we can
    // TODO: .... safely clean up the 'new'-ly allocated char* compressedBuffer
@@ -100,6 +103,8 @@ boost::system::error_code Connection::batch_write(const T& t) {
 
 template <typename T>
 boost::system::error_code Connection::sync_read(T& t) {
+   llog(DEBUG) << "sync_read: " << std::endl;
+
    // Issue a read operation to read exactly the number of bytes in a header.
    // TODO(jayen): check for errors
    boost::asio::read(socket_, boost::asio::buffer(inbound_header_));
@@ -114,7 +119,7 @@ boost::system::error_code Connection::sync_read(T& t) {
       boost::system::error_code error(boost::asio::error::invalid_argument, category);
       return error;
    }
-   llog(DEBUG) << "compressed:\t" << inbound_compressed_size << "\tuncompressed:\t" << inbound_data_size << std::endl;
+   llog(DEBUG) << "sync_read: compressed:\t" << inbound_compressed_size << "\tuncompressed:\t" << inbound_data_size << std::endl;
 
    // Start a synchronous call to receive the data.
    inbound_data_.resize(inbound_data_size);
@@ -127,12 +132,12 @@ boost::system::error_code Connection::sync_read(T& t) {
       boost::asio::read(socket_, boost::asio::buffer(inbound_compressed_data_));
 
       // Decompress it
-      int notOk = snappy::RawUncompress(
+      bool ok = snappy::RawUncompress(
          &inbound_compressed_data_[0],
          inbound_compressed_data_.size(),
          &inbound_data_[0]
       );
-      if (notOk) {
+      if (!ok) {
          llog(ERROR) << "failed to snappy decompress" << std::endl;
       }
    }
@@ -170,25 +175,28 @@ void Connection::handle_read_header(const boost::system::error_code& e,
          boost::get<0>(handler) (error);
          return;
       }
-      llog(DEBUG) << inbound_compressed_size << inbound_data_size << std::endl;
+      llog(DEBUG) << std::endl << "handle_read_header (compressed, data): " << inbound_compressed_size << inbound_data_size << std::endl;
 
       // Start an asynchronous call to receive the data.
       inbound_compressed_data_.resize(inbound_compressed_size);
+      inbound_data_.clear();
       inbound_data_.resize(inbound_data_size);
       void (Connection::*f)(const boost::system::error_code &, T &,
                             boost::tuple<Handler>) =
          &Connection::handle_read_data<T, Handler>;
-      if (inbound_compressed_size)
+      if (inbound_compressed_size) {
          boost::asio::async_read(socket_,
                                  boost::asio::buffer(inbound_compressed_data_),
                                  boost::bind(f, this,
                                              boost::asio::placeholders::error,
                                              boost::ref(t), handler));
-      else
+      } else {
          boost::asio::async_read(socket_, boost::asio::buffer(inbound_data_),
                                  boost::bind(f, this,
                                              boost::asio::placeholders::error,
                                              boost::ref(t), handler));
+      }
+
    }
 }
 
@@ -198,14 +206,17 @@ void Connection::handle_read_data(const boost::system::error_code& e,
    if (e) {
       boost::get<0>(handler) (e);
    } else {
+      llog(DEBUG) << "handle_read_data: inbound header: " << std::string(inbound_header_, kHeaderLength * 2) << std::endl;
+      llog(DEBUG) << "handle_read_data: compressed:\t" << inbound_compressed_data_.size() << std::endl;
+      llog(DEBUG) << "handle_read_data: inbound (before snappy):\t" << inbound_data_.size() << std::endl;
       if (inbound_compressed_data_.size()) {
          // Decompress it
-         int notOk = snappy::RawUncompress(
+         bool ok = snappy::RawUncompress(
             &inbound_compressed_data_[0],
             inbound_compressed_data_.size(),
             &inbound_data_[0]
          );
-         if (notOk) {
+         if (!ok) {
             llog(ERROR) << "failed to snappy decompress" << std::endl;
          }
       }
@@ -213,13 +224,12 @@ void Connection::handle_read_data(const boost::system::error_code& e,
       // Extract the data structure from the data just received.
       try {
          std::string archive_data(&inbound_data_[0], inbound_data_.size());
-         llog(DEBUG) << std::string(inbound_header_, kHeaderLength * 2) <<
-         std::endl;
          std::istringstream archive_stream(archive_data);
          deserialise(t, archive_stream);
       } catch(std::exception & e) {
          // Unable to decode data.
          // static so it still exists when it's read
+         llog(ERROR) << "deserialise error" << std::endl;
          static const ErrorCategory &category = ErrorCategory("handle_read_data");
          boost::system::error_code error(boost::asio::error::invalid_argument, category);
          boost::get<0>(handler) (error);

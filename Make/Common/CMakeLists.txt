@@ -26,15 +26,17 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# RBB Source Files locations
 set(RBB_PREFIX "${PROJECT_SOURCE_DIR}/../..")
 set(RBB_SRC_PREFIX "${PROJECT_SOURCE_DIR}/../../Src")
-# set(SIMROBOT_PREFIX "${PROJECT_SOURCE_DIR}/../../Util/SimRobot")
 set(OUTPUT_PREFIX "${PROJECT_SOURCE_DIR}/../..")
-# RBB Source Files root location
 set(RBB_BUILDCHAIN_DIR "${RBB_PREFIX}/Util/Buildchain")
 set(RBB_ROOT_DIR "${RBB_PREFIX}/Src/robot")
 set(RBB_INCLUDE_DIR "${RBB_ROOT_DIR}/include")
 set(RBB_SRC_DIR "${RBB_ROOT_DIR}/src")
+
+# Uncomment this (locally) to build the test sources
+# set(BUILD_RBB_TEST TRUE)
 
 #####
 # Setup Build and host platform targets
@@ -228,10 +230,10 @@ if(BUILD_NAO)
   set_target_properties(Boost::ProgramOptions PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
   set_target_properties(Boost::ProgramOptions PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_program_options.a")
 
-  # Boost python
-  add_library(Boost::Python STATIC IMPORTED)
-  set_target_properties(Boost::Python PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Python PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_python.a")
+  # Boost python3
+  add_library(Boost::Python3 STATIC IMPORTED)
+  set_target_properties(Boost::Python3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+  set_target_properties(Boost::Python3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_python38.a")
 
   # Boost regex
   add_library(Boost::Regex STATIC IMPORTED)
@@ -248,6 +250,11 @@ if(BUILD_NAO)
   set_target_properties(Boost::Thread PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
   set_target_properties(Boost::Thread PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_thread.a")
 
+  # Library - libexpat
+  add_library(libexpat::libexpat SHARED IMPORTED)
+  #set_target_properties(libexpat::libexpat PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/expat/include")
+  set_target_properties(libexpat::libexpat PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/expat/lib/V6/libexpat.so.1.6.11")
+
   # Library - libjpeg
   add_library(libjpeg::libjpeg STATIC IMPORTED)
   set_target_properties(libjpeg::libjpeg PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/libjpeg/include")
@@ -258,10 +265,10 @@ if(BUILD_NAO)
   set_target_properties(Png::Png PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/png/include")
   set_target_properties(Png::Png PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/png/lib/V6/libpng.a")
 
-  # Library - Python 2
-  add_library(Python27 STATIC IMPORTED)
-  set_target_properties(Python27 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python2.7/include" )
-  set_target_properties(Python27 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python2.7/lib/V6/libpython2.7.a")
+  # Library - Python 3
+  add_library(Python38 STATIC IMPORTED)
+  set_target_properties(Python38 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python3.8/include" )
+  set_target_properties(Python38 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python3.8/lib/V6/libpython3.8.a")
 
   # Library - fast Fourier transform
   add_library(fftw3 STATIC IMPORTED)
@@ -296,10 +303,10 @@ if(BUILD_DESKTOP)
   set_target_properties(Boost::ProgramOptions PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
   set_target_properties(Boost::ProgramOptions PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_program_options.a")
 
-  # Boost python
-  add_library(Boost::Python STATIC IMPORTED)
-  set_target_properties(Boost::Python PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Python PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_python.a")
+  # Boost python3
+  add_library(Boost::Python3 STATIC IMPORTED)
+  set_target_properties(Boost::Python3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+  set_target_properties(Boost::Python3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_python38.a")
 
   # Boost regex
   add_library(Boost::Regex STATIC IMPORTED)
@@ -319,6 +326,11 @@ if(BUILD_DESKTOP)
   # Library - BZip2
   find_package(BZip2 REQUIRED)
 
+  # Library - libexpat
+  #add_library(libexpat::libexpat SHARED IMPORTED)
+  #set_target_properties(libexpat::libexpat PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/expat/include")
+  #set_target_properties(libexpat::libexpat PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/expat/lib/${PLATFORM}/libexpat.so.1.6.11")
+
   # Library - libjpeg
   add_library(libjpeg::libjpeg STATIC IMPORTED)
   set_target_properties(libjpeg::libjpeg PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/libjpeg/include")
@@ -329,19 +341,12 @@ if(BUILD_DESKTOP)
   set_target_properties(Png::Png PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/png/include")
   set_target_properties(Png::Png PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/png/lib/${PLATFORM}/libpng.a")
 
-  # Library - Python 2
-  # For DESKTOP, use existing Python 2 libraries
-  set(Python2_USE_STATIC_LIBS TRUE)
-  find_package(Python 2 COMPONENTS
-    Interpreter
-    Development
-    REQUIRED
-  )
-  message(STATUS "Finding Python 2: ${Python2_FOUND}")
-  message(STATUS "- Python 2 interpreter: ${Python2_EXECUTABLE}")
-  # add_library(Python27 STATIC IMPORTED)
-  # set_target_properties(Python27 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python2.7/include" )
-  # set_target_properties(Python27 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python2.7/lib/${PLATFORM}/libpython2.7.a")
+  # Library - Python 3
+  # NOTE: Ubuntu 22.04 seems to need to use the SHARED library due to 32/64-bit alignment
+  #       as inlcuded files from NaoV6 are 32-bit
+  add_library(Python38 SHARED IMPORTED)
+  set_target_properties(Python38 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python3.8/include" )
+  set_target_properties(Python38 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python3.8/lib/${PLATFORM}/libpython3.8.so")
 
 endif()
 

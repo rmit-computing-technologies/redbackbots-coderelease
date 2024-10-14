@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <ctime>
 #include <utility>
+#include <cstdlib>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/bind.hpp>
@@ -31,6 +32,10 @@ PerceptionThread::PerceptionThread(Blackboard *bb)
       bb_(bb)
 {
     visionAdapter = new VisionAdapter(bb);
+
+    std::system("sudo pkill -9 -f $HOME/data/behaviours/audio/whistle_detector.py"); //Close any existing whistle detectors
+    std::system("python3 $HOME/data/behaviours/audio/whistle_detector.py &"); //Activate whistle detector
+
     dumper = NULL;
     // pythonLandmarks = PythonLandmarks();
 
@@ -60,6 +65,7 @@ PerceptionThread::~PerceptionThread()
     llog(INFO) << __PRETTY_FUNCTION__ << endl;
     writeTo(thread, configCallbacks[Thread::name], boost::function<void(const boost::program_options::variables_map &)>());
     delete visionAdapter;
+    std::system("sudo pkill -9 -f $HOME/data/behaviours/audio/whistle_detector.py"); //Close any existing whistle detectors
 }
 
 void PerceptionThread::tick()

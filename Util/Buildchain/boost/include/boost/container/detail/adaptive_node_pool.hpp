@@ -23,7 +23,6 @@
 #include <boost/container/detail/workaround.hpp>
 
 #include <boost/intrusive/set.hpp>
-#include <boost/container/detail/alloc_lib_auto_link.hpp>
 #include <boost/container/detail/multiallocation_chain.hpp>
 #include <boost/container/detail/pool_common_alloc.hpp>
 #include <boost/container/detail/mutex.hpp>
@@ -38,12 +37,12 @@
 
 namespace boost {
 namespace container {
-namespace container_detail {
+namespace dtl {
 
 template<bool AlignOnly>
 struct select_private_adaptive_node_pool_impl
 {
-   typedef boost::container::container_detail::
+   typedef boost::container::dtl::
          private_adaptive_node_pool_impl
             < fake_segment_manager
             , unsigned(AlignOnly)*::boost::container::adaptive_pool_flag::align_only
@@ -158,7 +157,7 @@ class shared_adaptive_node_pool
    default_mutex mutex_;
 };
 
-}  //namespace container_detail {
+}  //namespace dtl {
 }  //namespace container {
 }  //namespace boost {
 

@@ -9,11 +9,11 @@ bridge from C++ to Python and back to C++ which is run many times at run time.
 For example, for the implementation of `robot.TOP_IMAGE_ROWS`,
 see the file `VisionDefinitions_wrap.cpp` in the following directory:
 @see
-https://bitbucket.org/wileyt-rmit/redbackbots/src/master/Src/robot/src/perception/behaviour/python/wrappers/
+Src/robot/src/perception/behaviour/python/wrappers/
 
 For info, the following contains the C++ definition of `TOP_IMAGE_ROWS`:
 @see
-https://bitbucket.org/wileyt-rmit/redbackbots/src/master/Src/robot/include/perception/vision/VisionDefinitions.hpp
+Src/robot/include/perception/vision/VisionDefinitions.hpp
 """
 
 from pkgutil import iter_modules
@@ -22,24 +22,23 @@ from importlib import import_module
 from os.path import join
 from util import Log
 from robot import BehaviourRequest, All
+from util import LedOverride
 from util.world import World
-from util.Global import update_global, ballLostTime
+from util.Global import update_global, ballLostTime, believeMoreInTeamBallPos
 from util.TeamStatus import update_team_status
 from util.FieldGeometry import update_field_geometry
 from util.Timer import update_timer
 from util.Sonar import update_sonar
-from util.GameStatus import update_game_status
+from util.GameStatus import update_game_status, whistle_detected
 from util.NetworkEar import update_network_ear, get_ear_colour
 from util.RemoteStiffener import update_remote_stiffener, get_stiffen_command
 from util.ObstacleAvoidance import update_obstacle_avoidance
-from util.LedOverride import override_request, reset_led_override
-from util.Constants import LEDColour
-from audio import whistle_controller
+from util import LedOverride
+from util.Constants import LEDColour, LEDSegments
 
 # from vision.visual_ref import estimate_ref_pose
 
 attempted_debug_connect = False
-start_whistle_detector = False
 
 skill_instance = None
 headskill_instance = None
@@ -122,11 +121,6 @@ def tick(blackboard):
         except:
             print("Could not attach debugger. Is it running on IP " + remote_ip + "?")
     attempted_debug_connect = True
-    global start_whistle_detector
-    if not start_whistle_detector:
-        start_whistle_detector = True
-        whistle_controller.kill_all_python_processes()
-        whistle_controller.start_listening_for_whistles()
 
 
     # Update all blackboard dependent helper modules.
@@ -142,7 +136,7 @@ def tick(blackboard):
 
     #estimate_ref_pose(blackboard)
 
-    reset_led_override()
+    LedOverride.reset_led_override()
 
     global skill_instance
     if not skill_instance:
@@ -176,12 +170,24 @@ def tick(blackboard):
     headskill_instance.tick()
     request = headskill_instance.world.b_request
 
-    # LED colouring for ball detection
+    # So we know which ball is being used by the robot. Team == green, Robots == Red
+    if believeMoreInTeamBallPos():
+        LedOverride.override_eye_segment(LedOverride.leftEye, LedOverride.positionSegments, LEDColour.green)
+    else:
+        LedOverride.override_eye_segment(LedOverride.leftEye, LedOverride.positionSegments, LEDColour.red)
+
+    # LED colouring for ball detection (moved to lower half)
     if len(blackboard.vision.balls) <= 0:
-        request.actions.leds.leftEye = LEDColour.off
+        LedOverride.override_eye_segment(LedOverride.leftEye, LedOverride.roleSegments, LEDColour.off)
+        # request.actions.leds.leftEye = LEDSegments.off
+    
+    # Foot LED indicating if a whistle has been heard
+    if whistle_detected():
+        LedOverride.override(LedOverride.rightFoot, LEDColour.red)
+        LedOverride.override(LedOverride.leftFoot, LEDColour.red)
 
     # Override leds as requested by skills
-    override_request(request)
+    LedOverride.override_request(request)
 
     # Get right ear colour depending on network activity
     request.actions.leds.rightEar = get_ear_colour()

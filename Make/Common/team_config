@@ -1,0 +1,125 @@
+#! /usr/bin/env python3
+
+'''
+team_config:
+- Set up the config files for all online robots
+
+@author
+- Tom Ellis
+'''
+import argparse
+import signal
+import sys
+import rbbpython.config as cfg
+from rbbpython.echo import (
+    unix_colours,
+    print_error,
+    print_status,
+    print_warning,
+    print_subitem,
+    print_success,
+    print_banner
+)
+import rbbpython.install as install
+import rbbpython.shellEscape as shell
+import rbbpython.sshscp as scp
+
+def signal_handler(sig, frame):
+    print()
+    print_status("Exiting Team Config!")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+
+
+def ping_robot(robot):
+    robotConfig = cfg.loadConfigFile(cfg.robotConfigDirectory(robot) + "/robot.cfg")
+    robotIP = robotConfig['player']['playerIp']
+    print_subitem("Using IP: " + robotIP, robot)
+
+    print_subitem(f"Pinging Robot", robot)
+    response = shell.exec("ping -c 1 -W 1 " + robotIP, hideOutput=True)
+    if not response:
+        print_warning(f"Robot does not appear to be online", robot)
+    return response
+
+def robot_selection(robots):
+    input_valid = False
+    while not input_valid:
+        print_status("Robot Configuration")
+        for robot in robots:
+            robot_config = cfg.loadConfig(f"Robots/{robot}/robot.cfg")["player"]
+            print_subitem(f"Player: {robot_config['number']} Team: {robot_config['team']}", robot)
+        print_status(f"Enter a robot to configure (press enter to configure {robots[0]})")
+        user_input = input("        ")
+        if user_input in robots:
+            return user_input
+        elif user_input == "":
+            return robots[0]
+        print_error("Robot not in list of active robots")
+
+def configure_robot(robot):
+    print_status(f"Configuring", robot)
+    robot_config = cfg.loadRawConfig(f"Robots/{robot}/robot.cfg")['player']
+    print_subitem(f"Player: {robot_config['number']} Team: {robot_config['team']}", robot)
+    print_status("Enter new Player Number (or press enter to keep as is)", robot)
+    new_number = input("        ")
+    print_status("Enter new Team Number (or press enter to keep as is)", robot)
+    new_team = input("        ")
+    new_config = {
+        "robot"  : robot,
+        "number" : new_number if new_number != "" else robot_config['number'],
+        "team"   : new_team if new_team != "" else robot_config['team'] 
+    }
+    cfg.writeConfig(f"Robots/{robot}/robot.cfg", "player", {"number": new_config["number"], "team": new_config["team"]})
+    return new_config
+
+# Main entry point
+if __name__ == "__main__":
+    # Process args
+    parser = argparse.ArgumentParser(description='Update Team and Player Number Robot Configs')
+    parser.add_argument('-a', action='store_true', help='If set, set config for all robots regardless of online status')
+    parser.add_argument('-r', dest="robots", action='append', help='Configure only specified robots')
+    args = parser.parse_args()
+
+    print_banner("Setting up team config!", unix_colours.MAGENTA)
+
+    robotConfig = cfg.loadConfigJSON("Robots/robotsv2.cfg")
+    robotConfig.pop("**WARNING")
+
+    robots = []
+
+    if args.robots:
+        robots = args.robots
+        print_status(f"Setting Config/s for {robots}")
+    elif args.a:
+        robots = [robot for robot, data in robotConfig.items()]
+        print_status("Setting Configs for all robots")
+    else:
+        print_status("Finding Robots on the network")
+        online_robots = []
+        for robot, data in robotConfig.items():
+            if (ping_robot(robot)):
+                online_robots.append(robot)
+
+        if len(online_robots) == 0:
+            print_warning("No robots seem to be online, are you on the right network?")
+            print_status("Press Enter to configure all robots")
+            input()
+            robots = [robot for robot, data in robotConfig.items()]
+        else:
+            print_status("The following robots are online:")
+            print_subitem(online_robots)
+            robots = online_robots
+            print()
+
+    configured_robots = []
+    while(len(robots)>0):
+        robot = robot_selection(robots)
+        configured_robot = configure_robot(robot)
+        robots.remove(robot)
+        configured_robots.append(configured_robot)
+        for robot in configured_robots:
+            print_success(f"Player: {robot['number']} Team: {robot['team']}", robot['robot'])
+    print()
+    print_success("All robots configured!")

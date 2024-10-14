@@ -31,8 +31,14 @@ class TeamBallKF
     void predict(float dtInSeconds);
     bool update(const std::vector<BroadcastData> &incomingBroadcastData); // returns whether there were ballupdates from teammates
 
-    AbsCoord getBallAbsCoord();
-    AbsCoord getBallVelAbsCoord();
+    AbsCoord getBallAbsCoord(EstimatorInfoOut &estimatorInfoOut, bool haveTeamBallUpdate);
+    bool doesTeamBallNeedUpdate(const EstimatorInfoIn &estimatorInfoIn, EstimatorInfoOut &estimatorInfoOut);
+    double calculateDistance(AbsCoord me, AbsCoord ball);
+    int calculateRangeToBall(double distToBall);
+    bool isOutsideRadius(AbsCoord myBall, AbsCoord teamBall, double radius);
+    AbsCoord oldGetBallAbsCoord();
+    AbsCoord oldGetBallVelAbsCoord();
+    AbsCoord getBallVelAbsCoord(EstimatorInfoOut &EstimatorInfoOut, bool haveTeamBallUpdate);
     float getBallPosUncertainty();
 
     TeamBallKFTransitioner *transitioner;

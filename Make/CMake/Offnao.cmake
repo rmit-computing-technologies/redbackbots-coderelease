@@ -55,6 +55,7 @@ if(BUILD_DESKTOP)
 
     # Offnao Tabs
     # ${OFFNAO_SRC_DIR}/tabs/aroundFeetTab.cpp
+    ${OFFNAO_SRC_DIR}/tabs/cameraTab.cpp
     # ${OFFNAO_SRC_DIR}/tabs/cameraPoseTab.cpp
     ${OFFNAO_SRC_DIR}/tabs/fieldView.cpp
     # ${OFFNAO_SRC_DIR}/tabs/graphTab.cpp
@@ -62,7 +63,7 @@ if(BUILD_DESKTOP)
     # ${OFFNAO_SRC_DIR}/tabs/LogsTab.cpp
     # ${OFFNAO_SRC_DIR}/tabs/LogTab.cpp
     ${OFFNAO_SRC_DIR}/tabs/overviewTab.cpp
-    # ${OFFNAO_SRC_DIR}/tabs/PointCloud.cpp
+    ${OFFNAO_SRC_DIR}/tabs/PointCloud.cpp
     # ${OFFNAO_SRC_DIR}/tabs/plots.cpp
     # ${OFFNAO_SRC_DIR}/tabs/sensorTab.cpp
     ${OFFNAO_SRC_DIR}/tabs/tab.cpp
@@ -70,7 +71,7 @@ if(BUILD_DESKTOP)
     ${OFFNAO_SRC_DIR}/tabs/variableView.cpp
     # ${OFFNAO_SRC_DIR}/tabs/visionTab.cpp
     # ${OFFNAO_SRC_DIR}/tabs/walkTab.cpp
-    # ${OFFNAO_SRC_DIR}/tabs/yuvHistogram.cpp
+    ${OFFNAO_SRC_DIR}/tabs/yuvHistogram.cpp
     # ${OFFNAO_SRC_DIR}/tabs/zmpTab.cpp
 
     # Protobuf source files
@@ -90,6 +91,7 @@ if(BUILD_DESKTOP)
     ${OFFNAO_INCLUDE_DIR}/visualiser.hpp
     
     # ${OFFNAO_INCLUDE_DIR}/tabs/aroundFeetTab.hpp
+    ${OFFNAO_INCLUDE_DIR}/tabs/cameraTab.hpp
     # ${OFFNAO_INCLUDE_DIR}/tabs/cameraPoseTab.hpp
     # ${OFFNAO_INCLUDE_DIR}/tabs/graphTab.hpp
     # ${OFFNAO_INCLUDE_DIR}/tabs/jointsTab.hpp
@@ -130,9 +132,13 @@ if(BUILD_DESKTOP)
   find_package(Qt5 COMPONENTS 
     Core
     Gui
+    OpenGL
     Widgets
+    Xml
     REQUIRED
   )
+  find_library ( QGLVIEWER_LIBRARY NAMES QGLViewer qglviewer-qt5 QGLViewer-qt5 )
+  #message(${QGLVIEWER_LIBRARY})
 
   #SET(QT_USE_QTSVG TRUE) #svg support comes in via plugin when using QImage
   set(QT_USE_QTNETWORK TRUE)
@@ -153,9 +159,13 @@ if(BUILD_DESKTOP)
   # this moc's the above variable and appends to the cxx sources
   QT5_WRAP_CPP(OFFNAO_MOC_SRCS ${OFFNAO_MOC})
 
+
   #####
   # Configure OpenGL
-  find_package(OpenGL  REQUIRED)
+  # find_package(OpenGL  REQUIRED)
+  find_package(OpenGL REQUIRED COMPONENTS
+    OpenGL
+  )
 
   #####
   # Offnao Executable
@@ -184,15 +194,22 @@ if(BUILD_DESKTOP)
   # QT5 Libraries
   target_link_libraries(Offnao PRIVATE Qt5::Core)
   target_link_libraries(Offnao PRIVATE Qt5::Gui)
+  target_link_libraries(Offnao PRIVATE Qt5::OpenGL)
   target_link_libraries(Offnao PRIVATE Qt5::Widgets)
-  
+  target_link_libraries(Offnao PRIVATE Qt5::Xml)
+  target_link_libraries(Offnao PRIVATE ${QGLVIEWER_LIBRARY})
+
+  # The QT slots/signals keywords conflict with Python3 C++ types, so they must be disabled
+  target_compile_definitions(Offnao PRIVATE QT_NO_KEYWORDS)
+
   # RBB Libraries
   target_link_libraries(Offnao PRIVATE RBBCommonDesktop)
 
   # External dependent libraries
   target_link_libraries(Offnao PRIVATE BoostInterface)
   target_link_libraries(Offnao PRIVATE Boost::ProgramOptions)
-  target_link_libraries(Offnao PRIVATE Boost::Python)
+  #target_link_libraries(Offnao PRIVATE Boost::Python)
+  target_link_libraries(Offnao PRIVATE Boost::Python3)
   # target_link_libraries(Offnao PRIVATE Boost::Regex)
   target_link_libraries(Offnao PRIVATE Boost::System)
   target_link_libraries(Offnao PRIVATE Boost::Thread)
@@ -201,14 +218,18 @@ if(BUILD_DESKTOP)
   target_link_libraries(Offnao PRIVATE FadBad)
   target_link_libraries(Offnao PRIVATE Google::Protobuf)
   # target_link_libraries(Offnao PRIVATE MsgpackInterface)
+  target_link_libraries(Offnao PRIVATE OpenGL::GL)
   target_link_libraries(Offnao PRIVATE Png::Png)
-  target_link_libraries(Offnao PRIVATE Python::Python)
+  #target_link_libraries(Offnao PRIVATE Python::Python)
+  target_link_libraries(Offnao PRIVATE Python38)
   target_link_libraries(Offnao PRIVATE SnappyDesktop)
   # target_link_libraries(Offnao PRIVATE TinyDNN)
   target_link_libraries(Offnao PRIVATE libjpeg::libjpeg)
   target_link_libraries(Offnao PRIVATE -lcrypt)
+  target_link_libraries(Offnao PRIVATE -ldl)
+  target_link_libraries(Offnao PRIVATE -lexpat)
   target_link_libraries(Offnao PRIVATE -lutil)
-  target_link_libraries(Offnao PRIVATE -lz)
+  # target_link_libraries(Offnao PRIVATE -lz)
 
   target_compile_definitions(Offnao PRIVATE TARGET_ROBOT __STRICT_ANSI__ CONFIGURATION=$<CONFIG>)
 

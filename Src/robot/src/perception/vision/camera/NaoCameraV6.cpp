@@ -58,16 +58,21 @@ NaoCameraV6::NaoCameraV6(const std::string device, std::string camera, int width
                                                            HEIGHT(height)
 {
     resetRequired = (fd = open(device.c_str(), O_RDWR | O_NONBLOCK)) == -1;
+    if (resetRequired) {
+        llog(ERROR) << camera << ": file handle open failed" << std::endl;
+    }
     usleep(30000); // Experimental: Add delay between opening and using camera device
     resetRequired = resetRequired || !setImageFormat() || !setFrameRate(1, 30) || !mapBuffers() || !queueBuffers();
+    if (resetRequired) {
+        llog(ERROR) << camera << ": configuring camera structures failed" << std::endl;
+    }
     if (!resetRequired) {
-        llog(ERROR) << "Configuring settings if restart required NOT IMPLEMENTED " << std::endl;
         resetRequired = !startCapturing();
         writeCameraSettings(settings, camera == "camera.top");
         // readCameraSettings();
     }
     if (resetRequired) {
-        llog(ERROR) << "Setting up NaoCameraV6 failed!" << std::endl;
+        llog(ERROR) << camera << ": Setting up NaoCameraV6 failed!" << std::endl;
     }
 }
 
@@ -131,8 +136,7 @@ bool NaoCameraV6::captureNew(int timeout)
         if (first)
         {
             first = false;
-            llog(INFO) << "camera is working\n"
-                       << camera << std::endl;
+            llog(INFO) << camera << "camera is working" << std::endl;
         }
 
         return true;
@@ -145,7 +149,7 @@ void NaoCameraV6::releaseImage()
     {
         if (ioctl(fd, VIDIOC_QBUF, currentBuf) == -1)
         {
-            llog(ERROR) << "Releasing image failed!" << std::endl;
+            llog(ERROR) << camera << ": Releasing image failed!" << std::endl;
             resetRequired = true;
         }
         currentBuf = nullptr;
@@ -187,7 +191,7 @@ bool NaoCameraV6::setFrameRate(unsigned numerator, unsigned denominator) {
 }
 
 void NaoCameraV6::resetCamera() {
-    llog(TRACE) << "reset camera" << std::endl;
+    llog(INFO) << "(static) reset camera" << std::endl;
     usleep(100000);
     int fileDescriptor = -1;
     if (openI2CDevice(fileDescriptor)) {
@@ -429,6 +433,7 @@ bool NaoCameraV6::startCapturing() {
 }
 
 bool NaoCameraV6::stopCapturing() {
+    llog(INFO) << camera << ": Capturing stopping" << std::endl;
     int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     return ioctl(fd, VIDIOC_STREAMOFF, &type) != -1;
 }

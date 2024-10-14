@@ -524,7 +524,7 @@ const uint8_t *NaoCamera::get(const __u32 colourSpace) {
 
    const uint8_t *image = read_frame();
    //writeFrame(image);
-   llog(DEBUG) << "image returning from NaoCamera: " << (void *)image << endl;
+   // llog(DEBUG) << "image returning from NaoCamera: " << (void *)image << endl;
    return image;
 }
 

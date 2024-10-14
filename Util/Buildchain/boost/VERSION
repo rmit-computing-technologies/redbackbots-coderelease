@@ -1,5 +1,5 @@
-This is Boost v1.59
-Download from: https://www.boost.org/users/history/version_1_59_0.html
+This is Boost v1.67
+Download from: https://www.boost.org/users/history/version_1_67_0.html
 
 Boost is built with the following libraries
 - program options
@@ -22,25 +22,46 @@ Add the following lines - configuring the local python2.7 locations if different
 using python : 2.7 : /usr/bin/python2.7 : /usr/include/python2.7 : /usr/lib/python2.7 ;
 ```
 
+For Python 3.8 use the following instead:
+```
+using python : 3.8 : /usr/bin/python3.8 : /usr/include/python3.8 : /usr/lib/python3.8 ;
+```
+
+# Patch Boost for Python 3.8
+As noted in this Stackoverflow post: https://stackoverflow.com/questions/54991157/cant-compile-boost-python-1-65-1-with-msvc2015
+Boost pre 1.67 cannot build with python 3.7+.
+
+The following patch fixes the issue pre Boost 1.67
+https://github.com/boostorg/python/commit/660487c43fde76f3e64f1cb2e644500da92fe582#diff-467cabb22a6c637452d730accca26d2e
+The file to modify is: `libs/python/src/converter/builtin_converters.cpp`
+
 Remove the user-config file when finished
 
 # Linux (x86) build and configuration
+
+```
 export DST_DIR=${REDBACKBOTS_CHECKOUT_DIR}/Util/Buildchain/boost
 ./bootstrap.sh --prefix=${DST_DIR} --with-python-version=2.7
 ./b2 --prefix=${DST_DIR} install
+```
 
+Replace 2.7 with 3.8 for different python versions
 
 # V6 build and configuration (on x86 machine)
+
+```
 mkdir -p ~/software/boost
 export DST_DIR=/home/nao/software/boost
-cd <dir>/boost_1_59_....
+cd <dir>/boost_1_67_....
 ./bootstrap.sh --prefix=${DST_DIR}
+```
 
 This needs to be run for both link=shared and link=static to get both
 shared and static libraries from boost
+```
 ./b2 --prefix=${DST_DIR}\
      --with-program_options \
-     --with-python python=2.7 \
+     --with-python python=3.8 \
      --with-regex \
      --with-system \
      --with-thread \
@@ -48,7 +69,11 @@ shared and static libraries from boost
      link=static \
      cflags="-march=silvermont -mtune=silvermont" \
      install
-     
+```     
+
+Replace 2.7 with 3.8 for different python versions
+
+
 # For reference - Boost library configuration list
 
 Component configuration:

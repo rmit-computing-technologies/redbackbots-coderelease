@@ -1,5 +1,4 @@
-# RedBackBots RoboCup Soccer SLP Buildchain dependencies
-This repository is referenced as a sub-module of the main [RedBackBots][1] codebase.
+# RedbackBots RoboCup Soccer SPL Buildchain dependencies
 This repository contains software required as part of the buildchain for the RedBackBots code, that is not software which is maintained by RMIT University or the RedBackBots team.
 This includes dependent libraries or open-source projects that are included within this buildchain for ease-of-use.
 
@@ -13,7 +12,6 @@ The buildchain software within this repository is:
    * This gcc port is courtesy of [B-Human][2]
 
 # Authors
-(c) RMIT University 2022
+(c) RMIT University 2024
 
-[1]: https://bitbucket.org/wileyt-rmit/redbackbots
 [2]: https://wiki.b-human.de

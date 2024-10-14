@@ -14,7 +14,7 @@
 #define POSITIONING_AGAINST_KICKING_TEAM_DEFENDER 11
 #define POSITIONING_AGAINST_KICKING_TEAM_UPFIELDER 12
 
-// Roles from PositioningTurnToBall
+// Roles from PositioningFindBall
 #define POSITIONING_FIND_BALL_FINDER 20
 
 // Roles from PositioningAgainstDribbleTeam

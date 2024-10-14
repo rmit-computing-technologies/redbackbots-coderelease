@@ -43,4 +43,5 @@ cscope*
 .settings
 .vscode
 cmake-build-*/
+.devcontainer*/
 

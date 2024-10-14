@@ -51,7 +51,7 @@ NetworkReader::~NetworkReader() {
    isAlive = false;
 }
 
-/// Handle completion of a connect operation.
+// Handle completion of a connect operation.
 void NetworkReader::handle_connect(const boost::system::error_code& e,
       boost::asio::ip::tcp::resolver::iterator endpoint_iterator) {
    qDebug("Connected!");
@@ -64,16 +64,17 @@ void NetworkReader::handle_connect(const boost::system::error_code& e,
        * of Blackboards. The connection::async_read() function will
        * automatically decode the data that is read from the underlying socket.
        */
+      llog(DEBUG) << "NetworkReader: Connecting via async_read" << std::endl;
       received.blackboard = new Blackboard(config);
       connection_->async_read((ProtobufSerialisable&)*received.blackboard,
             boost::bind(&NetworkReader::handle_read, this,
                boost::asio::placeholders::error));
 
-      // if (!(rand() % 10))
       write(mask);
-      emit showMessage(QString("Connected! Now streaming"));
+      Q_EMIT showMessage(QString("Connected! Now streaming"));
    } else if (endpoint_iterator != boost::asio::ip::tcp::resolver::iterator()) {
       // Try the next endpoint.
+      llog(DEBUG) << "NetworkReader: Trying next end-point" << std::endl;
       connection_->socket().close();
       boost::asio::ip::tcp::endpoint endpoint = *endpoint_iterator;
       connection_->socket().async_connect(endpoint,
@@ -81,15 +82,15 @@ void NetworkReader::handle_connect(const boost::system::error_code& e,
                boost::asio::placeholders::error, ++endpoint_iterator));
    } else {
       /* An error occurred. Log it and return. Since we are not starting a new
-       * operation the io_serviceasync_read will run out of work to do and the
+       * operation the io_service async_read will run out of work to do and the
        * wirelessClient will exit.
        */
       std::cerr << e.message() << std::endl;
-      emit showMessage(QString::fromStdString(e.message()));
+      Q_EMIT showMessage(QString::fromStdString(e.message()));
    }
 }
 
-/// Handle completion of a read operation.
+// Handle completion of a read operation.
 void NetworkReader::handle_read(const boost::system::error_code& e) {
    if (Thread::name == NULL) {
       Thread::name = "NetworkReader";
@@ -100,7 +101,7 @@ void NetworkReader::handle_read(const boost::system::error_code& e) {
    if (!e) {
       static int counter = 0;
       static Timer t;
-      emit showMessage(QString("average ms per packets: ") +
+      Q_EMIT showMessage(QString("average ms per packets: ") +
             QString::number(t.elapsed_ms()/++counter));
 
       try{
@@ -114,7 +115,7 @@ void NetworkReader::handle_read(const boost::system::error_code& e) {
          gettimeofday(&now, NULL);
          uint64_t now2 = now.tv_sec * 1000000ull + now.tv_usec;
          if (now2 >= lastnew + 10000) {
-            emit newNaoData(&naoData);
+            Q_EMIT newNaoData(&naoData);
             lastnew = now2;
          }
          received.blackboard = new Blackboard(config);
@@ -124,12 +125,12 @@ void NetworkReader::handle_read(const boost::system::error_code& e) {
       } catch(boost::system::system_error &se) {
          qDebug() << "Error in receiving wireless data. " <<
                se.what() << endl;
-         emit showMessage(se.what());
+         Q_EMIT showMessage(se.what());
          // disconnect();
       }
    } else {
       qDebug() << "Error in receiving wireless data. " << e.message().c_str() << endl;
-      emit showMessage(e.message().c_str());
+      Q_EMIT showMessage(e.message().c_str());
    }
 }
 
@@ -137,39 +138,30 @@ void NetworkReader::run()  {
    if (Thread::name == NULL) {
       Thread::name = "NetworkReader";
    }
-   Frame frame;
+
    int currentFrame = 0;
-   emit showMessage(
-        tr("Started session with nao. Hit record to begin stream..."));
+   Q_EMIT showMessage(
+      tr("Started session with nao. Hit record to begin stream...")   
+   );
 
    while (isAlive) {
-//       if(!isRecording) {
-//          // TODO(brockw): make this work with the camera tab
-//          if (!naoData.getIsPaused() && naoData.getCurrentFrameIndex() <
-//               naoData.getFramesTotal() - 1) {
-//             naoData.nextFrame();
-//             emit newNaoData(&naoData);
-//          } else if (naoData.getFramesTotal() != 0) {
-//             emit newNaoData(&naoData);
-//          }
-//       }
-
       currentFrame = naoData.getCurrentFrameIndex();
       if (currentFrame != naoData.getFramesTotal() - 1) {
          msleep(250);
       } else {
-         msleep(200);  // this may be different soon. Hence the condition
+         msleep(200);
       }
    }
-   emit newNaoData(NULL);
+   Q_EMIT newNaoData(NULL);
 }
 
 
    void NetworkReader::stopMediaTrigger() {
-      if (isRecording)
+      if (isRecording) {
          isRecording = disconnect();
+      }
       naoData.setPaused(true);
-      emit showMessage(QString("Disconnected. Hit record to continue."));
+      Q_EMIT showMessage(QString("Disconnected. Hit record to continue."));
    }
 
    void NetworkReader::recordMediaTrigger() {
@@ -222,7 +214,7 @@ void NetworkReader::run()  {
             query = NULL;
          }
       } catch(boost::system::system_error &se) {
-         emit showMessage(QString("Could not disconnect to robot!"));
+         Q_EMIT showMessage(QString("Could not disconnect to robot!"));
       }
 
       return false;
@@ -248,7 +240,7 @@ void NetworkReader::run()  {
                   ioservice));
          std::cerr <<"Connected!" << std::endl;
       } catch(boost::system::system_error &se) {
-         emit showMessage(QString("Could not connect to robot!"));
+         Q_EMIT showMessage(QString("Could not connect to robot!"));
          std::cerr << "ERROR CODE: " << se.what() << std::endl;
          return false;
       }

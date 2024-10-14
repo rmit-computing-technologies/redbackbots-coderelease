@@ -88,7 +88,7 @@
 // Write the ball to file.
 // First `mkdir media/usb` on board the robot
 // The mount the usb `sudo mount /dev/sdb1 /media/usb -o umask=000`
-// Then run runswift.
+// Then run redbackbots.
 // Unmount the usb `sudo umount /media/usb`
 //#define BALL_TO_FILE 1
 //#define BALL_TO_FILE_DIR "/media/usb/Balls/"

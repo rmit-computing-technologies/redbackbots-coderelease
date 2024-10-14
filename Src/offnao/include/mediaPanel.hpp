@@ -16,7 +16,7 @@ class NaoData;
  */
 class MediaPanel : public QWidget {
    Q_OBJECT
-   public slots:
+   public Q_SLOTS:
       void newNaoData(NaoData *naoData);
       void togglePausePlay(QAction* action);
       void toggleRecordStop(QAction* action);

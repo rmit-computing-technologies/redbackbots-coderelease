@@ -94,7 +94,7 @@ void LocaliserTransitioner::handleTransition(const EstimatorInfoIn &estimatorInf
                         // Commonly, the side refs pick up the robot, turn it around and face it towards the field, even
                         // after it was unpenalised. To handle such cases, if we got unpenalised recently, and get picked up
                         // and placed back, we reset to unpenalised pose
-                        if (newGameState == STATE_INITIAL) {
+                        if (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY) {
                             resetToInitialPose();
                         } else {
                             resetToUnpenalisedPose();
@@ -140,7 +140,7 @@ void LocaliserTransitioner::handleTransition(const EstimatorInfoIn &estimatorInf
                         if (penalisedTimer.elapsed_ms() > PENALISED_TIMER_MIN_MSEC ||
                             pickedUpDuringPenalised)
                         {
-                            if (newGameState == STATE_INITIAL) {
+                            if (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY) {
                                 resetToInitialPose();
                             } else {
                                 // Reset to unpenalised pose                                
@@ -153,7 +153,7 @@ void LocaliserTransitioner::handleTransition(const EstimatorInfoIn &estimatorInf
                     }
                     else
                     {
-                        if (newGameState == STATE_INITIAL) {
+                        if (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY) {
                             resetToInitialPose();
                         } else {
                             // Reset to unpenalised pose
@@ -168,9 +168,9 @@ void LocaliserTransitioner::handleTransition(const EstimatorInfoIn &estimatorInf
         }
     }
 
-    // Game State transition to STATE_INITIAL
+    // Game State transition to STATE_INITIAL AND STATE_STANDBY
     if (prevGameState != newGameState &&
-        newGameState == STATE_INITIAL)
+        (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY))
     {
         resetToInitialPose();
     }

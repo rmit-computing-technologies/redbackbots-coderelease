@@ -67,10 +67,10 @@ class Tab : public QWidget {
       virtual void tabSelected();
       virtual void tabDeselected();
 
-   signals:
+   Q_SIGNALS:
       void showMessage(const QString &, int timeout = 0);
 
-   public slots:
+   public Q_SLOTS:
       virtual void newNaoData(NaoData *naoData) = 0;
       virtual void readerClosed() {}
 

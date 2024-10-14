@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include <stdint.h>
+#include <boost/python.hpp>
 
 #include "utils/body.hpp"
 
@@ -234,18 +235,67 @@ namespace ActionCommand {
                                                             blue(b) {}
    };
 
+   struct rgbSegments {
+      std::array<rgb, 8> segments;
+
+      // Constructor
+      rgbSegments(const std::array<rgb, 8>& inputSegments) : segments(inputSegments) {}
+
+      // Default constructor with all LEDs off
+      rgbSegments() : segments({rgb(), rgb(), rgb(), rgb(), rgb(), rgb(), rgb(), rgb()}) {}
+
+      rgbSegments(const std::array<float, 24>& inputFloats) {
+         if (inputFloats.size() == 24) {
+            for (size_t i = 0; i < 8; ++i) {
+               segments[i] = rgb(inputFloats[i * 3], inputFloats[i * 3 + 1], inputFloats[i * 3 + 2]);
+            }
+         } else {
+            // Handle error or throw an exception
+            // For simplicity, here's a print statement
+            std::cerr << "Input array must have exactly 24 float values" << std::endl;
+         }
+      }
+
+      // Constructor taking a Python list
+      rgbSegments(const boost::python::list& inputList) {
+         if (boost::python::len(inputList) == 24) {
+               for (size_t i = 0; i < 8; ++i) {
+                  float r = boost::python::extract<float>(inputList[i * 3]);
+                  float g = boost::python::extract<float>(inputList[i * 3 + 1]);
+                  float b = boost::python::extract<float>(inputList[i * 3 + 2]);
+                  segments[i] = rgb(r, g, b);
+               }
+         } else {
+               // Handle error or throw an exception
+               std::cerr << "Input list must have exactly 24 float values" << std::endl;
+         }
+      }
+
+      // Legacy constructor
+      rgbSegments(const rgb& rgb) : segments({
+         rgb,
+         rgb,
+         rgb,
+         rgb,
+         rgb,
+         rgb,
+         rgb,
+         rgb,
+      }) {}
+   };
+
    struct LED {
 
       // NOTE: leftEar is not used and is handled entirely in libagent/LoLA*
       uint16_t leftEar; // Number of left ear segments lit [10-bit field]
       uint16_t rightEar; // Number of right ear segments lit [10-bit field]
-      rgb leftEye;     // Colour of left eye (default: white)
-      rgb rightEye;    // Colour of right eye (default: white)
+      rgbSegments leftEye;     // Colour of left eye (default: white)
+      rgbSegments rightEye;    // Colour of right eye (default: white)
       rgb chestButton; // Colour of chest button (default: white)
       rgb leftFoot;    // Colour of left foot (default: off)
       rgb rightFoot;   // Colour of right foot (default: off)
 
-      LED(rgb leye, rgb reye = rgb(1.0, 1.0, 1.0), rgb cb = rgb(1.0, 1.0, 1.0),
+      LED(rgbSegments leye, rgbSegments reye = rgbSegments(), rgb cb = rgb(1.0, 1.0, 1.0),
           rgb lf = rgb(), rgb rf = rgb()) : leftEar(0x3FF),
                                             rightEar(0x3FF),
                                             leftEye(leye),
@@ -308,6 +358,18 @@ namespace ActionCommand {
       return out;
    }
 
+   static inline std::ostream & operator<<(std::ostream &out, const rgbSegments &a) {
+    out << '[';
+    for (size_t i = 0; i < a.segments.size(); ++i) {
+        out << a.segments[i];
+        if (i < a.segments.size() - 1) {
+            out << ", ";
+        }
+    }
+    out << ']';
+    return out;
+}
+
    static inline std::ostream & operator<<(std::ostream &out, const Head &a) {
       out << '[' << a.yaw << ", " << a.pitch << ", " << a.isRelative << ']';
       return out;
@@ -325,4 +387,5 @@ namespace ActionCommand {
       << a.leftFoot << "," << a.rightFoot << ']';
       return out;
    }
+
 };  // namespace ActionCommand

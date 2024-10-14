@@ -201,6 +201,14 @@ void setEye(ActionCommand::rgb led, vector<float> &vec) {
     }
 }
 
+void setEye(ActionCommand::rgbSegments leds, vector<float> &vec) {
+    for (int i = 0; i < 8; i++) {
+        vec[i]      = leds.segments[i].red;
+        vec[i + 8]  = leds.segments[i].green;
+        vec[i + 16] = leds.segments[i].blue;
+    }
+}
+
 void setFoot(ActionCommand::rgb led, vector<float> &vec) {
    vec[0] = led.red;
    vec[1] = led.green;

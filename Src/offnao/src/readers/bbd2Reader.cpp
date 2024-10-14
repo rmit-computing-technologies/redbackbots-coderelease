@@ -35,8 +35,8 @@ void BBD2Reader::run() {
          /* Only error if we read no frames */
          if (naoData.getFramesTotal() == 0) {
             QString s("Can not load record: ");
-            emit disconnectFromNao();
-            emit showMessage(s + e.what());
+            Q_EMIT disconnectFromNao();
+            Q_EMIT showMessage(s + e.what());
             return;
          }
          break;
@@ -46,8 +46,8 @@ void BBD2Reader::run() {
    stringstream s;
    s << "Finished loading record which consisted of " <<
         naoData.getFramesTotal() << " frames.";
-   emit showMessage(s.str().c_str(), 5000);
-   emit newNaoData(&naoData);
+   Q_EMIT showMessage(s.str().c_str(), 5000);
+   Q_EMIT newNaoData(&naoData);
    
    int currentIndex = 0;
    isAlive = true;
@@ -55,13 +55,13 @@ void BBD2Reader::run() {
       if (!naoData.getIsPaused() &&
          naoData.getCurrentFrameIndex() < naoData.getFramesTotal() - 1) {
          naoData.nextFrame();
-         emit newNaoData(&naoData);
+         Q_EMIT newNaoData(&naoData);
       } else if (currentIndex != naoData.getCurrentFrameIndex()) {
-         emit newNaoData(&naoData);
+         Q_EMIT newNaoData(&naoData);
       }
       currentIndex = naoData.getCurrentFrameIndex();
       msleep(500);
    }
-   emit newNaoData(NULL);
+   Q_EMIT newNaoData(NULL);
 }
 
