@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "Ipoint.hpp"
-#include "AbsCoord.hpp"
-#include "RRCoord.hpp"
+#include "geometry/AbsCoord.hpp"
+#include "geometry/RRCoord.hpp"
 #include "RansacTypes.hpp"
 
 struct MapEntry {

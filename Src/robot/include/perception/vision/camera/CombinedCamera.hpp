@@ -1,13 +1,7 @@
-#ifndef PERCEPTION_VISION_CAMERA_COMBINEDCAMERA_H_
-#define PERCEPTION_VISION_CAMERA_COMBINEDCAMERA_H_
+#pragma once
 
-#include <string>
-
-#include "Camera.hpp"
-#include "types/CombinedFrame.hpp"
-#include "types/CombinedCameraSettings.hpp"
-
-using std::string;
+#include "types/camera/CombinedCameraSettings.hpp"
+#include "perception/vision/camera/NaoCameraProvider.hpp"
 
 /**
  * CombinedCamera
@@ -21,46 +15,41 @@ using std::string;
  *
  */
 class CombinedCamera {
-    public:
-        /**
-         * CombinedCamera()
-         *
-         * Pass dumpframes, dumprate and dumpfile if you want to create
-         * a yuv recording for both cameras
-         */
-        CombinedCamera(
-            bool dumpframes = false,
-            int dumprate = 0,
-            string dumpfile = ""
-        );
-        ~CombinedCamera();
+public:
+    /**
+     * CombinedCamera()
+     */
+    CombinedCamera();
+    ~CombinedCamera();
 
-        Camera* getCamera();
+    NaoCameraProvider* getCamera();
 
-        /**
-         * getFrame()
-         *
-         * Return a CombinedFrame object containing the current image
-         * from both the top and bottom camera
-         */
-        const uint8_t * getFrameTop();
-        const uint8_t * getFrameBottom();
-        static Camera* getCameraTop();
-        static Camera* getCameraBot();
-        static void setCameraTop(Camera* camera);
-        static void setCameraBot(Camera* camera);
+    /**
+     * getFrame()
+     *
+     * Return a CombinedFrame object containing the current image
+     * from both the top and bottom camera
+     */
+    void getFrameTop();
+    void getFrameBottom();
+    static NaoCameraProvider* getCameraTop();
+    static NaoCameraProvider* getCameraBot();
+    static void setCameraTop(NaoCameraProvider* camera);
+    static void setCameraBot(NaoCameraProvider* camera);
 
-        /**
-         * getCameraSettings()
-         *
-         * Return a CombinedCameraSettings object containing the current setttings
-         * of the top and the bottom camera
-         */
-        CombinedCameraSettings getCameraSettings();
+    /**
+     * getCameraSettings()
+     *
+     * Return a CombinedCameraSettings object containing the current settings
+     * of the top and the bottom camera
+     */
+    CombinedCameraSettings getCameraSettings();
 
-    private:
-        static Camera *top_camera_;
-        static Camera *bot_camera_;
+private:
+    // Top and Bot camera are currently static so OffNao transmitter can receive commands
+    //     from OffNao to set camera commands.
+    // TODO (TW): Refactor this hack to use Blackboard now with new camera settings setup
+    static NaoCameraProvider *top_camera_;
+    static NaoCameraProvider *bot_camera_;
 };
 
-#endif

@@ -17,13 +17,12 @@
 #include "blackboard/modules/SynchronisationBlackboard.hpp"
 #include "blackboard/modules/ThreadBlackboard.hpp"
 #include "blackboard/modules/VisionBlackboard.hpp"
-#include "perception/dumper/PerceptionDumper.hpp"
 #include "perception/behaviour/SafetySkill.hpp"
 #include "thread/Thread.hpp"
 #include "utils/Logger.hpp"
+#include "utils/debug/BlackboardDumper.hpp"
+#include "perception/vision/camera/NaoCameraProvider.hpp"
 
-using namespace std;
-using namespace boost;
 
 PerceptionThread::PerceptionThread(Blackboard *bb)
     : Adapter(bb),
@@ -33,9 +32,6 @@ PerceptionThread::PerceptionThread(Blackboard *bb)
 {
     visionAdapter = new VisionAdapter(bb);
 
-    std::system("sudo pkill -9 -f $HOME/data/behaviours/audio/whistle_detector.py"); //Close any existing whistle detectors
-    std::system("python3 $HOME/data/behaviours/audio/whistle_detector.py &"); //Activate whistle detector
-
     dumper = NULL;
     // pythonLandmarks = PythonLandmarks();
 
@@ -44,33 +40,32 @@ PerceptionThread::PerceptionThread(Blackboard *bb)
     uint8_t const *botFrame = readFrom(vision, botFrame);
 
     if (topFrame != NULL && botFrame != NULL) {
-        string file = "/home/nao/crashframe-" +
-                    boost::lexical_cast<string>(time(NULL)) + ".yuv";
+        std::string file = "/home/nao/crashframe-" + boost::lexical_cast<std::string>(time(NULL)) + ".yuv";
         FILE *errorFrameFile = fopen(file.c_str(), "w");
         fwrite(topFrame, 640 * 480 * 2, 1, errorFrameFile);
         fwrite(botFrame, 640 * 480 * 2, 1, errorFrameFile);
         fclose(errorFrameFile);
         file =
-            "/usr/bin/tail -n 200 " + bb->config["debug.log.dir"].as<string>() + "/*/Perception > " + file + ".log";
+            "/usr/bin/tail -n 200 " + bb->config["debug.log.dir"].as<std::string>() + "/*/Perception > " + file + ".log";
         std::system(file.c_str());
     }
 
     readOptions(bb->config);
     writeTo(thread, configCallbacks[Thread::name],
             boost::function<void(const boost::program_options::variables_map &)>(boost::bind(&PerceptionThread::readOptions, this, _1)));
+
+    dumper = new BlackboardDumper(bb);
 }
 
-PerceptionThread::~PerceptionThread()
-{
-    llog(INFO) << __PRETTY_FUNCTION__ << endl;
+PerceptionThread::~PerceptionThread() {
+    llog(DEBUG) << __PRETTY_FUNCTION__ << std::endl;
     writeTo(thread, configCallbacks[Thread::name], boost::function<void(const boost::program_options::variables_map &)>());
     delete visionAdapter;
-    std::system("sudo pkill -9 -f $HOME/data/behaviours/audio/whistle_detector.py"); //Close any existing whistle detectors
+    delete dumper;
 }
 
-void PerceptionThread::tick()
-{
-    llog(TRACE) << "Perception Thread:: Tick" << endl;
+void PerceptionThread::tick() {
+    llog(TRACE) << "Perception Thread:: Tick" << std::endl;
 
     Timer timer_thread;
     Timer timer_tick;
@@ -78,43 +73,38 @@ void PerceptionThread::tick()
     /*
     * Vision Tick
     */
-    llog(TRACE) << "Vision Tick" << endl;
+    llog(TRACE) << "Vision Tick" << std::endl;
     timer_tick.restart();
-    if (visionAdapter)
+    if (visionAdapter) {
         visionAdapter->tick();
+    }
 
     uint32_t vision_time = timer_tick.elapsed_us();
-    if (vision_time < TICK_MAX_TIME_VISION)
-    {
-        llog(TRACE) << "Vision Tick: OK " << vision_time << endl;
-    }
-    else
-    {
-        llog(TRACE) << "Vision Tick: TOO LONG " << vision_time << endl;
+    if (vision_time < TICK_MAX_TIME_VISION) {
+        llog(TRACE) << "Vision Tick: OK " << vision_time << std::endl;
+    } else {
+        llog(TRACE) << "Vision Tick: TOO LONG " << vision_time << std::endl;
     }
 
     /*
     * State Estimation Tick
     */
-    llog(TRACE) << "State Estimation Tick" << endl;
+    llog(TRACE) << "State Estimation Tick" << std::endl;
     timer_tick.restart();
 
     stateEstimationAdapter.tick();
 
     uint32_t state_estimation_time = timer_tick.elapsed_us();
-    if (state_estimation_time < TICK_MAX_TIME_STATE_ESTIMATION)
-    {
-        llog(TRACE) << "State Estimation Tick: OK " << state_estimation_time << endl;
-    }
-    else
-    {
-        llog(TRACE) << "State Estimation Tick: TOO LONG " << state_estimation_time << endl;
+    if (state_estimation_time < TICK_MAX_TIME_STATE_ESTIMATION) {
+        llog(TRACE) << "State Estimation Tick: OK " << state_estimation_time << std::endl;
+    } else {
+        llog(TRACE) << "State Estimation Tick: TOO LONG " << state_estimation_time << std::endl;
     }
 
     /*
     * Behaviour Tick
     */
-    llog(TRACE) << "Behaviour Tick" << endl;
+    llog(TRACE) << "Behaviour Tick" << std::endl;
     timer_tick.restart();
     pthread_yield();
     behaviourAdapter.tick();
@@ -123,32 +113,27 @@ void PerceptionThread::tick()
     
 
     uint32_t behaviour_time = timer_tick.elapsed_us();
-    if (behaviour_time < TICK_MAX_TIME_BEHAVIOUR)
-    {
-        llog(TRACE) << "Behaviour Tick (and perception yield): OK " << behaviour_time << endl;
-    }
-    else
-    {
-        llog(TRACE) << "Behaviour Tick (and perception yield): TOO LONG " << behaviour_time << endl;
+    if (behaviour_time < TICK_MAX_TIME_BEHAVIOUR) {
+        llog(TRACE) << "Behaviour Tick (and perception yield): OK " << behaviour_time << std::endl;
+    } else {
+        llog(TRACE) << "Behaviour Tick (and perception yield): TOO LONG " << behaviour_time << std::endl;
     }
 
-    if (!visionAdapter)
+    if (!visionAdapter) {
         // Introduce delay to compensate for vision processing
         // (so behaviours runs at the correct speed)
         boost::this_thread::sleep(boost::posix_time::milliseconds(32));
+    }
 
 
     /*
     * Finishing Perception
     */
     uint32_t perception_time = timer_thread.elapsed_us();
-    if (perception_time < THREAD_MAX_TIME)
-    {
-        llog(TRACE) << "Perception Thread: OK " << perception_time << endl;
-    }
-    else
-    {
-        llog(TRACE) << "Perception Thread: TOO LONG " << perception_time << endl;
+    if (perception_time < THREAD_MAX_TIME) {
+        llog(TRACE) << "Perception Thread: OK " << perception_time << std::endl;
+    } else {
+        llog(TRACE) << "Perception Thread: TOO LONG " << perception_time << std::endl;
     }
 
     writeTo(perception, vision, vision_time);
@@ -156,68 +141,49 @@ void PerceptionThread::tick()
     writeTo(perception, behaviour, behaviour_time);
     writeTo(perception, total, perception_time);
 
-    if (dumper)
-    {
-        if (dump_timer.elapsed_us() > dump_rate)
-        {
-            dump_timer.restart();
-            try
-            {
-                dumper->dump(bb_);
-            }
-            catch (const std::exception &e)
-            {
-                attemptingShutdown = true;
-                cout << "Error: " << e.what() << endl;
-            }
-        }
-    }
+    /*
+     * If debugging, dump blackboard to file here
+    */
+    dumper->dumpBlackboard(bb_);
+
+
+    // testGetC2wTransformEigen();
+    // testRobotRelativeToNeckCoord();
+    // testImageToRobotRelative();
+    // testRobotToImageXY();
+    // testHeadRelRobotToImageXY();
 }
 
-void PerceptionThread::readOptions(const boost::program_options::variables_map &config)
-{
+void PerceptionThread::readOptions(const boost::program_options::variables_map &config) {
     if (visionAdapter) {
-       const string &e = config["vision.camera_controls"].as<string>();
-       vector<string> vs;
-       split(vs, e, is_any_of(",;"));
-       for (vector<string>::const_iterator ci = vs.begin(); ci != vs.end(); ++ci) {
-          vector<string> nv;
-          split(nv, *ci, is_any_of(":"));
-          if (nv.size() != 3)
-             llog(ERROR) << "controls should be cam:control_id:value" << endl;
-          else {
-             Camera *currCamera;
+       const std::string &e = config["vision.camera_controls"].as<std::string>();
+       std::vector<std::string> vs;
+       split(vs, e, boost::is_any_of(",;"));
+       for (std::vector<std::string>::const_iterator ci = vs.begin(); ci != vs.end(); ++ci) {
+          std::vector<std::string> nv;
+          split(nv, *ci, boost::is_any_of(":"));
+          if (nv.size() != 3) {
+             llog(ERROR) << "controls should be cam:control_id:value" << std::endl;
+          } else {
+             NaoCameraProvider *currCamera;
              if (strtol(nv[0].c_str(), NULL, 10) == 0) {
                 currCamera = visionAdapter->combined_camera_->getCameraBot();
              } else {
                 currCamera = visionAdapter->combined_camera_->getCameraTop();
              }
-             if (strtoul(nv[1].c_str(), NULL, 10) == 0)
+             if (strtoul(nv[1].c_str(), NULL, 10) == 0) {
                 currCamera->setControl(22, 1);
-             if (strtoul(nv[1].c_str(), NULL, 10) == 17)
+             }
+             if (strtoul(nv[1].c_str(), NULL, 10) == 17) {
                 currCamera->setControl(22, 0);
-             if (strtoul(nv[1].c_str(), NULL, 10) == 19)
+             }
+             if (strtoul(nv[1].c_str(), NULL, 10) == 19) {
                 currCamera->setControl(22, 0);
+             }
              currCamera->setControl(strtoul(nv[1].c_str(), NULL, 10),
                                     strtol(nv[2].c_str(), NULL, 10));
           }
        }
-    }
-
-    const string &dumpPath = config["debug.dump"].as<string>();
-    dump_rate = config["vision.dumprate"].as<int>() * 1000;
-    if (dumpPath == "")
-    {
-        delete dumper;
-        dumper = NULL;
-    }
-    else
-    {
-        if (!dumper || dumper->getPath() != dumpPath)
-        {
-            delete dumper;
-            dumper = new PerceptionDumper(dumpPath.c_str());
-        }
     }
 
     OffNaoMask_t dumpMask = config["debug.mask"].as<int>();

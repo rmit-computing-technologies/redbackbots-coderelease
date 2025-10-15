@@ -1,91 +1,61 @@
-#ifndef PERCEPTION_VISION_VISION_H_
-#define PERCEPTION_VISION_VISION_H_
+#pragma once
+
+#include "blackboard/Blackboard.hpp"
+#include "perception/vision/Detector.hpp"
+#include "perception/vision/VisionInfoIn.hpp"
+#include "perception/vision/VisionInfoOut.hpp"
+#include "perception/vision/fovea/Region.hpp"
+#include "utils/Timer.hpp"
+#include "utils/ml/asmjit_forwdec.hpp"
 
 #include <list>
+#include <utility>
+#include <vector>
 
-#include "perception/vision/VisionDefinitions.hpp"
-#include "perception/vision/detector/DetectorInterface.hpp"
-#include "perception/vision/fullfinder/FullFinderInterface.hpp"
-#include "perception/vision/regionfinder/RegionFinderInterface.hpp"
-#include "perception/vision/middleinfoprocessor/MiddleInfoProcessorInterface.hpp"
-#include "gamecontroller/GameController.hpp"
-#include "types/VisionInfoIn.hpp"
-#include "types/VisionInfoMiddle.hpp"
-#include "types/VisionInfoOut.hpp"
-#include "types/CombinedFovea.hpp"
-#include "types/CombinedFrame.hpp"
-#include "utils/Timer.hpp"
+// Forward Declare vision info middle layer
+class VisionInfoMiddle;
 
 class Vision {
-
 public:
 
     /**
-     * Default constructor for Vision module
+     * Construct Vision. Blackboard is required for the current loaded config
      */
-    Vision();
-
-    /**
-     * Destructor for Vision module
-     */
+    Vision(Blackboard* blackboard);
     ~Vision();
 
     /**
      * Process a frame, running appropriate finders and detectors.
      * Vision logic mainly happens here.
      */
-    VisionInfoOut processFrame(const CombinedFrame& pixel_data, const VisionInfoIn& info_in);
-
-    inline const RegionI& getFullRegionTop() { return full_region_top_; }
-    inline const RegionI& getFullRegionBot() { return full_region_bot_; }
-
-    /**
-     * get FieldFeature Detector for VisionAdapter to pass in robotPos
-     */
+    VisionInfoOut processFrame(const VisionInfoIn& info_in);
 
 private:
+    // Configure algorithms to run, and the order in which to run each algorithm
+    void setupAlgorithms_(Blackboard* blackboard);
 
-    void setupAlgorithms_();
+    // Execute the algorithms for the given frame
     void runAlgorithms_();
 
-    void addMiddleInfoProcessor_(uint32_t, MiddleInfoProcessor*);
-    MiddleInfoProcessor* getMiddleInfoProcessor_(uint32_t);
-    void runMiddleInfoProcessor_(uint32_t);
+    // Reset the internal middle/out vision info structs for the next frame
+    void resetVisionInfo();
 
-    void addDetector_(uint32_t, Detector*);
-    Detector* getDetector_(uint32_t);
-    void runDetector_(uint32_t);
+    // Order of detectors to iterate, mapped to their associated timer
+    std::vector<std::pair<std::shared_ptr<Detector>, int> > detectors_;
+    std::vector<std::pair<std::shared_ptr<Detector>, int> > referee_detectors_;
 
-    /**
-     * Class member variables
-     */
-    std::list<CombinedFovea> full_foveae_;
+    // Save blackbord ref
+    Blackboard* blackboard;
 
-    Detector** detectors_;
-    MiddleInfoProcessor** middle_info_processors_;
+    // Vision info components
+    VisionInfoIn* info_in_;
+    VisionInfoMiddle* info_middle_;
+    VisionInfoOut* info_out_;
 
-    VisionInfoIn info_in_;
-    VisionInfoMiddle info_middle_;
-    VisionInfoOut info_out_;
-
-    // Bounding boxes for full regions
-    BBox bbox_top_;
-    BBox bbox_bot_;
-
-    CombinedFovea combined_fovea_;
-
-    // Full Regions
-    RegionI full_region_top_;
-    RegionI full_region_bot_;
+    // JitRuntime instance of this vision thread for all detectors using CompiledNN
+    asmjit::_abi_1_9::JitRuntime* asmjitRuntime;
 
     // Keeps track of run times for average output.
     int frameCount;
-    int DCCTime;
-    int foveaTime;
-    int fieldFeaturesTime;
-    int regionFinderTime;
-    int ballDetectorTime;
-    int robotDetectorTime;
+    std::vector<int> timers;
 };
-
-#endif

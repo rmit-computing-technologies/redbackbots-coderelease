@@ -11,8 +11,8 @@
 #include <iostream>
 #include <cmath>
 #include <string>
-#include <utils/matrix_helpers.hpp>
-#include "utils/angles.hpp"
+#include <utils/math/matrix_helpers.hpp>
+#include "utils/math/angles.hpp"
 
 namespace V6Joints {
    // Codes for each joint as used by NaoQi

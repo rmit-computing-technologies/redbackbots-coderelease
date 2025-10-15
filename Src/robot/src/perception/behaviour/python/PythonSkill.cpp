@@ -86,6 +86,7 @@ void PythonSkill::startPython() {
       // Get handle to the special main module and sys
       main_module = import("__main__");
       sys_module  = import("sys");
+      numpy_module = import("numpy");
 
       // Add behaviour.path option value to python path
       object sys_path = sys_module.attr("path");

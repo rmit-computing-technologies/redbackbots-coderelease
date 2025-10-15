@@ -1,7 +1,6 @@
-#ifndef TEAM_BALL_KF_CONSTANTS_HPP
-#define TEAM_BALL_KF_CONSTANTS_HPP
+#pragma once
 
-#include <Eigen/Eigen>
+#include "types/math/Eigen.hpp"
 
 #define NUM_DIM_TEAM_BALL_POS 2
 #define NUM_DIM_TEAM_BALL_VEL 2
@@ -20,5 +19,3 @@
 
 typedef Eigen::Matrix<float, NUM_DIM_TEAM_BALL_TOTAL, 1> TeamBallStateVector;
 typedef Eigen::Matrix<float, NUM_DIM_TEAM_BALL_TOTAL, NUM_DIM_TEAM_BALL_TOTAL> TeamBallCovarianceMatrix;
-
-#endif // TEAM_BALL_KF_CONSTANTS_HPP

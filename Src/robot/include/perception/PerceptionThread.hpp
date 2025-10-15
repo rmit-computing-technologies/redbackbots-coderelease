@@ -4,15 +4,17 @@
 #include "perception/vision/VisionAdapter.hpp"
 #include "perception/behaviour/BehaviourAdapter.hpp"
 #include "perception/stateestimation/StateEstimationAdapter.hpp"
-#include "perception/dumper/PerceptionDumper.hpp"
 #include "perception/vision/camera/CombinedCamera.hpp"
 #include "blackboard/Adapter.hpp"
 
 // TODO: Talk to Tim about Adapters
 // #include "perception/vision/visualref/python/PythonLandmarks.hpp"
 
-#define THREAD_MAX_TIME 33666
+// Forward declaration(s)
+class BlackboardDumper;
 
+
+#define THREAD_MAX_TIME 33666
 #define TICK_MAX_TIME_VISION 30000
 #define TICK_MAX_TIME_STATE_ESTIMATION 30000
 #define TICK_MAX_TIME_BEHAVIOUR 30000
@@ -41,8 +43,6 @@ class PerceptionThread : Adapter {
 
       Blackboard* bb_;
 
-      PerceptionDumper *dumper;
-      Timer dump_timer;
-      unsigned int dump_rate;
+      BlackboardDumper* dumper;
 };
 

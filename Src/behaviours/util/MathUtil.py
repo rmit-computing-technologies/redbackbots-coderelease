@@ -89,6 +89,29 @@ def intersectLines(start1, end1, start2, end2):
     return Vector2D(start1.x + u1 * (end1.x - start1.x),
                     start1.y + u1 * (end1.y - start1.y))
 
+# Find the intersetion point of two lines
+# All inputs are of type Vector2D, the inputs are the position and direction vectors of the 2 lines
+def intersectLinesPosAndDir(pos1, dir1, pos2, dir2):
+    # Cross product of direction vectors
+    denominator = dir1.x * dir2.y - dir1.y * dir2.x
+
+    # Lines are parallel
+    if math.fabs(denominator) < EPSILON:
+        return None
+
+    # Find the parameters for the intersection using the positions and directions
+    dx = pos2.x - pos1.x
+    dy = pos2.y - pos1.y
+
+    # Scalar parameter for the first vector
+    t1 = (dx * dir2.y - dy * dir2.x) / denominator
+
+    # Calculate the intersection point using the parameter t1 for the first vector
+    intersection_x = pos1.x + t1 * dir1.x
+    intersection_y = pos1.y + t1 * dir1.y
+
+    return Vector2D(intersection_x, intersection_y)
+
 
 # returns a tuple of (Vector2D, Boolean), where the first is the closest point
 # on the line to the given point, and the second is the distance to that point.
@@ -150,7 +173,7 @@ def clamp(n, minn, maxn): return max(min(maxn, n), minn)
 # P: Segment starting point
 # Q: Segment finishing point
 # NOTE: P and Q are interchangeable
-# https://diego.assencio.com/?index=ec3d5dfdfc0b6a0d147a656f0af332bd
+# https://diego.assencio.com/?index=ec3d5dfdfc0b6a0direction147a656f0af332bd
 def closest_point_on_segment(X, P, Q):
 
     # If P and Q are the same point, a segment cannot be formed,
@@ -170,3 +193,21 @@ def closest_point_on_segment(X, P, Q):
         S = P.plus(Q.minus(P).scale(lam_s))
 
     return S
+
+def nano_to_micro(nano: int) -> int:
+    """
+    Converts a nanosecond timestamp to microseconds.
+
+    :param nano: The nanosecond timestamp to convert.
+    :return: The timestamp in microseconds.
+    """
+    return nano // 1_000
+
+def micro_to_seconds(micro: int) -> float:
+    """
+    Converts a microsecond timestamp to seconds.
+
+    :param micro: The microsecond timestamp to convert.
+    :return: The timestamp in seconds.
+    """
+    return micro / 1_000_000

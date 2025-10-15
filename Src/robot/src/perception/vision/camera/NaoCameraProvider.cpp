@@ -11,160 +11,361 @@
  * @author RedBackBots
  */
 
-#include "blackboard/Blackboard.hpp"
 #include "perception/vision/camera/NaoCameraProvider.hpp"
+
+#include "blackboard/Blackboard.hpp"
+#include "blackboard/modules/VisionBlackboard.hpp"
+#include "perception/kinematics/RobotPose.hpp"
 #include "perception/vision/camera/NaoCameraV6.hpp"
+#include "types/camera/CameraImage.hpp"
+#include "utils/math/angles.hpp"
+#include "utils/math/MD5.hpp"
 #include "utils/Timer.hpp"
 
-// Static shared trigger communication
-bool NaoCameraProvider::triggerSharedReset = false;
+#include <sstream>
 
+#include <Python.h>
+
+bool NaoCameraProvider::resetPending = false;
 
 NaoCameraProvider::NaoCameraProvider(Blackboard *blackboard,
                                      const std::string filename,
-                                     const std::string cameraChoice,
-                                     const int format)
-    : filename(filename), cameraChoice(cameraChoice), format(format),
-      resetPending(false) {
+                                     CameraInfo::Camera whichCamera)
+    : blackboard(blackboard), filename(filename), whichCamera(whichCamera),
+      maxWaitForImage(2000), resetDelay(2000)
+{
+    // TODO: get resetDelay from blackboard config. Default to 2000ms
 
-    // TODO: get resetDelay from blackboard config
-    // Default to 2000ms
-    maxWaitForImage = 2000;
-    resetDelay = 2000;
+    // Human readable camera name (and string for options/config)
+    if (whichCamera == CameraInfo::Camera::top) {
+        cameraChoice = "camera.top";
+    } else if (whichCamera == CameraInfo::Camera::bot) {
+        cameraChoice = "camera.bot";
+    }
 
-    // Get camera settings
-    readCameraSettings(blackboard);
+    // Get camera settings from config
+    readCameraIntrinsics();
+    readCameraCalibrations();
+    readCameraResolutions();
+    readCameraSettings();
+    readAutoExposureTable();
 
     // Setup & configure camera
     setupCamera();
+    
+    // Update blackboard with initial values
+    if (whichCamera == CameraInfo::Camera::top) {
+        writeTo(vision, topInfo, cameraInfo);
+        writeTo(vision, topResolution, cameraResolution);
+        writeTo(vision, topCameraSettings, cameraSettings);
+        writeTo(vision, topAutoExposureWeightTable, autoExposureWeightTable);
+    } else {
+        writeTo(vision, botInfo, cameraInfo);
+        writeTo(vision, botResolution, cameraResolution);
+        writeTo(vision, botCameraSettings, cameraSettings);
+        writeTo(vision, botAutoExposureWeightTable, autoExposureWeightTable);
+    }
 }
 
 NaoCameraProvider::~NaoCameraProvider() {
+    blackboard = nullptr;
     if (camera != nullptr) {
         delete camera;
     }
 }
 
-void NaoCameraProvider::readCameraSettings(Blackboard *blackboard) {
-    readCameraSettings(blackboard, cameraSettings, cameraChoice);
+void NaoCameraProvider::readCameraIntrinsics() {
+    std::string cameraName = cameraChoice;
+
+    cameraIntrinsics.openingAngleHeight = DEG2RAD(blackboard->config[(cameraName + ".intrinsic.openingAngleHeight").c_str()].as<float>());
+    cameraIntrinsics.openingAngleWidth = DEG2RAD(blackboard->config[(cameraName + ".intrinsic.openingAngleWidth").c_str()].as<float>());
+    cameraIntrinsics.opticalCenter.x() = blackboard->config[(cameraName + ".intrinsic.opticalcentre.x").c_str()].as<float>();
+    cameraIntrinsics.opticalCenter.y() = blackboard->config[(cameraName + ".intrinsic.opticalcentre.y").c_str()].as<float>();
 }
 
-void NaoCameraProvider::readCameraSettings(Blackboard *blackboard,
-        CameraSettings &settings, std::string cameraName) {
-    settings.hflip = blackboard->config[(cameraName + ".hflip").c_str()].as<int>();
-    settings.vflip = blackboard->config[(cameraName + ".vflip").c_str()].as<int>();
-    settings.brightness = blackboard->config[(cameraName + ".brightness").c_str()].as<int>();
-    settings.contrast = blackboard->config[(cameraName + ".contrast").c_str()].as<int>();
-    settings.saturation = blackboard->config[(cameraName + ".saturation").c_str()].as<int>();
-    settings.hue = blackboard->config[(cameraName + ".hue").c_str()].as<int>();
-    settings.sharpness = blackboard->config[(cameraName + ".sharpness").c_str()].as<int>();
-    settings.backlightCompensation = blackboard->config[(cameraName + ".backlightcompensation").c_str()].as<int>();
-    settings.exposure = blackboard->config[(cameraName + ".exposure").c_str()].as<int>();
-    settings.gain = blackboard->config[(cameraName + ".gain").c_str()].as<int>();
-    settings.whiteBalance = blackboard->config[(cameraName + ".whitebalance").c_str()].as<int>();
-    settings.exposureAuto = blackboard->config[(cameraName + ".exposureauto").c_str()].as<int>();
-    settings.autoWhiteBalance = blackboard->config[(cameraName + ".autowhitebalance").c_str()].as<int>();
-    settings.autoFocus = blackboard->config[(cameraName + ".autofocus").c_str()].as<int>();
-    settings.focusAbsolute = blackboard->config[(cameraName + ".focusabsolute").c_str()].as<int>();
-    settings.exposureAlgorithm = blackboard->config[(cameraName + ".exposurealgorithm").c_str()].as<int>();
-    settings.aeTargetAvgLuma = blackboard->config[(cameraName + ".aetargetavgluma").c_str()].as<int>();
-    settings.aeTargetAvgLumaDark = blackboard->config[(cameraName + ".aetargetavglumadark").c_str()].as<int>();
-    settings.aeTargetGain = blackboard->config[(cameraName + ".aetargetgain").c_str()].as<int>();
-    settings.aeMinVirtGain = blackboard->config[(cameraName + ".aeminvirtgain").c_str()].as<int>();
-    settings.aeMaxVirtGain = blackboard->config[(cameraName + ".aemaxvirtgain").c_str()].as<int>();
-    settings.aeMinVirtAGain = blackboard->config[(cameraName + ".aeminvirtagain").c_str()].as<int>();
-    settings.aeMaxVirtAGain = blackboard->config[(cameraName + ".aemaxvirtagain").c_str()].as<int>();
-    settings.aeTargetExposure = blackboard->config[(cameraName + ".aetargetexposure").c_str()].as<int>();
-    settings.aeUseWeightTable = blackboard->config[(cameraName + ".aeuseweighttable").c_str()].as<bool>();
-    settings.aeWeightTableX1 = blackboard->config[(cameraName + ".aeweighttablex1").c_str()].as<float>();
-    settings.aeWeightTableX2 = blackboard->config[(cameraName + ".aeweighttablex2").c_str()].as<float>();
-    settings.aeWeightTableY1 = blackboard->config[(cameraName + ".aeweighttabley1").c_str()].as<float>();
-    settings.aeWeightTableY2 = blackboard->config[(cameraName + ".aeweighttabley2").c_str()].as<float>();
+void NaoCameraProvider::readCameraCalibrations() {
+    std::string cameraName = cameraChoice;
 
+    cameraCalibrations.cameraRotationCorrections.x = DEG2RAD(blackboard->config[(cameraName + ".extrinsic.rotationCorrection.x").c_str()].as<float>());
+    cameraCalibrations.cameraRotationCorrections.y = DEG2RAD(blackboard->config[(cameraName + ".extrinsic.rotationCorrection.y").c_str()].as<float>());
+    cameraCalibrations.cameraRotationCorrections.z = DEG2RAD(blackboard->config[(cameraName + ".extrinsic.rotationCorrection.z").c_str()].as<float>());
+}
+
+void NaoCameraProvider::readCameraResolutions() {
+    std::string cameraName = cameraChoice;
+
+    std::string resolution = blackboard->config[(cameraName + ".resolution").c_str()].as<std::string>();
+    if (resolution == "w320h240") {
+        cameraResolution = CameraResolution::w320h240;
+    } else if (resolution == "w640h480") {
+        cameraResolution = CameraResolution::w640h480;
+    } else if (resolution == "w1280h960") {
+        cameraResolution = CameraResolution::w1280h960;
+    }
+
+    llog(TRACE) << cameraName << " resolution: " <<  resolution << " (enum: " << cameraResolution  << ")" << std::endl;
+}
+
+void NaoCameraProvider::readCameraSettings() {
+    std::string cameraName = cameraChoice;
+
+    // Read dynamic settings
+    cameraSettings.settings[CameraSettings::CameraSetting::AUTO_EXPOSURE] = blackboard->config[(cameraName + ".exposureauto").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::BRIGHTNESS] = blackboard->config[(cameraName + ".brightness").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::EXPOSURE] = blackboard->config[(cameraName + ".exposure").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::GAIN] = blackboard->config[(cameraName + ".gain").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::AUTO_WHITE_BALANCE] = blackboard->config[(cameraName + ".autowhitebalance").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::AUTO_FOCUS] = blackboard->config[(cameraName + ".autofocus").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::FOCUS] = blackboard->config[(cameraName + ".focusabsolute").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::AUTO_HUE] = blackboard->config[(cameraName + ".autohue").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::HUE] = blackboard->config[(cameraName + ".hue").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::SATURATION] = blackboard->config[(cameraName + ".saturation").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::CONTRAST] = blackboard->config[(cameraName + ".contrast").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::SHARPNESS] = blackboard->config[(cameraName + ".sharpness").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::RED_GAIN] = blackboard->config[(cameraName + ".gainred").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::GREEN_GAIN] = blackboard->config[(cameraName + ".gaingreen").c_str()].as<int>();
+    cameraSettings.settings[CameraSettings::CameraSetting::BLUE_GAIN] = blackboard->config[(cameraName + ".gainblue").c_str()].as<int>();
+
+
+    // Read special settings
+    cameraSettings.hflip = blackboard->config[(cameraName + ".hflip").c_str()].as<int>();
+    cameraSettings.vflip = blackboard->config[(cameraName + ".vflip").c_str()].as<int>();
+
+    // Old camera settings
+    cameraSettings.whiteBalance = blackboard->config[(cameraName + ".whitebalance").c_str()].as<int>();
+    cameraSettings.aeTargetAvgLuma = blackboard->config[(cameraName + ".aetargetavgluma").c_str()].as<int>();
+    cameraSettings.aeTargetAvgLumaDark = blackboard->config[(cameraName + ".aetargetavglumadark").c_str()].as<int>();
+    cameraSettings.aeTargetGain = blackboard->config[(cameraName + ".aetargetgain").c_str()].as<int>();
+    cameraSettings.aeMinVirtGain = blackboard->config[(cameraName + ".aeminvirtgain").c_str()].as<int>();
+    cameraSettings.aeMaxVirtGain = blackboard->config[(cameraName + ".aemaxvirtgain").c_str()].as<int>();
+    cameraSettings.aeMinVirtAGain = blackboard->config[(cameraName + ".aeminvirtagain").c_str()].as<int>();
+    cameraSettings.aeMaxVirtAGain = blackboard->config[(cameraName + ".aemaxvirtagain").c_str()].as<int>();
+    cameraSettings.aeTargetExposure = blackboard->config[(cameraName + ".aetargetexposure").c_str()].as<int>();
+    cameraSettings.aeUseWeightTable = blackboard->config[(cameraName + ".aeuseweighttable").c_str()].as<bool>();
+    cameraSettings.aeWeightTableX1 = blackboard->config[(cameraName + ".aeweighttablex1").c_str()].as<float>();
+    cameraSettings.aeWeightTableX2 = blackboard->config[(cameraName + ".aeweighttablex2").c_str()].as<float>();
+    cameraSettings.aeWeightTableY1 = blackboard->config[(cameraName + ".aeweighttabley1").c_str()].as<float>();
+    cameraSettings.aeWeightTableY2 = blackboard->config[(cameraName + ".aeweighttabley2").c_str()].as<float>();
+}
+
+void NaoCameraProvider::readAutoExposureTable() {
+    std::string cameraName = cameraChoice;
+    std::string tableStr = blackboard->config[(cameraName + ".autoexposureweighttable").c_str()].as<std::string>();
+
+    // llog(DEBUG) << "Auto exposure weight table for " << cameraName << " : " << tableStr << std::endl;
+    // Expected format of string is: 16 numbers comma separated. Eg:
+    //      0,0,0,0,1,1,1,1,5,8,8,5,5,5,5,5
+    // Split string
+    std::vector<uint8_t> tableValues;
+    if (tableStr != "") {
+        std::stringstream ss(tableStr);
+        std::string token;
+        while (std::getline(ss, token, ',')) {
+            try {
+                int v = std::stoi(token);
+                tableValues.push_back((uint8_t) (v));
+            } catch (const std::exception& e) {
+                break;
+            }
+        }
+    }
+
+    AutoExposureWeightTable::Table table;
+    if (tableValues.size() == 16) {
+        for(int i = 0; i != tableValues.size(); ++i) {
+            table(i) = tableValues[i];
+        }
+    } else {
+        // Default values
+        if (whichCamera == CameraInfo::Camera::top) {
+            table << 
+                0, 0, 0, 0,
+                1, 1, 1, 1,
+                5, 8, 8, 5,
+                5, 5, 5, 5
+            ;
+        } else {
+            table << 
+                5, 5, 5, 5,
+                5, 8, 8, 5,
+                5, 8, 8, 5,
+                5, 5, 5, 5
+            ;
+        }
+    }
+    autoExposureWeightTable = table;
+
+    // llog(INFO) << "************** " << cameraName << " auto exposure weight table : ";
+    // for (int i = 0; i != 16; ++i) {
+    //     llog(INFO) << (int) (autoExposureWeightTable(i)) << ",";
+    // }
+    // llog(INFO) << std::endl;
 }
 
 void NaoCameraProvider::setupCamera() {
-    // set resolution
     cameraWidth = 320;
     cameraHeight = 240;
-    switch (format) {
-        case AL::k960p:
+    switch (cameraResolution) {
+        case CameraResolution::w1280h960:
             cameraWidth     = 1280;
             cameraHeight    = 960;
             break;
-        case AL::kVGA:
+        case CameraResolution::w640h480:
             cameraWidth     = 640;
             cameraHeight    = 480;
             break;
-        case AL::kQVGA:
+        case CameraResolution::defaultRes:
+        case CameraResolution::w320h240:
             cameraWidth     = 320;
             cameraHeight    = 240;
             break;
         default:
-            llog(ERROR) << "Unknown format, defaulting to " << cameraWidth << "x" << cameraHeight << std::endl;
+            llog(ERROR) << "Unknown resolution format, defaulting to " 
+                        << cameraWidth << "x" << cameraHeight << std::endl;
+    }
+
+    // Set Camera type
+    cameraInfo.camera = whichCamera;
+
+    // set info dimensions
+    cameraInfo.height = cameraHeight;
+    cameraInfo.width = cameraWidth;
+
+    // set opening angle
+    cameraInfo.openingAngleWidth = cameraIntrinsics.openingAngleWidth;
+    cameraInfo.openingAngleHeight = cameraIntrinsics.openingAngleHeight;
+
+    // set optical center
+    cameraInfo.opticalCenter.x() = cameraIntrinsics.opticalCenter.x() * cameraInfo.width;
+    cameraInfo.opticalCenter.y() = cameraIntrinsics.opticalCenter.y() * cameraInfo.height;
+
+    // set rotation corrections
+    cameraInfo.cameraCalibrations = cameraCalibrations;
+
+    // update focal length
+    cameraInfo.updateFocalLength();
+
+    // Set static focal length values where required elsewhere
+    // TODO (TW): Check if this should use the INV versions
+    if (whichCamera == CameraInfo::Camera::top) {
+        RobotPose::topFocalLength = cameraInfo.focalLength;
+    } else {
+        RobotPose::botFocalLength = cameraInfo.focalLength;
     }
 
     // Configure and start-up the camera
     assert(camera == nullptr);
-    camera = new NaoCameraV6(filename, cameraChoice, cameraWidth, cameraHeight, cameraSettings);
+    camera = new NaoCameraV6(filename, whichCamera, cameraWidth, cameraHeight, cameraSettings, autoExposureWeightTable);
 }
 
-const uint8_t *NaoCameraProvider::get(const __u32 colourSpace) {
-    if (colourSpace != V4L2_PIX_FMT_YUYV) {
-        throw std::runtime_error("only yuv422 is supported!");
+bool NaoCameraProvider::processResolutionRequest() {
+    // TODO (TW): Implement
+    return false;
+}
+
+
+// bool NaoCameraProvider::processResolutionRequest()
+// {
+//     if (SystemCall::getMode() == SystemCall::Mode::physicalRobot && theCameraResolutionRequest.resolutions[whichCamera] != lastResolutionRequest)
+//     {
+//         lastResolutionRequest = theCameraResolutionRequest.resolutions[whichCamera];
+//         switch (theCameraResolutionRequest.resolutions[whichCamera])
+//         {
+//         case CameraResolutionRequest::noRequest:
+//             return false;
+//         case CameraResolutionRequest::defaultRes:
+//             if (!readCameraResolution())
+//                 cameraResolution.resolutions[whichCamera] = whichCamera == CameraInfo::upper
+//                                                                        ? CameraResolutionRequest::w640h480
+//                                                                        : CameraResolutionRequest::w320h240;
+//             return true;
+//         case CameraResolutionRequest::w320h240:
+//         case CameraResolutionRequest::w640h480:
+//         case CameraResolutionRequest::w1280h960:
+//             cameraResolution.resolutions[whichCamera] = theCameraResolutionRequest.resolutions[whichCamera];
+//             return true;
+//         default:
+//             FAIL("Unknown resolution.");
+//             return false;
+//         }
+//     }
+//     else
+//         return false;
+// }
+
+CameraResolution NaoCameraProvider::getResolution() {
+    return cameraResolution;
+}
+
+bool NaoCameraProvider::hasImage() {
+    if (resetPending) {
+        return false;
+    } else if (camera != nullptr) {
+        return camera->hasImage();
+    }
+    return false;
+}
+
+const uint8_t* NaoCameraProvider::takeImage() {
+    // llog(TRACE) << "Get image for " << cameraChoice << std::endl;
+
+    // Load latest blackboard information
+    if (whichCamera == CameraInfo::Camera::top) {
+        cameraResolution        = readFrom(vision, topResolution);
+        cameraSettings          = readFrom(vision, topCameraSettings);
+        autoExposureWeightTable = readFrom(vision, topAutoExposureWeightTable);
+    } else {
+        cameraResolution        = readFrom(vision, botResolution);
+        cameraSettings          = readFrom(vision, botCameraSettings);
+        autoExposureWeightTable = readFrom(vision, botAutoExposureWeightTable);
     }
 
-    // llog(TRACE) << "Get image for " << cameraChoice << std::endl;
+    // Timer if camera is taking too long
     Timer t;
 
-    // Check for camera reset
+    // Reset camera if required
     if (camera->resetRequired) {
         resetPending = true;
     }
-
-    // Reset Camera if required
-    if (resetPending || triggerSharedReset) {
-        if (triggerSharedReset) {
-            llog(INFO) << cameraChoice << ": triggerSharedReset" << std::endl;
-        }
-        // We've now triggered shared reset, so clear flag
-        triggerSharedReset = false;
-
-        // Remove the old camera
+    if (resetPending) {
         delete camera;
         camera = nullptr;
 
-        // If this camera needs to reset, then clear the I2C bus
-        if (resetPending) {
-            // Only do this if this camera needs to trigger
-            //      if reset is triggered from the other place, then don't do this
-            NaoCameraV6::resetCamera();
-            llog(INFO) << cameraChoice << ": Camera reset (#1)" << std::endl;
-            triggerSharedReset = true;
-            resetPending = false;
-        }
+        NaoCameraV6::resetCamera();
+        llog(INFO) << "Camera reset" << std::endl;
+        resetPending = false;
 
         setupCamera();
     }
 
-    // Ensure we get the latest possible image
+    // Make sure we have the latest camera image
     if (camera->hasImage()) {
         camera->releaseImage();
     }
 
+    // Update resolution
+    // TODO (TW): Implement processResolutionRequest() - currently returns false
+    if (processResolutionRequest()) {
+        delete camera;
+        camera = nullptr;
+        setupCamera();
+    }
+
+    // Retrieve image
     while (!camera->hasImage()) {
         cameraOk = camera->captureNew(maxWaitForImage);
+
         if (!cameraOk) {
-            llog(INFO) << cameraChoice << ": Camera is broken (#1)" << std::endl;
+            llog(INFO) << "Camera broken - resetting" << std::endl;
             break;
         }
     }
 
-    const uint8_t *image = nullptr;
+    // Process image
+    const uint8_t* image = nullptr;
     if (camera->hasImage()) {
-        // Get image
-        t.restart();
         image = camera->getImage();
+        updateBlackboard(image);
     } else if (t.elapsed_ms() > resetDelay) {
         // Try resetting here if the camera read image above fails
         //     so we can avoid a null image on this loop
@@ -172,42 +373,86 @@ const uint8_t *NaoCameraProvider::get(const __u32 colourSpace) {
         // Delete camera (and close file handle)
         delete camera;
         camera = nullptr;
-
-        // Send reset
-        NaoCameraV6::resetCamera();
-        llog(INFO) << cameraChoice << ": Camera reset (#2)" << std::endl;
-        resetPending = false;
-        triggerSharedReset = true;
-
-        // Setup the camera
         setupCamera();
-
-        // Try to reach the image again
-        t.restart();
-        while (!camera->hasImage()) {
-            cameraOk = camera->captureNew(maxWaitForImage);
-            if (!cameraOk) {
-                llog(INFO) << cameraChoice << ": Camera broken (#2)" << std::endl;
-                break;
-            }
-        }
-
-        if (camera->hasImage()) {
-            image = camera->getImage();
-            llog(INFO) << cameraChoice << ": Successfully got image after reset (#2)" << std::endl;
-        }
     }
 
-    if (image != nullptr) {
-    //     llog(DEBUG) << "Image returning from NaoCamera: " << (void *)image << std::endl;
-    } else {
-        llog(INFO) << cameraChoice << ": Image not retrieved: " << (void *)image << std::endl;
+    // Update settings
+    if (camera->hasImage()) {
+        camera->setSettings(cameraSettings, autoExposureWeightTable);
+        camera->writeCameraSettings();
     }
-
-    // image = nullptr; // Test for null image handling
+    // llog(TRACE) << CameraInfo::enumCameraToString(whichCamera) << ": total " << t.elapsed_ms() << " ms" << std::endl;
+  
     return image;
 }
 
+void NaoCameraProvider::updateBlackboard(const uint8_t* image) {
+    // Write image to blackboard (Old uint8 version of image)
+    if (whichCamera == CameraInfo::Camera::top) {
+        writeTo(vision, topFrame, image);
+
+        // For the top camera, write the python buffer to blackboard
+        PyObject* py_buf = PyMemoryView_FromMemory((char *) image, 2457600, PyBUF_READ);
+        writeTo(vision, py_buffer, py_buf);
+    } else {
+        writeTo(vision, botFrame, image);
+    }
+
+    // Use timer for image timestamp as it gives the current systime
+    Timer t;
+    unsigned timestamp = static_cast<long long>(camera->getTimestamp() / 1000) > static_cast<long long>(t.elapsed_ms())
+                             ? static_cast<unsigned>(camera->getTimestamp() / 1000 - t.elapsed_ms())
+                             : 100000;
+
+    // Update image on blackboard
+    if (camera->hasImage()) {
+        // RECALL that the image uses a YUYV (2-pixel wide) format with Chroma Subsampling in the width. 
+        // That is, each 'pixel' in YUYV is 2 actual pixels.
+        // Therefore the 'internal width' of the image is 'divided by 2', 
+        // which is then multiplied by 2 (when iterating) with the YUYV Pixel Type to get the 'true' image width.
+        // See: https://en.wikipedia.org/wiki/Chroma_subsampling
+
+        if (whichCamera == CameraInfo::Camera::top) {
+            blackboard->vision->topImage.setImage(cameraWidth / 2, cameraHeight, const_cast<unsigned char *>(image), std::max(lastImageTimestamp + 1, timestamp));
+        } else if (whichCamera == CameraInfo::Camera::bot) {
+            blackboard->vision->botImage.setImage(cameraWidth / 2, cameraHeight, const_cast<unsigned char *>(image), std::max(lastImageTimestamp + 1, timestamp));
+
+            // Check for distortion issues in the bottom camera
+            if (blackboard->vision->botImage.timestamp - timestampLastRowChange > 3000) {
+                timestampLastRowChange = blackboard->vision->botImage.timestamp;
+                currentRow = Random::uniformInt(1, cameraHeight - 2);
+                rowBuffer.clear();
+            }
+            std::string res = MD5().digestMemory(
+                reinterpret_cast<uint8_t *>(blackboard->vision->botImage[currentRow]), 
+                                            cameraHeight * sizeof(CameraImage::PixelType)
+            );
+            rowBuffer.push_front(res);
+
+            int appearances = 0;
+            for (auto i = rowBuffer.begin(); i != rowBuffer.end(); ++i) {
+                if (*i == res && ++appearances > 25) {
+                    llog(ERROR) << "Probably encountered a distorted image in the lower camera - resetting" << std::endl;
+                    camera->resetRequired = true;
+                    return;
+                }
+            }
+        }
+    }
+
+    // For debugging purposes - uncomment if needed to check white-balancing
+    // camera->doAutoWhiteBalance();
+    // camera->readCameraSettings();
+    // cameraSettings = camera->getCameraSettings();
+    // if (whichCamera == CameraInfo::Camera::top) {
+    //     writeTo(vision, topCameraSettings, cameraSettings);
+    // } else {
+    //     writeTo(vision, botCameraSettings, cameraSettings);
+    // }
+
+    // Update timestamp tracking
+    lastImageTimestamp = timestamp;
+}
 
 bool NaoCameraProvider::setControl(const uint32_t controlId,
                            const int32_t controlValue) {
@@ -222,13 +467,4 @@ bool NaoCameraProvider::setControl(const uint32_t controlId,
 
 void NaoCameraProvider::setAutoExposureTarget(int fd, uint8_t high) {
     NaoCameraV6::setAutoExposureTarget(fd, high);
-}
-
-bool NaoCameraProvider::hasImage() {
-    if (resetPending) {
-        return false;
-    } else if (camera != nullptr) {
-        return camera->hasImage();
-    }
-    return false;
 }

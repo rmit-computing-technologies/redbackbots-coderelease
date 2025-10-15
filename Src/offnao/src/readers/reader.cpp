@@ -1,7 +1,7 @@
 #include "readers/reader.hpp"
 #include <iostream>
 
-#include "utils/basic_maths.hpp"
+#include "utils/math/basic_maths.hpp"
 
 void Reader::forwardMediaTrigger() {
    naoData.nextFrame();

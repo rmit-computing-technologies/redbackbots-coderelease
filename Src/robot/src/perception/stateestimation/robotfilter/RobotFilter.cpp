@@ -101,7 +101,7 @@ std::vector<RobotObstacle> RobotFilter::generateRobotObstacles() const
             {
                 type = "unknown";
             }
-            else if (group.getType() == RobotVisionInfo::rBlue)
+            else if (group.getType() == RobotVisionInfo::rOwnTeam)
             {
                 type = "blue";
             }

@@ -4,7 +4,7 @@
 #include "perception/stateestimation/localiser/multimodalcmkf/MultiModalCMKF.hpp"
 // #include "../LocalisationDefs.hpp"
 // #include "../LocalisationUtils.hpp"
-#include <Eigen/Eigen>
+#include "types/math/Eigen.hpp"
 #include "utils/TransitionPoses.hpp"
 
 MultiModalCMKFTransitioner::MultiModalCMKFTransitioner(
@@ -16,16 +16,16 @@ MultiModalCMKFTransitioner::MultiModalCMKFTransitioner(
     LocaliserTransitioner::resetToInitialPose();
 }
 
-void MultiModalCMKFTransitioner::resetToGameInitialPose()
+void MultiModalCMKFTransitioner::resetToLeftTeamInitialPose()
 {
     StateVector state = StateVector::Zero();
 
     switch(estimatorInfoInit.playerNumber)
     {
     case 1:
-        state(ME_X_DIM, 0) = INITIAL_POSE_P1_X;
-        state(ME_Y_DIM, 0) = INITIAL_POSE_P1_Y;
-        state(ME_H_DIM, 0) = INITIAL_POSE_P1_THETA;
+        state(ME_X_DIM, 0) = LEFT_INITIAL_POSE_P1_X;
+        state(ME_Y_DIM, 0) = LEFT_INITIAL_POSE_P1_Y;
+        state(ME_H_DIM, 0) = LEFT_INITIAL_POSE_P1_THETA;
         break;
 
     case 2:
@@ -53,9 +53,67 @@ void MultiModalCMKFTransitioner::resetToGameInitialPose()
         break;
 
     case 6:
-        state(ME_X_DIM, 0) = INITIAL_POSE_P6_X;
-        state(ME_Y_DIM, 0) = INITIAL_POSE_P6_Y;
-        state(ME_H_DIM, 0) = INITIAL_POSE_P6_THETA;
+        state(ME_X_DIM, 0) = LEFT_INITIAL_POSE_P6_X;
+        state(ME_Y_DIM, 0) = LEFT_INITIAL_POSE_P6_Y;
+        state(ME_H_DIM, 0) = LEFT_INITIAL_POSE_P6_THETA;
+        break;
+
+    default:
+        state(ME_X_DIM, 0) = INITIAL_POSE_DEFAULT_X;
+        state(ME_Y_DIM, 0) = INITIAL_POSE_DEFAULT_Y;
+        state(ME_H_DIM, 0) = INITIAL_POSE_DEFAULT_THETA;
+        break;
+    }
+
+    CovarianceMatrix covariance = CovarianceMatrix::Zero();
+    covariance(ME_X_DIM, ME_X_DIM) = 100000;
+    covariance(ME_Y_DIM, ME_Y_DIM) = 100000;
+    covariance(ME_H_DIM, ME_H_DIM) = 0.5;
+
+    mmcmkf->kfs.clear();
+    mmcmkf->kfs.push_back(CMKF(state, covariance, 1.0));
+}
+
+void MultiModalCMKFTransitioner::resetToRightTeamInitialPose()
+{
+    StateVector state = StateVector::Zero();
+
+    switch(estimatorInfoInit.playerNumber)
+    {
+    case 1:
+        state(ME_X_DIM, 0) = RIGHT_INITIAL_POSE_P1_X;
+        state(ME_Y_DIM, 0) = RIGHT_INITIAL_POSE_P1_Y;
+        state(ME_H_DIM, 0) = RIGHT_INITIAL_POSE_P1_THETA;
+        break;
+
+    case 2:
+        state(ME_X_DIM, 0) = INITIAL_POSE_P2_X;
+        state(ME_Y_DIM, 0) = INITIAL_POSE_P2_Y;
+        state(ME_H_DIM, 0) = INITIAL_POSE_P2_THETA;
+        break;
+
+    case 3:
+        state(ME_X_DIM, 0) = INITIAL_POSE_P3_X;
+        state(ME_Y_DIM, 0) = INITIAL_POSE_P3_Y;
+        state(ME_H_DIM, 0) = INITIAL_POSE_P3_THETA;
+        break;
+
+    case 4:
+        state(ME_X_DIM, 0) = INITIAL_POSE_P4_X;
+        state(ME_Y_DIM, 0) = INITIAL_POSE_P4_Y;
+        state(ME_H_DIM, 0) = INITIAL_POSE_P4_THETA;
+        break;
+
+    case 5:
+        state(ME_X_DIM, 0) = INITIAL_POSE_P5_X;
+        state(ME_Y_DIM, 0) = INITIAL_POSE_P5_Y;
+        state(ME_H_DIM, 0) = INITIAL_POSE_P5_THETA;
+        break;
+
+    case 6:
+        state(ME_X_DIM, 0) = RIGHT_INITIAL_POSE_P6_X;
+        state(ME_Y_DIM, 0) = RIGHT_INITIAL_POSE_P6_Y;
+        state(ME_H_DIM, 0) = RIGHT_INITIAL_POSE_P6_THETA;
         break;
 
     default:
@@ -119,6 +177,37 @@ void MultiModalCMKFTransitioner::resetToUnpenalisedPose()
     state(ME_X_DIM, 0) = UNPENALISED_H4_X;
     state(ME_Y_DIM, 0) = UNPENALISED_H4_Y;
     state(ME_H_DIM, 0) = UNPENALISED_H4_THETA;
+    mmcmkf->kfs.push_back(CMKF(state, covariance, 1.0));
+}
+
+void MultiModalCMKFTransitioner::resetToPenalisedPose()
+{
+    mmcmkf->kfs.clear();
+    StateVector state = StateVector::Zero();
+
+    CovarianceMatrix covariance = CovarianceMatrix::Zero();
+    covariance(ME_X_DIM, ME_X_DIM) = 100000;
+    covariance(ME_Y_DIM, ME_Y_DIM) = 100000;
+    covariance(ME_H_DIM, ME_H_DIM) = 0.5;
+
+    state(ME_X_DIM, 0) = PENALISED_H1_X;
+    state(ME_Y_DIM, 0) = PENALISED_H1_Y;
+    state(ME_H_DIM, 0) = PENALISED_H1_THETA;
+    mmcmkf->kfs.push_back(CMKF(state, covariance, 1.0));
+
+    state(ME_X_DIM, 0) = PENALISED_H2_X;
+    state(ME_Y_DIM, 0) = PENALISED_H2_Y;
+    state(ME_H_DIM, 0) = PENALISED_H2_THETA;
+    mmcmkf->kfs.push_back(CMKF(state, covariance, 1.0));
+
+    state(ME_X_DIM, 0) = PENALISED_H3_X;
+    state(ME_Y_DIM, 0) = PENALISED_H3_Y;
+    state(ME_H_DIM, 0) = PENALISED_H3_THETA;
+    mmcmkf->kfs.push_back(CMKF(state, covariance, 1.0));
+
+    state(ME_X_DIM, 0) = PENALISED_H4_X;
+    state(ME_Y_DIM, 0) = PENALISED_H4_Y;
+    state(ME_H_DIM, 0) = PENALISED_H4_THETA;
     mmcmkf->kfs.push_back(CMKF(state, covariance, 1.0));
 }
 
@@ -259,4 +348,3 @@ void MultiModalCMKFTransitioner::resetToPenaltyshootPhasePlayerSelectedPose()
     mmcmkf->kfs.clear();
     mmcmkf->kfs.push_back(CMKF(state, covariance, 1.0));
 }
-

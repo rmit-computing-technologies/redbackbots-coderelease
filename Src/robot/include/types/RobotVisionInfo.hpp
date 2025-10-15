@@ -1,7 +1,7 @@
 #pragma once
 
-#include "types/Point.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/Point.hpp"
+#include "types/geometry/RRCoord.hpp"
 #include "types/BBox.hpp"
 
 struct RobotVisionInfo {
@@ -9,8 +9,8 @@ struct RobotVisionInfo {
    enum Type
    {
       rUnknown       = 0x00,
-      rBlue          = 0x01,
-      rRed           = 0x02,
+      rOwnTeam       = 0x01,
+      rEnemyTeam     = 0x02,
    };
 
    enum Cameras
@@ -35,7 +35,7 @@ struct RobotVisionInfo {
    RobotVisionInfo (RRCoord rr, Type type, BBox imageCoords) :
          rr(rr),
          type(type),
-         cameras(OLD_DETECTION),
+         cameras(OLD_DETECTION), // OLD_DETECTION?? Is this a leftover file?
          imageCoords(imageCoords),
          topImageCoords(),
          botImageCoords() {}

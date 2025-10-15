@@ -23,8 +23,8 @@ if(BUILD_DESKTOP)
 
   # Generate Protobuf files
   protobuf_generate_cpp(PROTO_SRCS_OFFNAO PROTO_HDRS_OFFNAO
-      ${RBB_INCLUDE_DIR}/blackboard/Blackboard.proto
-      ${RBB_INCLUDE_DIR}/blackboard/naoData.proto
+      ${RBB_INCLUDE_DIR}/communication/protobuf/Blackboard.proto
+      ${RBB_INCLUDE_DIR}/communication/protobuf/naoData.proto
   )
   # message (STATUS "Generated Protobuf Srcs: ${PROTO_SRCS}")
   # message (STATUS "Generated Protobuf Headers: ${PROTO_HDRS}")
@@ -46,9 +46,33 @@ if(BUILD_DESKTOP)
     ${OFFNAO_SRC_DIR}/readers/reader.cpp
     ${OFFNAO_SRC_DIR}/readers/record2Reader.cpp
     ${OFFNAO_SRC_DIR}/readers/bbd2Reader.cpp
+
+    # Renderers
+    ${OFFNAO_SRC_DIR}/renderers/CameraImageRender.cpp
+    ${OFFNAO_SRC_DIR}/renderers/OverlayPainter.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/BallOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/BallSpotsOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/FieldBoundaryOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/FieldBoundaryPointsOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/HorizonOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/ScanGridOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/HorizontalScanLineOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/VerticalScanLineOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/PenaltyMarkRegionsOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/FieldFeaturesOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/GridOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/LineSpotsCandidatesOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/CircleCandidatesOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/IntersectionCandidatesOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/LineSpotsOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/PlaneSpotsOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/CentreCircleOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/IsWhiteSpotsOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/RobotOverlay.cpp
+    ${OFFNAO_SRC_DIR}/renderers/overlays/RefereeKeypointsOverlay.cpp
+
     
     # Other utilities
-    ${OFFNAO_SRC_DIR}/utils/OverlayPainter.cpp
     ${OFFNAO_SRC_DIR}/utils/FieldPainter.cpp
     ${OFFNAO_SRC_DIR}/utils/CPlaneColours.cpp
     ${OFFNAO_SRC_DIR}/utils/classifier.cpp
@@ -69,26 +93,31 @@ if(BUILD_DESKTOP)
     ${OFFNAO_SRC_DIR}/tabs/tab.cpp
     # ${OFFNAO_SRC_DIR}/tabs/temperatureTab.cpp
     ${OFFNAO_SRC_DIR}/tabs/variableView.cpp
-    # ${OFFNAO_SRC_DIR}/tabs/visionTab.cpp
+    ${OFFNAO_SRC_DIR}/tabs/visionTab.cpp
     # ${OFFNAO_SRC_DIR}/tabs/walkTab.cpp
     ${OFFNAO_SRC_DIR}/tabs/yuvHistogram.cpp
     # ${OFFNAO_SRC_DIR}/tabs/zmpTab.cpp
 
     # Protobuf source files
     # Required both serialise from Robot and Offnao
-    ${RBB_SRC_DIR}/blackboard/serialise.cpp
+    ${RBB_SRC_DIR}/communication/serialisation/deserialise.cpp
+    ${RBB_SRC_DIR}/communication/serialisation/serialise.cpp
     ${OFFNAO_SRC_DIR}/serialise.cpp
     ${PROTO_SRCS_OFFNAO}
     ${PROTO_HDRS_OFFNAO}
   )
 
   set(OFFNAO_MOC
-    ${OFFNAO_INCLUDE_DIR}/readers/reader.hpp
-    ${OFFNAO_INCLUDE_DIR}/readers/dumpReader.hpp
-    ${OFFNAO_INCLUDE_DIR}/readers/record2Reader.hpp
-    ${OFFNAO_INCLUDE_DIR}/readers/bbd2Reader.hpp
     ${OFFNAO_INCLUDE_DIR}/mediaPanel.hpp
     ${OFFNAO_INCLUDE_DIR}/visualiser.hpp
+
+    ${OFFNAO_INCLUDE_DIR}/readers/bbd2Reader.hpp
+    ${OFFNAO_INCLUDE_DIR}/readers/dumpReader.hpp
+    ${OFFNAO_INCLUDE_DIR}/readers/networkReader.hpp
+    ${OFFNAO_INCLUDE_DIR}/readers/reader.hpp
+    ${OFFNAO_INCLUDE_DIR}/readers/record2Reader.hpp
+
+    ${OFFNAO_INCLUDE_DIR}/renderers/CameraImageRender.hpp
     
     # ${OFFNAO_INCLUDE_DIR}/tabs/aroundFeetTab.hpp
     ${OFFNAO_INCLUDE_DIR}/tabs/cameraTab.hpp
@@ -102,7 +131,7 @@ if(BUILD_DESKTOP)
     # ${OFFNAO_INCLUDE_DIR}/tabs/sensorTab.hpp
     ${OFFNAO_INCLUDE_DIR}/tabs/tab.hpp
     # ${OFFNAO_INCLUDE_DIR}/tabs/temperatureTab.hpp
-    # ${OFFNAO_INCLUDE_DIR}/tabs/visionTab.hpp
+    ${OFFNAO_INCLUDE_DIR}/tabs/visionTab.hpp
     # ${OFFNAO_INCLUDE_DIR}/tabs/walkTab.hpp
     # ${OFFNAO_INCLUDE_DIR}/tabs/zmpTab.hpp
   )
@@ -191,6 +220,9 @@ if(BUILD_DESKTOP)
   # message(STATUS "Qt5Widgets_INCLUDES: ${Qt5Widgets_INCLUDES}")
   # message(STATUS "QWT_INCLUDE_DIR: ${QWT_INCLUDE_DIR}")
 
+  # The QT slots/signals keywords conflict with Python3 C++ types, so they must be disabled
+  target_compile_definitions(Offnao PRIVATE QT_NO_KEYWORDS)
+
   # QT5 Libraries
   target_link_libraries(Offnao PRIVATE Qt5::Core)
   target_link_libraries(Offnao PRIVATE Qt5::Gui)
@@ -198,10 +230,7 @@ if(BUILD_DESKTOP)
   target_link_libraries(Offnao PRIVATE Qt5::Widgets)
   target_link_libraries(Offnao PRIVATE Qt5::Xml)
   target_link_libraries(Offnao PRIVATE ${QGLVIEWER_LIBRARY})
-
-  # The QT slots/signals keywords conflict with Python3 C++ types, so they must be disabled
-  target_compile_definitions(Offnao PRIVATE QT_NO_KEYWORDS)
-
+  
   # RBB Libraries
   target_link_libraries(Offnao PRIVATE RBBCommonDesktop)
 

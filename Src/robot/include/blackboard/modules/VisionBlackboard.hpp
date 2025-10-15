@@ -1,20 +1,26 @@
 #pragma once
 
+#include <array>
 #include <boost/function.hpp>
 #include <boost/program_options/variables_map.hpp>
-#include <stdint.h>
-#include <vector>
+#include <cstdint>
 #include <utility>
+#include <vector>
 
 #include "perception/vision/VisionDefinitions.hpp"
-#include "perception/vision/Region.hpp"
+#include "perception/vision/fovea/Region.hpp"
 #include "types/BallInfo.hpp"
-#include "types/CameraSettings.hpp"
-#include "types/FieldBoundaryInfo.hpp"
+#include "types/camera/AutoExposureWeightTable.hpp"
+#include "types/camera/CameraImage.hpp"
+#include "types/camera/CameraInfo.hpp"
+#include "types/camera/CameraResolution.hpp"
+#include "types/camera/CameraSettings.hpp"
 #include "types/FieldFeatureInfo.hpp"
 #include "types/RobotVisionInfo.hpp"
+#include "types/field/FieldBoundary.hpp"
+#include "types/vision/RefereeGesture.hpp"
 
-// This header file is now configured without the python2.7 qualifier
+// This header file is required for the Python buffer image version
 #include <Python.h>
 
 /**
@@ -24,38 +30,41 @@ struct VisionBlackboard {
     explicit VisionBlackboard();
     void readOptions(const boost::program_options::variables_map& config);
 
-
     /* Time the frame was captured */
     int64_t timestamp;
 
     /* Detected features */
+    std::array<FieldBoundary, CameraInfo::Camera::NUM_CAMERAS> fieldBoundary;
     std::vector<BallInfo> balls;
-    std::vector<RobotVisionInfo> robots;
-    std::vector<FieldBoundaryInfo> fieldBoundaries;
     std::vector<FieldFeatureInfo> fieldFeatures;
-    std::vector<RegionI> regions;
+    std::vector<RobotVisionInfo> robots;
+    RefereeGesture refereeGesture;
 
-    /** Saliency scan */
-    Colour *topSaliency;
-    Colour *botSaliency;
+    /* OLD - Detected features - Being Replaced */
+    std::vector<RegionI> regions;
 
     /** Pointer to the current frame being processed by Vision */
     uint8_t const* topFrame;
     uint8_t const* botFrame;
 
-    /** JPEG compression for serialization */
+    /** Current frame being processed by Vision */
+    CameraImage topImage;
+    CameraImage botImage;
+
+    /** JPEG compression quality for serialization */
     int8_t topFrameJPEGQuality;
     int8_t botFrameJPEGQuality;
 
     /** Current camera settings on the robot */
-    CameraSettings topCameraSettings;
-    CameraSettings botCameraSettings;
+    CameraInfo          topInfo;
+    CameraResolution    topResolution;
+    CameraSettings      topCameraSettings;
+    AutoExposureWeightTable::Table topAutoExposureWeightTable;
+    CameraInfo          botInfo;
+    CameraResolution    botResolution;
+    CameraSettings      botCameraSettings;
+    AutoExposureWeightTable::Table botAutoExposureWeightTable;
 
-    // We need to send these over to offnao for the manual camera pose
-   float horizontalFieldOfView;
-   float verticalFieldOfView;
-
-    // TODO: Add comment explaining this
+    // Top Camera image in python buffer format
     PyObject* py_buffer;
-
 };

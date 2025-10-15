@@ -1,7 +1,7 @@
 from util.actioncommand import stand
-from util import LedOverride
+from util import led_override
 from util.Constants import LEDColour
-from util import Log
+from util import log
 
 from BehaviourTask import BehaviourTask
 
@@ -20,19 +20,30 @@ class TestButton(BehaviourTask):
         bhead = sensorValues[Sensors.Head_Touch_Rear]
 
 
-        # Log.debug("Left foot:", lfoot)
-        # Log.debug("Right foot:", rfoot)
+        # log.debug("Left foot:", lfoot)
+        # log.debug("Right foot:", rfoot)
 
 
-        # Log.debug("Head front:", fhead)
-        # Log.debug("Head middle:", mhead)
-        # Log.debug("Head back:", bhead)
+        # log.debug("Head front:", fhead)
+        # log.debug("Head middle:", mhead)
+        # log.debug("Head back:", bhead)
 
-        # Log.debug(sensorValues)
+        # log.debug(sensorValues)
 
         if lfoot:
-            LedOverride.override_eye_segment(LedOverride.rightEye, [0,1,2,3], LEDColour.red)
+            led_override.override_eye_segment(led_override.RIGHT_EYE, [0,1,2,3], LEDColour.red)
+            log.info("Left foot", say=True)
         if rfoot:
-            LedOverride.override_eye_segment(LedOverride.rightEye, [5,6,7], LEDColour.red)
+            led_override.override_eye_segment(led_override.RIGHT_EYE, [5,6,7], LEDColour.red)
+            log.info("Right foot", say=True)
+        if fhead:
+            led_override.override_eye_segment(led_override.LEFT_EYE, [5,6,7], LEDColour.red)
+            log.warning("Front head", say=True)
+        if mhead:
+            led_override.override_eye_segment(led_override.LEFT_EYE, [5,6,7], LEDColour.green)
+            log.error("Middle head", say=True)
+        if bhead:
+            led_override.override_eye_segment(led_override.LEFT_EYE, [5,6,7], LEDColour.blue)
+            log.critical("Back head", say=True)
 
         self.world.b_request.actions.body = stand()

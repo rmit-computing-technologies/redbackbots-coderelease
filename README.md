@@ -1,13 +1,14 @@
-# RedbackBots 2024 RoboCup Soccer SPL Code Release
-This is the official 2024 RedbackBots code release. 
-The 2024 code release is published under the `coderelease2024` tag on this repository.
+# RedbackBots 2025 RoboCup Soccer SPL Code Release
+This is the official 2025 RedbackBots code release.
+The 2025 code release is published under the `coderelease2025` tag on this repository.
 This software is provided 'as is', and the team does not provide public support of this software.
 
 RedbackBots is a undergraduate and postgraduate student team supported by the AI Innovation Lab in the School of Computing Technologies at RMIT University.
 The goals of RedbackBots are:
 
 1. A research project of the AI Innovation Lab, and
-2. To provide education for RMIT students in applications of AI to autonomous robotics systems. 
+2. To provide education for RMIT students in applications of AI to autonomous robotics systems.
+3. Outreach in STEM (Science, Technology, Engineering and Mathematics), promotion of the benefits of Autonomous Robotics within the public view, and encouraging primary and secondary school students to pursue studies in STEM fields.
 
 You may contact the RedbackBots team at: <stem.redbackbots@rmit.edu.au>
 
@@ -15,14 +16,14 @@ Before cloning this repository, you must read our license terms.
 
 ## Team Report
 
-Our [2024 team report](RedbackBots_Teampaper_2024.pdf) is included in this repository. The report may be cited as:
+Our [2025 team report](TeamReports/RedbackBots_Teampaper_2025.pdf) is included in this repository. The report may be cited as:
 
-    Wiley, T., Thangarajah, J., Abothu, R., Avice Demay, J., Bajaj, H., Chan, H. Y. S., Cao, M., Ellis, T., Field, M., Ganji, R., Griffiths, S., Lamb, C., Lohani, P., Mullan, L., Owens, M., Pauckner, J., Perez, R., Putter, M., Sandoval Rodriguez, A., Stephens, J., and Thom, J.
-    (2024) RedbackBots Team Report - RoboCup Soccer SPL 2024, Technical Report, AI Innovation Lab, School of Computing Technologies, RMIT University, Melbourne, Australia.
+    Wiley, T., Thangarajah, J., Babayigit, S., Chatham, M., Delgado, K., Ellis, T., Field, M., George, B., Griffiths, S., Hanidar, S., Hong, P., Hookmani, Y., Killeen, B., Kulathunga, T., Laurentia, K., Lohani, P., Mullan, L., Owens, M., Pham, M. H., Phillips, C., Sandoval, A., Theofilas, J, Thomson, J., Verma, R., Zhen, K. Z.
+    (2025) RedbackBots Team Report - RoboCup Soccer SPL 2025, Technical Report, AI Innovation Lab, School of Computing Technologies, RMIT University, Melbourne, Australia.
 
 Our past team reports can be found in the [TeamReports](TeamReports).
 
-## Documentation 
+## Documentation
 Limited documentation is provided in [Docs](Docs/Home.md).
 
 ## Directory Structure
@@ -48,6 +49,31 @@ The directory structure is:
 * **Util**:
     Utility files, at present only containing pre-compiled libraries for various operating systems architectures, including x86_64 and arm64.
 
+
+# Writing Your First Behaviour
+
+We have included a 'broken' Demo.py bahaviour as an example for where you can
+start, to get started try updating this file with the objective of having the robot move towards the ball and kick it. The base configurations are in place for you to start working with.
+The file to be corrected is demo.py, where we deliberately kept some issues for you.
+
+
+* Modify:
+Modify demo.py in order to get the robot walk towards the ball and kick it
+
+* Execute:
+The first step is to sync the change in code to the robot by executing the below command.
+
+
+```shell
+$ nao_sync -r <robot_name>
+```
+Once synced, ssh to the Robot which will take you to the robot terminal, and run the below command to run the code.
+
+
+```shell
+$ redbackbots -s demo
+```
+
 # License
 
 Before cloning this repository, you must read our [license terms](License.md).
@@ -57,9 +83,10 @@ Before cloning this repository, you must read our [license terms](License.md).
 This distribution contains software developed by:
 * rUNSWift, UNSW Sydney, Australia (https://runswift.readthedocs.io)
 * B-Human, University of Bremen, Germany (http://www.b-human.de)
+* Nao Devils, TU Dortmund University, Germany (https://naodevils.de)
 
 ----
 
-Copyright (c) 2024.
+Copyright (c) 2025.
 
-Artificial Intelligence Innovation Lab, Centre for Industrial AI and Research Innovation (CIAIRI), School of Computing Technologies, STEM College, RMIT University.
+Artificial Intelligence Innovation Lab, RMIT Artificial Intelligence Advanced Innovation Experience Hub (RAIsE Hub), School of Computing Technologies, STEM College, RMIT University.

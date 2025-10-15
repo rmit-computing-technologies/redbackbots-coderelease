@@ -1,4 +1,5 @@
 #include "types/SharedStateEstimationBundle.hpp"
+#include "utils/Logger.hpp"
 
 #include <iostream>
 #include <cmath>
@@ -10,7 +11,7 @@ bool SharedStateEstimationBundle::sanityCheck()
     {
         if (std::isnan(robotPos.vec(i)))
         {
-            std::cout << "received nan for robotPos vec" << std::endl;
+            llog(INFO) << NDEBUG_LOGSYMB << "received nan for robotPos vec" << std::endl;
             return false;
         }
     }
@@ -20,14 +21,14 @@ bool SharedStateEstimationBundle::sanityCheck()
         {
             if (std::isnan(robotPos.var(i, j)))
             {
-                std::cout << "received nan for robotPos var" << std::endl;
+                llog(INFO) << NDEBUG_LOGSYMB << "received nan for robotPos var" << std::endl;
                 return false;
             }
         }
     }
     if (std::isnan(robotPos.weight))
     {
-        std::cout << "received nan for robotPos weight" << std::endl;
+        llog(INFO) << NDEBUG_LOGSYMB << "received nan for robotPos weight" << std::endl;
         return false;
     }
 
@@ -36,7 +37,7 @@ bool SharedStateEstimationBundle::sanityCheck()
     {
         if (std::isnan(ballPosRRC.vec(i)))
         {
-            std::cout << "received nan for ballPosRRC vec" << std::endl;
+            llog(INFO) << NDEBUG_LOGSYMB << "received nan for ballPosRRC vec" << std::endl;
             return false;
         }
     }
@@ -46,14 +47,14 @@ bool SharedStateEstimationBundle::sanityCheck()
         {
             if (std::isnan(ballPosRRC.var(i, j)))
             {
-                std::cout << "received nan for ballPosRRC var" << std::endl;
+                llog(INFO) << NDEBUG_LOGSYMB << "received nan for ballPosRRC var" << std::endl;
                 return false;
             }
         }
     }
     if (std::isnan(ballPosRRC.weight))
     {
-        std::cout << "received nan for ballPosRRC weight" << std::endl;
+        llog(INFO) << NDEBUG_LOGSYMB << "received nan for ballPosRRC weight" << std::endl;
         return false;
     }
 
@@ -62,7 +63,7 @@ bool SharedStateEstimationBundle::sanityCheck()
     {
         if (std::isnan(ballVelRRC.vec(i)))
         {
-            std::cout << "received nan for ballVelRRC vec" << std::endl;
+            llog(INFO) << NDEBUG_LOGSYMB << "received nan for ballVelRRC vec" << std::endl;
             return false;
         }
     }
@@ -72,14 +73,14 @@ bool SharedStateEstimationBundle::sanityCheck()
         {
             if (std::isnan(ballVelRRC.var(i, j)))
             {
-                std::cout << "received nan for ballVelRRC var" << std::endl;
+                llog(INFO) << NDEBUG_LOGSYMB << "received nan for ballVelRRC var" << std::endl;
                 return false;
             }
         }
     }
     if (std::isnan(ballVelRRC.weight))
     {
-        std::cout << "received nan for ballVelRRC weight" << std::endl;
+        llog(INFO) << NDEBUG_LOGSYMB << "received nan for ballVelRRC weight" << std::endl;
         return false;
     }
 

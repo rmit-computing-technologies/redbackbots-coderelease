@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/Point.hpp"
+#include "types/geometry/Point.hpp"
 
 struct BBox
 {

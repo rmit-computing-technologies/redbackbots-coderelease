@@ -19,8 +19,8 @@ if(BUILD_NAO)
 
   # Generate Protobuf files
   protobuf_generate_cpp(PROTO_SRCS_NAO PROTO_HDRS_NAO
-      ${RBB_INCLUDE_DIR}/blackboard/Blackboard.proto
-      ${RBB_INCLUDE_DIR}/blackboard/naoData.proto
+      ${RBB_INCLUDE_DIR}/communication/protobuf/Blackboard.proto
+      ${RBB_INCLUDE_DIR}/communication/protobuf/naoData.proto
   )
 
   # Setup Protobuf library include
@@ -31,13 +31,16 @@ if(BUILD_NAO)
   #####
   # Robot Sources
   SET(ROBOT_SRCS
-    # Types
-    ${RBB_SRC_DIR}/types/BallInfo.cpp
-    ${RBB_SRC_DIR}/types/BroadcastData.cpp
-    ${RBB_SRC_DIR}/types/FieldFeatureInfo.cpp
-    ${RBB_SRC_DIR}/types/RobotVisionInfo.cpp
-    ${RBB_SRC_DIR}/types/SharedStateEstimationBundle.cpp
-
+    # Communication
+    ${RBB_SRC_DIR}/communication/receiver/NaoReceiver.cpp
+    ${RBB_SRC_DIR}/communication/receiver/TeamReceiver.cpp
+    ${RBB_SRC_DIR}/communication/transmitter/NaoTransmitter.cpp
+    ${RBB_SRC_DIR}/communication/transmitter/TeamTransmitter.cpp
+  
+    # GameController
+    ${RBB_SRC_DIR}/gamecontroller/GameController.cpp
+    ${RBB_SRC_DIR}/gamecontroller/RoboCupGameControlData.cpp
+    
     # Motion
     ${RBB_SRC_DIR}/motion/generator/ActionGenerator.cpp
     ${RBB_SRC_DIR}/motion/generator/GetupGenerator.cpp
@@ -56,21 +59,38 @@ if(BUILD_NAO)
     ${RBB_SRC_DIR}/motion/MotionOdometry.cpp
 
     # Vision
-    ${RBB_SRC_DIR}/perception/vision/camera/NaoCamera.cpp
+    ${RBB_SRC_DIR}/perception/vision/Vision.cpp
+    ${RBB_SRC_DIR}/perception/vision/VisionAdapter.cpp
     ${RBB_SRC_DIR}/perception/vision/camera/NaoCameraProvider.cpp
-    ${RBB_SRC_DIR}/perception/vision/camera/NaoCameraV4.cpp
     ${RBB_SRC_DIR}/perception/vision/camera/NaoCameraV6.cpp
     ${RBB_SRC_DIR}/perception/vision/camera/NaoCameraDefinitions.cpp
-    ${RBB_SRC_DIR}/perception/vision/camera/terminalCalibration.cpp
+    ${RBB_SRC_DIR}/perception/vision/detector/FieldBoundaryDetector.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/ECImageMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/ScanGridMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/ScanLineMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/LineAndCircleMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/IntersectionCandidatesMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/IntersectionsMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/RelativeFieldColorsMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/PenaltyMarkRegionsMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/PenaltyMarkMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/BallSpotsMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/BOPMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/RobotMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/middleinfo/RobotLowerMiddleInfo.cpp
+    ${RBB_SRC_DIR}/perception/vision/detector/BallDetector.cpp
+    ${RBB_SRC_DIR}/perception/vision/detector/FieldFeatureDetector.cpp
+    ${RBB_SRC_DIR}/perception/vision/detector/RobotDetector.cpp
+    ${RBB_SRC_DIR}/perception/vision/other/JerseyClassifier.cpp
+    ${RBB_SRC_DIR}/perception/vision/referee/RefereeGestureDetector.cpp
+    ${RBB_SRC_DIR}/perception/vision/referee/KeypointsDetector.cpp
+    ${RBB_SRC_DIR}/perception/vision/other/KinematicsPoseTester.cpp
     ${RBB_SRC_DIR}/perception/vision/other/WriteImage.cpp
-    ${RBB_SRC_DIR}/perception/vision/detector/ClusterDetector.cpp
-    ${RBB_SRC_DIR}/perception/dumper/PerceptionDumper.cpp
 
     # State Estimation
     ${RBB_SRC_DIR}/perception/stateestimation/StateEstimationAdapter.cpp
     ${RBB_SRC_DIR}/perception/stateestimation/localiser/LocaliserTransitioner.cpp
     ${RBB_SRC_DIR}/perception/stateestimation/localiser/Localiser.cpp
-    ${RBB_SRC_DIR}/perception/stateestimation/localiser/FieldFeatureLocations.cpp
     ${RBB_SRC_DIR}/perception/stateestimation/localiser/multimodalcmkf/MultiModalCMKF.cpp
     ${RBB_SRC_DIR}/perception/stateestimation/localiser/multimodalcmkf/CMKF.cpp
     ${RBB_SRC_DIR}/perception/stateestimation/localiser/multimodalcmkf/MultiModalCMKFParams.cpp
@@ -102,29 +122,27 @@ if(BUILD_NAO)
     ${RBB_SRC_DIR}/perception/behaviour/python/PythonSkill.cpp
     ${RBB_SRC_DIR}/perception/behaviour/python/RobotModule.cpp
     ${RBB_SRC_DIR}/perception/behaviour/python/RegisterConverters.cpp
-    ${RBB_SRC_DIR}/perception/vision/visualref/python/PythonLandmarks.cpp
 
-    # GameController
-    ${RBB_SRC_DIR}/gamecontroller/GameController.cpp
-    ${RBB_SRC_DIR}/gamecontroller/RoboCupGameControlData.cpp
+    # Types
+    ${RBB_SRC_DIR}/types/BallInfo.cpp
+    ${RBB_SRC_DIR}/types/BroadcastData.cpp
+    ${RBB_SRC_DIR}/types/FieldFeatureInfo.cpp
+    ${RBB_SRC_DIR}/types/File.cpp
+    ${RBB_SRC_DIR}/types/RobotVisionInfo.cpp
+    ${RBB_SRC_DIR}/types/SharedStateEstimationBundle.cpp
+    ${RBB_SRC_DIR}/types/field/FieldFeatureLocations.cpp
+    ${RBB_SRC_DIR}/types/math/Geometry.cpp
+    ${RBB_SRC_DIR}/types/LabelImage.cpp
 
     # Whistle
-    ${RBB_SRC_DIR}/whistle/alsarecorder.cpp
-    ${RBB_SRC_DIR}/whistle/fourier_transform.cpp
-    ${RBB_SRC_DIR}/whistle/band_pass_filter.cpp
-    # ${RBB_SRC_DIR}/whistle/sine_generator.cpp
-    # ${RBB_SRC_DIR}/whistle/wavfile.cpp
-    ${RBB_SRC_DIR}/whistle/whistle_classifier.cpp
-    ${RBB_SRC_DIR}/whistle/whistle_detector.cpp
-    ${RBB_SRC_DIR}/whistle/filt.cpp
+    # ${RBB_SRC_DIR}/whistle/filt.cpp
 
     # Misc/utils
-    ${RBB_SRC_DIR}/receiver/Nao.cpp
-    ${RBB_SRC_DIR}/receiver/Team.cpp
-    ${RBB_SRC_DIR}/transmitter/Nao.cpp
-    ${RBB_SRC_DIR}/transmitter/Team.cpp
     ${RBB_SRC_DIR}/utils/Cluster.cpp
     ${RBB_SRC_DIR}/utils/body.cpp
+    ${RBB_SRC_DIR}/utils/ml/PatchUtilities.cpp
+    ${RBB_SRC_DIR}/utils/ml/Resize.cpp
+    ${RBB_SRC_DIR}/utils/math/IISC.cpp
   )
 
   #####
@@ -133,6 +151,9 @@ if(BUILD_NAO)
     # Perception
     ${RBB_SRC_DIR}/perception/PerceptionThread.cpp
 
+    # Whistle
+    ${RBB_SRC_DIR}/whistle/WhistleThread.cpp
+
     # Motion
     ${RBB_SRC_DIR}/motion/MotionAdapter.cpp
     ${RBB_SRC_DIR}/motion/effector/LoLAEffector.cpp
@@ -140,7 +161,8 @@ if(BUILD_NAO)
     ${RBB_SRC_DIR}/motion/LoLAData.cpp
 
     # Protobuf sources
-    ${RBB_SRC_DIR}/blackboard/serialise.cpp
+    ${RBB_SRC_DIR}/communication/serialisation/deserialise.cpp
+    ${RBB_SRC_DIR}/communication/serialisation/serialise.cpp
     ${PROTO_SRCS_NAO}
     ${PROTO_HDRS_NAO}
 
@@ -174,21 +196,22 @@ if(BUILD_NAO)
   target_link_libraries(Nao PRIVATE Nao::ALSA::ALSA)
   target_link_libraries(Nao PRIVATE BoostInterface)
   target_link_libraries(Nao PRIVATE Boost::ProgramOptions)
-  # target_link_libraries(Nao PRIVATE Boost::Python)
   target_link_libraries(Nao PRIVATE Boost::Python3)
   target_link_libraries(Nao PRIVATE Boost::Regex)
   target_link_libraries(Nao PRIVATE Boost::System)
   target_link_libraries(Nao PRIVATE Boost::Thread)
   target_link_libraries(Nao PRIVATE Eigen)
+  target_link_libraries(Nao PRIVATE CompiledNN)
+  target_link_libraries(Nao PRIVATE CompiledNNasmjit)
+  target_link_libraries(Nao PRIVATE CompiledNN::ONNXNao)
   target_link_libraries(Nao PRIVATE FadBad)
-  target_link_libraries(Nao PRIVATE fftw3)
   target_link_libraries(Nao PRIVATE hdf5) 
   target_link_libraries(Nao PRIVATE opencv)
-  target_link_libraries(Nao PRIVATE CompiledNN)
+  target_link_libraries(Nao PRIVATE kissfft)
   target_link_libraries(Nao PRIVATE Google::Protobuf)
   target_link_libraries(Nao PRIVATE MsgpackInterface)
   target_link_libraries(Nao PRIVATE Png::Png)
-  # target_link_libraries(Nao PRIVATE Python27)
+  target_link_libraries(Nao PRIVATE PortAudio)
   target_link_libraries(Nao PRIVATE Python38)
   target_link_libraries(Nao PRIVATE SnappyNao)
   target_link_libraries(Nao PRIVATE TinyDNN)

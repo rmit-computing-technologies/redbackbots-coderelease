@@ -7,8 +7,8 @@
 #include "types/RobotObstacle.hpp"
 #include "RobotObservation.hpp"
 #include "types/Odometry.hpp"
-#include "types/AbsCoord.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
 
 
 /**

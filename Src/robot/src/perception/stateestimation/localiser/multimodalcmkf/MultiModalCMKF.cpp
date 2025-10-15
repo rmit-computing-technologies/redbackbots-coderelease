@@ -5,11 +5,11 @@
 #include "types/EstimatorInfoOut.hpp"
 #include "perception/stateestimation/localiser/multimodalcmkf/MultiModalCMKFTransitioner.hpp"
 #include "types/FieldFeatureInfo.hpp"
-#include "perception/stateestimation/localiser/FieldFeatureLocations.hpp"
-#include "perception/stateestimation/localiser/FieldFeature.hpp"
+#include "types/field/FieldFeatureLocations.hpp"
+#include "types/field/FieldFeature.hpp"
 #include "perception/stateestimation/localiser/multimodalcmkf/MultiModalCMKFParams.hpp"
-#include "utils/SPLDefs.hpp"
-#include "utils/eigen_helpers.hpp"
+#include "utils/defs/FieldDefinitions.hpp"
+#include "utils/math/eigen_helpers.hpp"
 
 // #define DEBUG
 
@@ -35,6 +35,8 @@ void MultiModalCMKF::tick(
 {
     // Handle Transition
     transitioner->handleTransition(estimatorInfoIn);
+
+    float penaltyMarkScaling = estimatorInfoIn.playerNum == 1 ? 1.2: 1.0;
 
     if (estimatorInfoMiddle.canLocaliseInState)
     {
@@ -79,12 +81,34 @@ void MultiModalCMKF::tick(
                             newCMKFs.push_back(newCMKF);
                         }
                     }
+                    if (observation.type == FieldFeatureInfo::fXJunction)
+                    {
+                        for (unsigned k = 0; k < fieldFeatureLocations->x_junctions.size(); ++k)
+                        {
+                            CMKF newCMKF(kf.state, kf.covariance, kf.weight * params->modeSplitWeightMultiplyFactor);
+                            update(newCMKF, observation, fieldFeatureLocations->x_junctions[k]);
+                            newCMKFs.push_back(newCMKF);
+                        }
+                    }
                     if (observation.type == FieldFeatureInfo::fCentreCircle)
                     {
                         for (unsigned k = 0; k < fieldFeatureLocations->centre_circles.size(); ++k)
                         {
                             CMKF newCMKF(kf.state, kf.covariance, kf.weight * params->modeSplitWeightMultiplyFactor);
                             update(newCMKF, observation, fieldFeatureLocations->centre_circles[k]);
+                            newCMKFs.push_back(newCMKF);
+                        }
+                    }
+                    if (observation.type == FieldFeatureInfo::fPenaltySpot)
+                    {
+                        for (unsigned k = 0; k < fieldFeatureLocations->penalty_spots.size(); ++k)
+                        {
+                            CMKF newCMKF(
+                                kf.state,
+                                kf.covariance,
+                                kf.weight * params->modeSplitWeightMultiplyFactor * penaltyMarkScaling
+                            );
+                            update(newCMKF, observation, fieldFeatureLocations->penalty_spots[k]);
                             newCMKFs.push_back(newCMKF);
                         }
                     }
@@ -153,11 +177,12 @@ void MultiModalCMKF::tick(
 
 void MultiModalCMKF::predict(CMKF &kf, const Odometry &odometry)
 {
-    float delta_x = odometry.forward * cosf(kf.state(ME_H_DIM, 0)) - odometry.left * sinf(kf.state(ME_H_DIM, 0));
-    float delta_y = odometry.forward * sinf(kf.state(ME_H_DIM, 0)) + odometry.left * cosf(kf.state(ME_H_DIM, 0));
-
+    // float delta_x = (odometry.forward * 1.1) * cosf(kf.state(ME_H_DIM, 0)) - (odometry.left * 0.9) * sinf(kf.state(ME_H_DIM, 0));
+    // float delta_y = (odometry.forward * 1.1) * sinf(kf.state(ME_H_DIM, 0)) + (odometry.left * 0.9) * cosf(kf.state(ME_H_DIM, 0));
+    float delta_x = (odometry.forward) * cosf(kf.state(ME_H_DIM, 0)) - (odometry.left) * sinf(kf.state(ME_H_DIM, 0));
+    float delta_y = (odometry.forward) * sinf(kf.state(ME_H_DIM, 0)) + (odometry.left) * cosf(kf.state(ME_H_DIM, 0));
     // Update the robot pose estimate.
-    kf.state(ME_H_DIM, 0) = normaliseTheta(kf.state(ME_H_DIM, 0) + odometry.turn);
+    kf.state(ME_H_DIM, 0) = normaliseTheta(kf.state(ME_H_DIM, 0) + odometry.turn); // TODO: Add multiple to this to update to match our actual pose???
     kf.state(ME_X_DIM, 0) += delta_x;
     kf.state(ME_Y_DIM, 0) += delta_y;
     check_finite(kf.state, "MMCMKF predict state");
@@ -166,6 +191,11 @@ void MultiModalCMKF::predict(CMKF &kf, const Odometry &odometry)
     Eigen::Matrix<float, 2, 2> relativeCovariance = Eigen::Matrix<float, 2, 2>::Zero();
     relativeCovariance(0, 0) = odometry.forward * odometry.forward * params->odometryForwardMultiplyFactor;
     relativeCovariance(1, 1) = odometry.left * odometry.left * params->odometryLeftMultiplyFactor;
+
+    //     relativeCovariance(0, 0) = odometry.forward * odometry.forward * params->odometryForwardMultiplyFactor + 
+    //                            (odometry.turn * odometry.turn)*0.1 * params->odometryForwardMultiplyFactor;
+    // relativeCovariance(1, 1) = odometry.left * odometry.left * params->odometryLeftMultiplyFactor + 
+    //                            (odometry.turn * odometry.turn)*0.1 * params->odometryLeftMultiplyFactor;
 
     Eigen::Matrix2f rotation;
     float heading = kf.state(ME_H_DIM, 0);
@@ -379,7 +409,7 @@ void MultiModalCMKF::update(
     // TODO do this better/ with actual maths not just testing
     double distUncertainty = observation.rr.distance()/4.0;  // mm
 
-    double angleUncertainty = DEG2RAD(params->angleUncertainty); // rad
+    double angleUncertainty = DEG2RAD(params->angleUncertainty);  // rad
     // This is the heading uncertainy AND the observation angle uncertainty
     double headingUncertainty = DEG2RAD(params->updateHeadingUncertainty);
 

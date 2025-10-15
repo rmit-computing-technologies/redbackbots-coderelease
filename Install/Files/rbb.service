@@ -1,7 +1,7 @@
 [Unit]
 Description=Daemon to keep redbackbots running
-After=lola.service alsa-kludge.service multi-user.target
-Requires=lola.service alsa-kludge.service
+After=lola.service alsa-kludge.service multi-user.target say.service
+Requires=lola.service alsa-kludge.service say.service
 
 # Restarts are required for the LoLA socket to become active
 StartLimitInterval=400

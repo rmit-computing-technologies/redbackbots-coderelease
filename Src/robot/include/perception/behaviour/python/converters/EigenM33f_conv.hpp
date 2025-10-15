@@ -3,7 +3,7 @@
 #include <boost/python.hpp>
 #include <boost/python/refcount.hpp>
 
-#include <Eigen/Eigen>
+#include "types/math/Eigen.hpp"
 
 struct EigenM33f_to_python
 {

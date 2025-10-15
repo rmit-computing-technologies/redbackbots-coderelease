@@ -45,7 +45,7 @@ void overtimeAlert(int) {
  * @see registerSignalHandler
  */
 void handleSignals(int sigNumber, siginfo_t* info, void*) {
-   // End the RedbackBots module [CTRL-C]. Call all destructors
+   // End the RedBackBots module [CTRL-C]. Call all destructors
    if (sigNumber == SIGINT) {
       std::cerr << std::endl;
       std::cerr << "###########################" << std::endl;

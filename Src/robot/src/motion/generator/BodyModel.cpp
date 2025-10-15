@@ -4,7 +4,7 @@
 #include "motion/generator/BodyModel.hpp"
 #include "motion/generator/Generator.hpp"
 #include "utils/body.hpp"
-#include "utils/matrix_helpers.hpp"
+#include "utils/math/matrix_helpers.hpp"
 
 BodyModel::BodyModel()
 {

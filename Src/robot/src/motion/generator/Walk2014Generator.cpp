@@ -11,16 +11,17 @@
  */
 
 #include "motion/generator/Walk2014Generator.hpp"
-#include <cmath>
-#include <cstdio>
-#include "utils/angles.hpp"
+
+#include "motion/MotionDefs.hpp"
 #include "utils/body.hpp"
 #include "utils/Logger.hpp"
-#include "utils/basic_maths.hpp"
 #include "utils/speech.hpp"
+#include "utils/math/basic_maths.hpp"
+#include "utils/math/angles.hpp"
+
 #include <algorithm>
-#include "motion/MotionDefs.hpp"
-#include "utils/OptionConstants.hpp"
+#include <cmath>
+#include <cstdio>
 
 //#define WRITE_LEG_JOINT_TEMP_TO_FILE 1;
 
@@ -1399,7 +1400,7 @@ void Walk2014Generator::readOptions(const boost::program_options::variables_map 
     kickExtraStableGyroscopeX = config["kick.extraStableGyroscopeX"].as<float>();
     kickGyroscopeXOntoSupportFootThresh = config["kick.kickGyroscopeXOntoSupportFootThresh"].as<float>();
     kickGyroscopeXAwayFromSupportFootThresh = config["kick.kickGyroscopeXAwayFromSupportFootThresh"].as<float>();
-    runningKickCalibration = config[CALIBRATION_KICK].as<bool>();
+    runningKickCalibration = config["calibration.kick"].as<bool>();
 }
 
 void Walk2014Generator::reset() {

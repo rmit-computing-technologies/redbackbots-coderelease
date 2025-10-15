@@ -1,4 +1,4 @@
-# RedbackBots RoboCup Soccer SPL Buildchain dependencies
+# RedBackBots RoboCup Soccer SPL Buildchain dependencies
 This repository contains software required as part of the buildchain for the RedBackBots code, that is not software which is maintained by RMIT University or the RedBackBots team.
 This includes dependent libraries or open-source projects that are included within this buildchain for ease-of-use.
 
@@ -10,8 +10,10 @@ The buildchain software within this repository is:
 * gcc/V6
    * A port of the GCC compiler for the Nao
    * This gcc port is courtesy of [B-Human][2]
+* onnxruntime [3]
 
 # Authors
-(c) RMIT University 2024
+(c) RMIT University 2025
 
 [2]: https://wiki.b-human.de
+[3]: https://onnxruntime.ai

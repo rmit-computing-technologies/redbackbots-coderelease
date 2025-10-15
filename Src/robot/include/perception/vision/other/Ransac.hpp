@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "types/RansacTypes.hpp"
-#include "types/Point.hpp"
+#include "types/geometry/Point.hpp"
 
 namespace RANSAC
 {

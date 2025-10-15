@@ -6,8 +6,10 @@ team_config:
 
 @author
 - Tom Ellis
+- Sam Griffiths (Made speedy)
 '''
 import argparse
+import multiprocessing
 import signal
 import sys
 import rbbpython.config as cfg
@@ -24,6 +26,12 @@ import rbbpython.install as install
 import rbbpython.shellEscape as shell
 import rbbpython.sshscp as scp
 
+remote = scp.SshScp()
+# remote.setHideOutput(True)
+
+remote = scp.SshScp()
+# remote.setHideOutput(True)
+
 def signal_handler(sig, frame):
     print()
     print_status("Exiting Team Config!")
@@ -31,14 +39,21 @@ def signal_handler(sig, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
+def get_robot_ip(robot):
+    robot_config = cfg.loadConfigFile(cfg.robotConfigDirectory(robot) + "/robot.cfg")
+    return robot_config['player']['playerIp']
+
+def get_robot_ip(robot):
+    robot_config = cfg.loadConfigFile(cfg.robotConfigDirectory(robot) + "/robot.cfg")
+    return robot_config['player']['playerIp']
+
 
 def ping_robot(robot):
     robotConfig = cfg.loadConfigFile(cfg.robotConfigDirectory(robot) + "/robot.cfg")
     robotIP = robotConfig['player']['playerIp']
-    print_subitem("Using IP: " + robotIP, robot)
+    print_subitem(f"Pinging robot using IP: {robotIP}", robot)
 
-    print_subitem(f"Pinging Robot", robot)
-    response = shell.exec("ping -c 1 -W 1 " + robotIP, hideOutput=True)
+    response = shell.exec("ping -c 2 -W 2 " + robotIP, hideOutput=True)
     if not response:
         print_warning(f"Robot does not appear to be online", robot)
     return response
@@ -46,7 +61,7 @@ def ping_robot(robot):
 def robot_selection(robots):
     input_valid = False
     while not input_valid:
-        print_status("Robot Configuration")
+        print_status("Robot Configuration [LOCAL]")
         for robot in robots:
             robot_config = cfg.loadConfig(f"Robots/{robot}/robot.cfg")["player"]
             print_subitem(f"Player: {robot_config['number']} Team: {robot_config['team']}", robot)
@@ -74,12 +89,30 @@ def configure_robot(robot):
     cfg.writeConfig(f"Robots/{robot}/robot.cfg", "player", {"number": new_config["number"], "team": new_config["team"]})
     return new_config
 
+def fetch_remote_config(robot):
+    robot_ip = get_robot_ip(robot)
+    remote.setIp(robot_ip)
+    response = remote.sshCommandWithSession(f"cat config/Robots/{robot}/robot.cfg", silent=True)
+    number = -1
+    team = -1
+    for line in response:
+        if "number" in line:
+            number = line.removeprefix("number=").removesuffix("\n")
+        elif "team" in line:
+            team = line.removeprefix("team=").removesuffix("\n")
+    return {
+        "number": number,
+        "team": team
+    }
+
 # Main entry point
 if __name__ == "__main__":
     # Process args
     parser = argparse.ArgumentParser(description='Update Team and Player Number Robot Configs')
     parser.add_argument('-a', action='store_true', help='If set, set config for all robots regardless of online status')
     parser.add_argument('-r', dest="robots", action='append', help='Configure only specified robots')
+    parser.add_argument('-s', action='store_true', help='Use single processing for pinging online robots')
+    parser.add_argument('-c', action='store_true', help='Check actual config on robots')
     args = parser.parse_args()
 
     print_banner("Setting up team config!", unix_colours.MAGENTA)
@@ -96,22 +129,41 @@ if __name__ == "__main__":
         robots = [robot for robot, data in robotConfig.items()]
         print_status("Setting Configs for all robots")
     else:
-        print_status("Finding Robots on the network")
-        online_robots = []
-        for robot, data in robotConfig.items():
-            if (ping_robot(robot)):
-                online_robots.append(robot)
+        if args.s: 
+            print_status("Finding Robots on the network")
+            online_robots = []
+            for robot, data in robotConfig.items():
+                if (ping_robot(robot)):
+                    online_robots.append(robot)
+        else:
+            print_status("Finding Robots on the network")
+            print_status("Pinging with multiple processes")
+            online_robots = []
+            robots = [robot for robot, data in robotConfig.items()]
+
+            with multiprocessing.Pool(processes = len(robots)) as pool:
+                results = pool.map(ping_robot, robots)
+                for i in range(len(results)):
+                    if results[i]:
+                        online_robots.append(robots[i])
 
         if len(online_robots) == 0:
             print_warning("No robots seem to be online, are you on the right network?")
             print_status("Press Enter to configure all robots")
             input()
             robots = [robot for robot, data in robotConfig.items()]
+            args.a = True
         else:
             print_status("The following robots are online:")
             print_subitem(online_robots)
             robots = online_robots
             print()
+
+    if args.c and not args.a:
+        print_status("Robot Configuration [ON ROBOT]")
+        for robot in robots:
+            config = fetch_remote_config(robot)
+            print_subitem(f"Player: {config['number']} Team: {config['team']}", robot)
 
     configured_robots = []
     while(len(robots)>0):

@@ -10,7 +10,7 @@
 #include "blackboard/modules/VisionBlackboard.hpp"
 #include "progopts.hpp"
 #include "readers/dumpReader.hpp"
-#include "utils/basic_maths.hpp"
+#include "utils/math/basic_maths.hpp"
 
 
 DumpReader::DumpReader(QString fileName) {
@@ -49,7 +49,7 @@ void DumpReader::run() {
          } else {
 			 Frame frame;
 			 Blackboard *blackboard = new Blackboard(config);
-			 OffNaoMask_t mask = RAW_IMAGE_MASK;
+			 OffNaoMask_t mask = JPEG_IMAGE_MASK;
 			 // writeTo(, mask, mask);
 			 blackboard->write(&(blackboard->mask), mask);
 			 writeTo(vision, topFrame, (const uint8_t*) top);

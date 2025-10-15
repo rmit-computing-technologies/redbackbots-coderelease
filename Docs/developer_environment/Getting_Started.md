@@ -66,7 +66,7 @@ sudo apt autoremove
 Use the following command to clone the code repository:
 
 ```bash
-git clone --depth 1 --branch coderelease2024 https://github.com/rmit-computing-technologies/redbackbots-coderelease.git
+git clone --depth 1 --branch coderelease2025 https://github.com/rmit-computing-technologies/redbackbots-coderelease.git
 ```
 
 ## Run the Build Script
@@ -97,7 +97,7 @@ Our public code release comes only with a default robot configuration. You may n
 
 You may also want to modify:
 * The `"basePlayerIP"` value in `Config/defaults.cfg`
-* placeholders values in `Install/Profiles/RBB` 
+* placeholders values in `Install/Profiles/RBB`
 * ssid & password details in `Install/Files/default_dhcp_example.yaml` & `Install/Files/default_static_example.yaml`
 
 to match your network setup.

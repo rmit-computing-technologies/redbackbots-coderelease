@@ -4,7 +4,19 @@
 #include <ostream>
 #include <boost/program_options/variables_map.hpp>
 
+/**
+ * Wrapper around picking logger
+ */
 #define llog(X) ((Logger::instance())->realLlog(X))
+
+/**
+ * Add Debug symbols for File and Line to logging output if available
+ */
+#if defined NDEBUG
+#define NDEBUG_LOGSYMB ""
+#else
+#define NDEBUG_LOGSYMB __FILE__ << ":" << __LINE__ << ": "
+#endif
 
 /**
  * Possible log levels

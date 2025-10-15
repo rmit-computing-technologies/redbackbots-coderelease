@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <png.h>
 
-#include "perception/vision/Region.hpp"
+#include "perception/vision/fovea/Region.hpp"
 
 struct RGB {
     uint8_t r, g, b;

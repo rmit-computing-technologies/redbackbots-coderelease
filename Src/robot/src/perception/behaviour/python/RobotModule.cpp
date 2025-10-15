@@ -9,12 +9,15 @@
 #include <blackboard/modules/KinematicsBlackboard.hpp>
 #include <blackboard/modules/MotionBlackboard.hpp>
 #include <blackboard/modules/ReceiverBlackboard.hpp>
+#include <blackboard/modules/EventReceiverBlackboard.hpp>
+#include <blackboard/modules/EventTransmitterBlackboard.hpp>
 #include <blackboard/modules/StateEstimationBlackboard.hpp>
 #include <blackboard/modules/VisionBlackboard.hpp>
+#include <blackboard/modules/WhistleBlackboard.hpp>
 
 #include <gamecontroller/RoboCupGameControlData.hpp>
 
-#include <types/AbsCoord.hpp>
+#include <types/geometry/AbsCoord.hpp>
 #include <types/ActionCommand.hpp>
 #include <types/BallInfo.hpp>
 #include <types/BBox.hpp>
@@ -23,18 +26,22 @@
 #include <types/JointValues.hpp>
 #include <types/RobotVisionInfo.hpp>
 #include <types/RobotObstacle.hpp>
-#include <types/RRCoord.hpp>
 #include <types/XYZ_Coord.hpp>
 #include <types/SensorValues.hpp>
+#include <types/geometry/RRCoord.hpp>
 
 #include <perception/kinematics/Parameters.hpp>
 
 #include <utils/body.hpp>
 #include <utils/speech.hpp>
-#include <utils/SPLDefs.hpp>
-#include <utils/PositioningDefs.hpp>
+#include <utils/defs/BallDefinitions.hpp>
+#include <utils/defs/FieldDefinitions.hpp>
+#include <utils/defs/PositioningDefinitions.hpp>
+#include <utils/defs/RobotDefinitions.hpp>
 
 #include "perception/behaviour/python/RegisterConverters.hpp"
+
+#include <utils/TransitionPoses.hpp>
 
 using namespace boost::python;
 
@@ -59,11 +66,15 @@ BOOST_PYTHON_MODULE(robot)
    #include "wrappers/body_wrap.cpp"
    #include "wrappers/BroadcastData_wrap.cpp"
    #include "wrappers/GameController_wrap.cpp"
+   #include "wrappers/WhistleBlackboard_wrap.cpp"
    #include "wrappers/GameControllerBlackboard_wrap.cpp"
    #include "wrappers/JointValues_wrap.cpp"
    #include "wrappers/StateEstimationBlackboard_wrap.cpp"
    #include "wrappers/MotionBlackboard_wrap.cpp"
+   #include "wrappers/Odometry_wrap.cpp"
    #include "wrappers/ReceiverBlackboard_wrap.cpp"
+   #include "wrappers/EventReceiverBlackboard_wrap.cpp"
+   #include "wrappers/EventTransmitterBlackboard_wrap.cpp"
    #include "wrappers/RobotVisionInfo_wrap.cpp"
    #include "wrappers/RobotObstacle_wrap.cpp"
    #include "wrappers/RRCoord_wrap.cpp"

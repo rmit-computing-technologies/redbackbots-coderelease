@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "BallCMKFConstants.hpp"
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 #include "types/ActionCommand.hpp"
 
 class EstimatorInfoInit;

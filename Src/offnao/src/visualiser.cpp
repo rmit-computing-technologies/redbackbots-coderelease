@@ -11,7 +11,7 @@
 // #include "tabs/aroundFeetTab.hpp"
 #include "tabs/cameraTab.hpp"
 #include "tabs/overviewTab.hpp"
-// #include "tabs/visionTab.hpp"
+#include "tabs/visionTab.hpp"
 // #include "tabs/sensorTab.hpp"
 // #include "tabs/cameraPoseTab.hpp"
 // #include "tabs/graphTab.hpp"
@@ -19,7 +19,7 @@
 // #include "tabs/zmpTab.hpp"
 // #include "tabs/LogsTab.hpp"
 // #include "tabs/teamTab.hpp"
-#include "perception/vision/Vision.hpp"
+// #include "perception/vision/Vision.hpp"
 #include "perception/vision/VisionDebuggerInterface.hpp"
 #include "readers/dumpReader.hpp"
 #include "readers/networkReader.hpp"
@@ -31,87 +31,76 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-// TODO: REMOVE global namespace uses
-using namespace boost;
-using std::string;
-using namespace std;
 
 Visualiser::Visualiser(QWidget *parent)
    : QMainWindow(parent), ui(new Ui::Visualiser),
    reader(0), naoData(0), cb() {
-      // call initLogs so that vision et al don't segfault when they llog
-      Thread::name = "Visualiser";
+   // call initLogs so that vision et al don't segfault when they llog
+   Thread::name = "Visualiser";
 
-      lastTabIndex = -1;
+   lastTabIndex = -1;
 
-      srand(time(0));
+   srand(time(0));
 
-      vision = new Vision();
+   ui->setupUi(this);
+   ui->centralWidget->setMinimumSize(1250, 600);
 
-      ui->setupUi(this);
-      ui->centralWidget->setMinimumSize(1250, 600);
+   initMenu();
 
-      initMenu();
+   // add the media panel to the bottom of the window
+   mediaPanel = new MediaPanel(ui->centralWidget);
 
-      // add the media panel to the bottom of the window
-      mediaPanel = new MediaPanel(ui->centralWidget);
+   // widgets for connecting to the naos
+   connectionBar = new QDockWidget;
+   cb.setupUi(connectionBar);
+   readHostnamesFromJson(QString::fromUtf8(getenv("REDBACKBOTS_CHECKOUT_DIR")) + "/Config/Robots/robotsv2.cfg");
+   connect(cb.cbHost, SIGNAL(activated(const QString &)),
+           this, SLOT(connectToNao(const QString &)));
+   connect(cb.bgMasks, SIGNAL(buttonClicked(QAbstractButton *)),
+           this, SLOT(writeToNao(QAbstractButton *)));
 
-      // widgets for connecting to the naos
-      connectionBar = new QDockWidget;
-      cb.setupUi(connectionBar);
-      readHostnamesFromJson(QString::fromUtf8(getenv("REDBACKBOTS_CHECKOUT_DIR")) + "/Config/Robots/robotsv2.cfg");
-      connect(cb.cbHost, SIGNAL(activated(const QString &)),
-              this, SLOT(connectToNao(const QString &)));
-      connect(cb.bgMasks, SIGNAL(buttonClicked(QAbstractButton *)),
-              this, SLOT(writeToNao(QAbstractButton *)));
+   // set up tab holder
+   tabs = new QTabWidget(ui->centralWidget);
+   tabs->setMinimumSize(600, 450);
 
-      // set up tab holder
-      tabs = new QTabWidget(ui->centralWidget);
-      tabs->setMinimumSize(600, 450);
+   overviewTab =  new OverviewTab(tabs, ui->menuBar);
+   visionTab = new VisionTab(tabs, ui->menuBar);
+   cameraTab = new CameraTab(tabs, ui->menuBar);
+   // sensorTab = new SensorTab(tabs, ui->menuBar);
+   // cameraPoseTab = new CameraPoseTab(tabs, ui->menuBar);
+   // graphTab = new GraphTab(tabs, ui->menuBar);
+   // jointsTab = new JointsTab(tabs, ui->menuBar);
+   // temperatureTab = new TemperatureTab(tabs, ui->menuBar);
+   // walkTab = new WalkTab(tabs, ui->menuBar);
+   // zmpTab = new ZMPTab(tabs, ui->menuBar);
+   // aroundFeetTab = new AroundFeetTab(tabs, ui->menuBar);
 
-      overviewTab =  new OverviewTab(tabs, ui->menuBar, vision);
-      // visionTab = new VisionTab(tabs, ui->menuBar, vision);
-      cameraTab = new CameraTab(tabs, ui->menuBar, vision);
-      // sensorTab = new SensorTab(tabs, ui->menuBar, vision);
-      // cameraPoseTab = new CameraPoseTab(tabs, ui->menuBar, vision);
-      // graphTab = new GraphTab(tabs, ui->menuBar, vision);
-      // jointsTab = new JointsTab(tabs, ui->menuBar, vision);
-      // temperatureTab = new TemperatureTab(tabs, ui->menuBar, vision);
-      // walkTab = new WalkTab(tabs, ui->menuBar, vision);
-      // zmpTab = new ZMPTab(tabs, ui->menuBar, vision);
-      // aroundFeetTab = new AroundFeetTab(tabs, ui->menuBar, vision);
-
-      tabVector.push_back(overviewTab);
-      // tabVector.push_back(visionTab);
-      tabVector.push_back(cameraTab);
-      // tabVector.push_back(sensorTab);
-      // tabVector.push_back(cameraPoseTab);
-      // tabVector.push_back(graphTab);
-      // tabVector.push_back(jointsTab);
-      // tabVector.push_back(temperatureTab);
-      // tabVector.push_back(walkTab);
-      // tabVector.push_back(zmpTab);
-      // tabVector.push_back(aroundFeetTab);
-      // tabVector.push_back(logsTab = new LogsTab(tabs, cb.cbHost));
+   tabVector.push_back(overviewTab);
+   tabVector.push_back(visionTab);
+   tabVector.push_back(cameraTab);
+   // tabVector.push_back(sensorTab);
+   // tabVector.push_back(cameraPoseTab);
+   // tabVector.push_back(graphTab);
+   // tabVector.push_back(jointsTab);
+   // tabVector.push_back(temperatureTab);
+   // tabVector.push_back(walkTab);
+   // tabVector.push_back(zmpTab);
+   // tabVector.push_back(aroundFeetTab);
+   // tabVector.push_back(logsTab = new LogsTab(tabs, cb.cbHost));
 
 
-
-
-      /* Set up the tabs */
-      Q_FOREACH (Tab *t, tabVector) {
-         tabs->addTab(t, QString(t->metaObject()->className()).
-                           remove(QRegExp("Tab$", Qt::CaseInsensitive)));
-         connect(t, SIGNAL(showMessage(QString, int)),
-                 ui->statusBar, SLOT(showMessage(QString, int)));
-      }
-
-      // /* Used to redraw tabs when they are in focus */
-      connect(tabs, SIGNAL(currentChanged(int)), this,
-              SLOT(currentTabChanged(int)));
-
-      ui->rootLayout->addWidget(mediaPanel, 1, 0, 1, 1);
-      ui->rootLayout->addWidget(tabs, 0, 0, 1, 1);
+   /* Set up the tabs */
+   Q_FOREACH (Tab *t, tabVector) {
+      tabs->addTab(t, QString(t->metaObject()->className()). remove(QRegExp("Tab$", Qt::CaseInsensitive)));
+      connect(t, SIGNAL(showMessage(QString, int)), ui->statusBar, SLOT(showMessage(QString, int)));
    }
+
+   /* Used to redraw tabs when they are in focus */
+   connect(tabs, SIGNAL(currentChanged(int)), this, SLOT(currentTabChanged(int)));
+
+   ui->rootLayout->addWidget(mediaPanel, 1, 0, 1, 1);
+   ui->rootLayout->addWidget(tabs, 0, 0, 1, 1);
+}
 
 Visualiser::~Visualiser() {
    std::cout << "---- about to exit ----" << std::endl << std::flush;
@@ -166,7 +155,6 @@ void Visualiser::initMenu() {
 
 }
 
-
 void Visualiser::close() {
    delete connectionBar;
 
@@ -175,26 +163,23 @@ void Visualiser::close() {
    }
    delete tabs;
    
-   //delete vision;
    delete ui;
    exit(0);
 }
 
 void Visualiser::openFileDialogue() {
    QString fileName =
-     QFileDialog::getOpenFileName(this, "Open File",
-                                  getenv("RUNSWIFT_CHECKOUT_DIR"),
-                                  "Known file types (*.bbd2 *.yuv *.ofn2);;"
-                                  "Dump files (*.yuv);;"
-                                  "Record files (*.ofn2);;"
-                                  "Blackboard Dump files (*.bbd2)"
-                                  );
+   QFileDialog::getOpenFileName(this, "Open File",
+                                getenv("RUNSWIFT_CHECKOUT_DIR"),
+                                "Known file types (*.bbd2 *.yuv *.ofn2);;"
+                                "Dump files (*.yuv);;"
+                                "Record files (*.ofn2);;"
+                                "Blackboard Dump files (*.bbd2)"
+                                );
    openFile(fileName);
-
 }
 
-void Visualiser::openFile (const QString &path)
-{
+void Visualiser::openFile(const QString &path) {
    if (!path.isEmpty()) {
       if(path.endsWith(".bbd2")) {
          reconnect<BBD2Reader, const QString &>(path);
@@ -202,11 +187,12 @@ void Visualiser::openFile (const QString &path)
          reconnect<DumpReader, const QString &>(path);
       else if (path.endsWith(".ofn2")) {
          reconnect<Record2Reader, const QString &>(path);
-      } else
+      } else {
          ui->statusBar->showMessage(
            QString("Unknown file extension, modify %1:%2:%3").
                    arg(__FILE__, __PRETTY_FUNCTION__,
                        QString::number(__LINE__)));
+      }
    }
 }
 
@@ -233,8 +219,7 @@ void Visualiser::saveFileDialogue() {
    saveFile(fileName);
 }
 
-void Visualiser::saveFile (const QString &path)
-{
+void Visualiser::saveFile(const QString &path) {
    if (!path.isEmpty()) {
       if (path.endsWith(".ofn2")) {
          Record2Reader::write(path, *naoData);
@@ -255,8 +240,7 @@ void Visualiser::extractRawImagesDialogue() {
    extractRawImages(dir);
 }
 
-void Visualiser::extractRawImages(const QString &path)
-{
+void Visualiser::extractRawImages(const QString &path) {
    if (!path.isEmpty() && naoData) {
       Record2Reader::dumpImages(path, *naoData, false);
    }
@@ -270,8 +254,7 @@ void Visualiser::extractROIsDialogue() {
    extractROIs(dir);
 }
 
-void Visualiser::extractROIs(const QString &path)
-{
+void Visualiser::extractROIs(const QString &path) {
    if (!path.isEmpty() && naoData) {
       Record2Reader::dumpImages(path, *naoData, true);
    }
@@ -298,20 +281,23 @@ OffNaoMask_t Visualiser::transmissionMask(const QAbstractButton *) {
    while (!buttons.isEmpty()) {
       QAbstractButton *button = buttons.takeFirst();
       if (button->isChecked()) {
-         if (button == cb.cbBlackboard)
+         if (button == cb.cbBlackboard) {
             mask |= BLACKBOARD_MASK;
-         else if (button == cb.cbSaliency)
-            mask |= SALIENCY_MASK;
-         else if (button == cb.cbRaw)
-            mask |= RAW_IMAGE_MASK;
-         else if (button == cb.cbBatch)
+         } else if (button == cb.cbCameraImage) {
+            mask |= CAMERA_IMAGE_MASK;
+         } else if (button == cb.cbRaw) {
+            mask |= JPEG_IMAGE_MASK;
+         } else if (button == cb.cbDebugInfo) {
+            mask |= BB_DEBUG_MASK;
+         } else if (button == cb.cbBatch) {
             mask |= USE_BATCHED_MASK;
-         else if (button == cb.cbParticles)
+         } else if (button == cb.cbParticles) {
             mask |= PARTICLE_FILTER_MASK;
-         else if (button == cb.cbRobotFilter)
+         } else if (button == cb.cbRobotFilter) {
             mask |= ROBOT_FILTER_MASK;
-         else
+         } else {
             ui->statusBar->showMessage("Error in parsing mask checkboxes!");
+         }
       }
    }
    return mask;
@@ -319,8 +305,9 @@ OffNaoMask_t Visualiser::transmissionMask(const QAbstractButton *) {
 
 void Visualiser::connectToNao(const QString &naoName, const uint16_t naoPort) {
    QString naoIP;
-   string strNao = naoName.toStdString();
-	 if (strNao.find('.') != string::npos){
+   std::string strNao = naoName.toStdString();
+
+	if (strNao.find('.') != std::string::npos) {
       // If the ip address of the robot has been entered
       naoIP = naoName;
    } else {
@@ -328,20 +315,21 @@ void Visualiser::connectToNao(const QString &naoName, const uint16_t naoPort) {
       // Look up ip address from /etc/hosts
       const hostent* host_info = 0 ;
       host_info = gethostbyname(strNao.c_str());
-      if(host_info)
-      {
+      if(host_info) {
             const in_addr* address = (in_addr*)host_info->h_addr_list[0] ;
             naoIP = inet_ntoa( *address );
       }      
    }
-   if(reconnect<NetworkReader, pair<pair<const QString &, int>, OffNaoMask_t> >
-      (make_pair(make_pair(naoIP, naoPort), transmissionMask(NULL)))) {
+
+   if(reconnect<NetworkReader, std::pair<std::pair<const QString &, int>, OffNaoMask_t> >
+      (std::make_pair(std::make_pair(naoIP, naoPort), transmissionMask(NULL)))) {
       NetworkReader *reader = dynamic_cast<NetworkReader *>(this->reader);
       Q_ASSERT(reader);
-      connect(this, SIGNAL(sendCommandLineString(const QString&)), reader,
-              SLOT(sendCommandLineString(QString)));
-      connect(cameraTab, SIGNAL(sendCommandToRobot(QString)),
-              reader, SLOT(sendCommandLineString(QString)));
+      
+      connect(this, SIGNAL(sendCommandLineString(const QString&)), reader, SLOT(sendCommandLineString(QString)));
+      connect(cameraTab, SIGNAL(sendCameraSettingsToRobot(int, QSharedPointer<CameraSettings>)), reader, SLOT(sendCameraSettings(int, QSharedPointer<CameraSettings>)));
+      connect(cameraTab, SIGNAL(sendStringToRobot(QString)), reader, SLOT(sendCommandLineString(QString)));
+
       // TODO: ADD BACK WITH TABS
       // connect(cameraPoseTab, SIGNAL(sendCommandToRobot(QString)),
       //         reader, SLOT(sendCommandLineString(QString)));
@@ -376,7 +364,7 @@ void Visualiser::connectToNao(const QString &naoName) {
 // This is networkReader specific, but I'm not sure where to put it
 void Visualiser::commandLineString() {
    QString item = QInputDialog::getText(NULL, "Send String",
-                                           tr("Command FieldEdge String:"));
+                                        tr("Command FieldEdge String:"));
    Q_EMIT sendCommandLineString(item);
 }
 
@@ -395,7 +383,6 @@ void Visualiser::disconnectFromNao() {
 }
 
 void Visualiser::setUpReaderSignals(Reader *reader) {
-
    for (unsigned int i = 0; i < tabVector.size(); i++) {
       connect(reader, SIGNAL(newNaoData(NaoData*)), tabVector[i],
             SLOT(newNaoData(NaoData *)));

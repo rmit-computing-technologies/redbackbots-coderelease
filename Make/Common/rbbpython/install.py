@@ -93,5 +93,6 @@ services = [
     'alsa-kludge',
     'hal',
     'lola',
-    'rbb'
+    'rbb',
+    'say'
 ]

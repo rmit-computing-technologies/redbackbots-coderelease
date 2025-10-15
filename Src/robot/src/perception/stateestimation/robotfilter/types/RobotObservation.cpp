@@ -1,8 +1,8 @@
 #include "perception/stateestimation/robotfilter/types/RobotObservation.hpp"
 
-#include <Eigen/Eigen>
-#include "types/AbsCoord.hpp"
-#include "utils/angles.hpp"
+#include "types/math/Eigen.hpp"
+#include "types/geometry/AbsCoord.hpp"
+#include "utils/math/angles.hpp"
 #include "perception/vision/VisionDefinitions.hpp"
 
 using namespace Eigen;

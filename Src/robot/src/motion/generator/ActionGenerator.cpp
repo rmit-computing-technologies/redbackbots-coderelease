@@ -3,7 +3,7 @@
 #include <cctype>
 #include "motion/generator/ActionGenerator.hpp"
 #include "utils/Logger.hpp"
-#include "utils/angles.hpp"
+#include "utils/math/angles.hpp"
 #include <boost/algorithm/string.hpp>
 #include "motion/MotionDefs.hpp"
 

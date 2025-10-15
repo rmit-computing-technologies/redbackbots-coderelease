@@ -2,14 +2,19 @@
 
 #include "readers/reader.hpp"
 
-#include <boost/thread.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/thread.hpp>
 #include <deque>
 
+#include <QSharedPointer>
 
-typedef int64_t msg_t;
-typedef std::deque<msg_t> chat_message_queue;
+// base message type
+using msg_t = int64_t;
+using chat_message_queue = std::deque<msg_t>;
+
+// Forward declarations
+class CameraSettings;
 class Connection;
 
 /* A reader that connects with the nao and collects data which is
@@ -17,56 +22,60 @@ class Connection;
  *
  */
 class NetworkReader : public Reader {
-   public:
-      explicit NetworkReader(const QString &robotName, int robotPort, OffNaoMask_t mask);
-      explicit NetworkReader(std::pair<std::pair<const QString &, int>,
-                                       OffNaoMask_t> robotNameMask);
-      explicit NetworkReader(std::pair<std::pair<const QString &, int>,
-                                       OffNaoMask_t> robotNameMask,
-                             const NaoData &naoData);
-      ~NetworkReader();
+Q_OBJECT
 
-      // main loop that runs when the thread starts
-      virtual void run();
+public:
+    NetworkReader(const QString &robotName, int robotPort, OffNaoMask_t mask);
+    NetworkReader(std::pair<std::pair<const QString &, int>, OffNaoMask_t> robotNameMask);
+    NetworkReader(std::pair<std::pair<const QString &, int>,
+                           OffNaoMask_t> robotNameMask,
+                           const NaoData &naoData);
+    virtual ~NetworkReader();
 
-      /* Writes a message to the nao */
-      void write(const msg_t &msg);
-   private:
-      OffNaoMask_t mask;
-      boost::asio::io_service *ioservice;
-      // WirelessClient *wirelessClient;
+    // main loop that runs when the thread starts
+    virtual void run();
 
-      void handle_connect(const boost::system::error_code& e,
+    /* Writes a message to the nao */
+    void write(const msg_t &msg);
+
+private:
+    OffNaoMask_t mask;
+    boost::asio::io_service *ioservice;
+
+    void handle_connect(const boost::system::error_code& e,
             boost::asio::ip::tcp::resolver::iterator endpoint_iterator);
-      void handle_read(const boost::system::error_code& e);
-      Connection *connection_;
+    void handle_read(const boost::system::error_code& e);
+    Connection *connection_;
 
-      boost::thread *cthread;
-      Frame received;
+    boost::thread *cthread;
+    Frame received;
 
-      boost::asio::ip::tcp::resolver *resolver;
-      boost::asio::ip::tcp::resolver::query *query;
+    boost::asio::ip::tcp::resolver *resolver;
+    boost::asio::ip::tcp::resolver::query *query;
 
-      bool isRecording;
-      QString robotName;
-      int robotPort;
+    bool isRecording;
+    QString robotName;
+    int robotPort;
 
-      bool disconnect();
-      bool connect();
+    bool disconnect();
+    bool connect();
 
 
-      void do_write(msg_t msg);
+    void do_write(msg_t msg);
 
-      void handle_write(const boost::system::error_code &error);
+    void handle_write(const boost::system::error_code &error);
 
-      void do_close();
+    void do_close();
 
-      chat_message_queue write_msgs_;
-      public Q_SLOTS:
-         virtual void stopMediaTrigger();
-         virtual void recordMediaTrigger();
-         /**
-         * sends a command line string to the Nao
-         */
-         virtual void sendCommandLineString(QString item);
+    chat_message_queue write_msgs_;
+
+public Q_SLOTS:
+    virtual void stopMediaTrigger();
+    virtual void recordMediaTrigger();
+
+    /**
+     * Methods to send various content to the Nao
+     */
+    void sendCameraSettings(int whichCamera, QSharedPointer<CameraSettings> settings);
+    void sendCommandLineString(QString item);
 };

@@ -9,20 +9,16 @@
 
 #include "soccer.hpp"
 
+#include "gamecontroller/GameController.hpp"
+#include "communication/receiver/TeamReceiver.hpp"
+#include "communication/transmitter/OffNaoTransmitter.hpp"
+#include "communication/transmitter/TeamTransmitter.hpp"
+#include "whistle/WhistleThread.hpp"
+#include "motion/MotionAdapter.hpp"
+#include "perception/PerceptionThread.hpp"
 #include "thread/ThreadManager.hpp"
 #include "utils/Logger.hpp"
 #include "utils/options.hpp"
-#include "motion/MotionAdapter.hpp"
-#include "transmitter/OffNao.hpp"
-#include "transmitter/Team.hpp"
-#include "receiver/Team.hpp"
-#include "gamecontroller/GameController.hpp"
-#include "perception/PerceptionThread.hpp"
-#include "perception/vision/Vision.hpp"
-// #include "perception/vision/camera/NaoCamera.hpp"
-// #include "perception/vision/camera/NaoCameraV4.hpp"
-#include "perception/vision/camera/NaoCameraProvider.hpp"
-#include "perception/vision/camera/CombinedCamera.hpp"
 
 #define TICK_AS_FAST_AS_POSSIBLE 0
 
@@ -40,7 +36,7 @@ namespace po = boost::program_options;
 
 /**
  * Strcut for shutdown Timer callback.
- * This is prefered as a direct conversion from void* to int generates
+ * This is preferred as a direct conversion from void* to int generates
  * precision conversion error messages.
  */
 typedef struct {
@@ -116,18 +112,14 @@ int main(int argc, char **argv) {
    Blackboard *blackboard = new Blackboard(vm);
    llog(INFO) << "Blackboard initialised" << std::endl;
 
-   Camera *topCamera = NULL;
-   Camera *botCamera = NULL;
+   NaoCameraProvider *topCamera = nullptr;
+   NaoCameraProvider *botCamera = nullptr;
    if (vm["thread.vision"].as<bool>()) {
-      llog(INFO) << "Initialising v4 " << VIDEO_TOP << std::endl;
-      // topCamera = new NaoCameraV4(blackboard, VIDEO_TOP, "camera.top");
-      topCamera = new NaoCameraProvider(blackboard, VIDEO_TOP, "camera.top");
+      llog(INFO) << "Initialising V6 Camera " << VIDEO_TOP << std::endl;
+      topCamera = new NaoCameraProvider(blackboard, VIDEO_TOP, CameraInfo::Camera::top);
 
-      llog(INFO) << "Initialising v4 " << VIDEO_BOTTOM << std::endl;
-      // botCamera = new NaoCameraV4(blackboard, VIDEO_BOTTOM, "camera.bot",
-                                    // IO_METHOD_MMAP,
-                                    // AL::kVGA);
-      botCamera = new NaoCameraProvider(blackboard, VIDEO_BOTTOM, "camera.bot", AL::kVGA);
+      llog(INFO) << "Initialising V6 Camera " << VIDEO_BOTTOM << std::endl;
+      botCamera = new NaoCameraProvider(blackboard, VIDEO_BOTTOM, CameraInfo::Camera::bot);
 
       CombinedCamera::setCameraTop(topCamera);
       CombinedCamera::setCameraBot(botCamera);
@@ -137,9 +129,10 @@ int main(int argc, char **argv) {
 
    // create thread managers
    ThreadManager perception("Perception", TICK_AS_FAST_AS_POSSIBLE); // as fast as the camera can provide as image
+   ThreadManager whistle("Whistle", 100000); // 10fps limit (TODO: Change to ideal fps)
    ThreadManager motion("Motion"); // as fast as possible, waits on agent semaphore
    ThreadManager gameController("GameController", TICK_AS_FAST_AS_POSSIBLE); // as fast as possible, waits on udp read
-   ThreadManager offnaoTransmitter("OffnaoTransmitter", 2000000); // .5fps limit
+   ThreadManager offnaoTransmitter("OffnaoTransmitter", 500000); // 2fps limit
    ThreadManager teamTransmitter("TeamTransmitter", 500000); // 2fps limit
    ThreadManager teamReceiver("TeamReceiver", 100000); // 10fps limit (Congested WiFi: Higher than TeamTransmitter)
 
@@ -147,6 +140,10 @@ int main(int argc, char **argv) {
    if (vm["thread.perception"].as<bool>()) {
       perception.run<PerceptionThread>(blackboard);
       llog(INFO) << "Perception is running" << std::endl;
+   }
+   if (vm["thread.whistle"].as<bool>()) {
+      whistle.run<WhistleThread>(blackboard);
+      llog(INFO) << "Whistle is running" << std::endl;
    }
    if (vm["thread.motion"].as<bool>()) {
       motion.run<MotionAdapter>(blackboard);
@@ -176,14 +173,14 @@ int main(int argc, char **argv) {
       llog(INFO) << "Timer is running" << std::endl;
    }
 
-   if (vm["calibration.camera"].as<string>() == "terminal") {
-      llog(INFO) << "Camera calibration by terminal is running" << std::endl;
-      Camera::terminalCalibration();
-   }
+   //this has been removed
+   // if (vm["calibration.camera"].as<string>() == "terminal") {
+   //    llog(INFO) << "Camera calibration by terminal is running" << std::endl;
+   //    Camera::terminalCalibration();
+   // }
 
    llog(INFO) << "Shutting Down" << std::endl;
    
-   // sys.exit(python3)
 
    teamReceiver.join();
    llog(DEBUG) << "Receiver thread joined\n";
@@ -197,8 +194,9 @@ int main(int argc, char **argv) {
    llog(DEBUG) << "Motion thread joined\n";
    perception.join();
    llog(DEBUG) << "Perception thread joined\n";
+   whistle.join();
+   llog(DEBUG) << "Whistle thread joined\n";
 
-   
    
    delete blackboard;
    delete topCamera;

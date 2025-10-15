@@ -18,9 +18,11 @@ class MultiModalCMKFTransitioner : public LocaliserTransitioner
     MultiModalCMKF *mmcmkf;
 
     void resetToInitialPose();
-    void resetToGameInitialPose();
+    void resetToLeftTeamInitialPose();
+    void resetToRightTeamInitialPose();
     void resetToSpecifiedInitialPose();
     void resetToUnpenalisedPose();
+    void resetToPenalisedPose();
     void resetToManualPlacementPoseOffense();
     void resetToManualPlacementPoseDefense();
     void resetToPenaltyshootPhasePoseOffense();

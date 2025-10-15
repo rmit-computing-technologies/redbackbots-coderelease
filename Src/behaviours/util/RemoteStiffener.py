@@ -4,7 +4,7 @@
 # Stiffen commands can be enabled by setting 'behaviour.remote_stiffen'
 # to TRUE in 'redbackbots.cfg' OR in <robot_name>.cfg. If
 # 'behaviour.remote_stiffen' is set to TRUE, the robot (when running
-# RedbackBots) will automatically stand-up and stiffen.
+# `./redbackbots`) will automatically stand-up and stiffen.
 #
 # Set 'behaviour.remote_stiffen' in any of the config files as
 # follows:

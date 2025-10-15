@@ -12,7 +12,7 @@
 #include "motion/LoLAData.hpp"
 #include "utils/Logger.hpp"
 #include "utils/speech.hpp"
-#include "utils/SPLDefs.hpp"
+#include "utils/defs/FieldDefinitions.hpp"
 
 #define MAX_CLICK_INTERVAL 15
 // number of seconds it takes to sit.  can have decimal point.

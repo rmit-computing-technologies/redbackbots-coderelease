@@ -4,7 +4,8 @@
 /*
  * Arbitary focal length of the camera
  **/
-#define FOCAL_LENGTH 1
+#define DEFAULT_FOCAL_LENGTH 1
+
 /**
  * Pixel size calculated from FOV of camera and the arbitary focal length
  **/
@@ -21,6 +22,7 @@
  **/
 #define NECK_TO_TOP_CAMERA 86.5847
 #define NECK_TO_BOTTOM_CAMERA 53.7234
+
 /**
  * Angle of the camera from the neck
  **/

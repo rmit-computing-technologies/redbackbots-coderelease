@@ -110,7 +110,6 @@ namespace ActionCommand {
        * @param rightArmBehind make right arm go behind back
        * @param blocking to tell walk gen we need a big side step
        * @param extraStableKick  to tell walk gen we prefer kick stability over execution time
-       * @see http://runswift.cse.unsw.edu.au/confluence/display/rc2010/Movement%2C+walk%2C+kicks
        */
       Body(ActionType at, int f = 0, int l = 0, float t = 0.0, float p = 1.0,
            float bend = 15.0, float s = 1.0, Foot ft = LEFT,

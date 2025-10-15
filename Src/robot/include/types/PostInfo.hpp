@@ -1,7 +1,6 @@
 #pragma once
 
-#include "types/Point.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
 #include "types/BBox.hpp"
 
 struct PostInfo {

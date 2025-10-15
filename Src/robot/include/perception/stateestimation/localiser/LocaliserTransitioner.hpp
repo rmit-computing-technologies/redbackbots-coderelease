@@ -17,6 +17,7 @@ class LocaliserTransitioner
   protected:
     const EstimatorInfoInit &estimatorInfoInit;
     void resetToInitialPose();
+    void resetToGameInitialPose();
 
   private:
 
@@ -26,14 +27,17 @@ class LocaliserTransitioner
     uint8_t prevPenalty;
     bool prevPickedup;
 
-    Timer penalisedTimer;
     Timer refPickupTimer;
-    Timer unpenalisedTimer;
-    bool pickedUpDuringPenalised;
+    Timer penaltyPlaceDownTimer;
+    bool localisedInPenalty;
 
-    virtual void resetToGameInitialPose() = 0;
+    bool isLeftTeam;
+
+    virtual void resetToLeftTeamInitialPose() = 0;
+    virtual void resetToRightTeamInitialPose() = 0;
     virtual void resetToSpecifiedInitialPose() = 0;
     virtual void resetToUnpenalisedPose() = 0;
+    virtual void resetToPenalisedPose() = 0;
     virtual void resetToManualPlacementPoseOffense() = 0;
     virtual void resetToManualPlacementPoseDefense() = 0;
     virtual void resetToPenaltyshootPhasePoseOffense() = 0;

@@ -1,5 +1,4 @@
-#ifndef PERCEPTION_OTHER_GMM_
-#define PERCEPTION_OTHER_GMM_
+#pragma once
 
 #include <cstdio>
 #include <string>
@@ -8,9 +7,9 @@
 #include <vector>
 #include <limits>
 
-#include <Eigen/Eigen>
+#include "types/math/Eigen.hpp"
 
-#include "perception/vision/Region.hpp"
+#include "perception/vision/fovea/Region.hpp"
 
 #define CLASSIFIER_TRUE 0
 #define CLASSIFIER_FALSE 1
@@ -121,5 +120,3 @@ class Estimator
     Matrixxf resize(const Matrixxf &, int, int);
 		Vectorxf reshape(const Matrixxf &);
 };
-
-#endif

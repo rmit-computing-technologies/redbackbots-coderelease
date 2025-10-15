@@ -6,6 +6,7 @@
 
 #include "types/BroadcastData.hpp"
 #include "types/SPLStandardMessage.hpp"
+#include "utils/defs/RobotDefinitions.hpp"
 
 /**
  * Shared data from the team data receiver module.

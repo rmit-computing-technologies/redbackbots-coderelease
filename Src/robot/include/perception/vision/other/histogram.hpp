@@ -4,7 +4,7 @@
 #include <vector>
 #include <numeric>
 
-#include "perception/vision/Region.hpp"
+#include "perception/vision/fovea/Region.hpp"
 #include "perception/vision/other/Ransac.hpp"
 #include "perception/vision/detector/BallDetector.hpp"
 

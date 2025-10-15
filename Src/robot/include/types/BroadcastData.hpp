@@ -1,8 +1,8 @@
 #pragma once
 
 #include "gamecontroller/RoboCupGameControlData.hpp"
-#include "types/AbsCoord.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
 #include "types/ActionCommand.hpp"
 #include "types/BehaviourSharedData.hpp"
 #include "types/SharedStateEstimationBundle.hpp"

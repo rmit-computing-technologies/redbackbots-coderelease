@@ -1,6 +1,6 @@
 #pragma once
 
-#include "perception/kinematics/Pose.hpp"
+#include "perception/kinematics/RobotPose.hpp"
 #include "types/ActionCommand.hpp"
 #include "types/ButtonPresses.hpp"
 #include "types/JointValues.hpp"
@@ -20,7 +20,7 @@ struct MotionBlackboard {
     ActionCommand::All active;
     Odometry odometry;
     ButtonPresses buttons;
-    Pose pose;
+    RobotPose pose;
     XYZ_Coord com;
     JointValues jointRequest;
     MotionDebugInfo motionDebugInfo;

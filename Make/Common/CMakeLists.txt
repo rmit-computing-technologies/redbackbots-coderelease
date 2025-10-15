@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 
 if(BUILD_NAO)
-  message(STATUS "Build_NAO = TRUE")
-  set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../CMake/NaoToolchain.cmake")
+    message(STATUS "Build_NAO = TRUE")
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../CMake/NaoToolchain.cmake")
 elseif(CMAKE_HOST_UNIX)
-  message(STATUS "Build_HOST_UNIX = TRUE")
-  set(CMAKE_CXX_COMPILER clang++)
+    message(STATUS "Build_HOST_UNIX = TRUE")
+    set(CMAKE_CXX_COMPILER clang++)
 endif()
 
 if(NOT BUILD_NAO)
-  set(BUILD_DESKTOP ON)
+    set(BUILD_DESKTOP ON)
 endif()
 
 project(redbackbots LANGUAGES CXX)
@@ -17,7 +17,7 @@ project(redbackbots LANGUAGES CXX)
 set(CMAKE_CONFIGURATION_TYPES Debug Develop Release CACHE STRING "" FORCE)
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Develop CACHE STRING "" FORCE)
+    set(CMAKE_BUILD_TYPE Develop CACHE STRING "" FORCE)
 endif()
 
 # C++ 14 is required for now due to Boost Python
@@ -50,11 +50,11 @@ add_definitions(-DLINUX)
 # Ignore all compile warnings TODO should we keep?
 add_definitions(-w)
 if (UNIX)
-  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-    set(PLATFORM "LinuxArm")
-  else()
-    set(PLATFORM "Linux")
-  endif()
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+        set(PLATFORM "LinuxArm")
+    else()
+        set(PLATFORM "Linux")
+    endif()
 endif()
 message(STATUS "Platform: ${PLATFORM}")
 if(NOT PLATFORM)
@@ -102,18 +102,18 @@ set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "")
 
 # TODO TW: MVSC is MS Visual Studio Complier - is this required?
 if(MSVC)
-  add_compile_options(/W3 /GF /GS- /MP /Zc:wchar_t- /EHsc /permissive- /Zc:preprocessor /wd5105)
-  add_definitions(-DNOMINMAX -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -D_CRT_SECURE_NO_DEPRECATE -D__SSSE3__)
+    add_compile_options(/W3 /GF /GS- /MP /Zc:wchar_t- /EHsc /permissive- /Zc:preprocessor /wd5105)
+    add_definitions(-DNOMINMAX -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -D_CRT_SECURE_NO_DEPRECATE -D__SSSE3__)
 
-  execute_process(COMMAND bash -c "cat /proc/cpuinfo" OUTPUT_VARIABLE _cpuinfo)
-  string(FIND "${_cpuinfo}" "avx2" _has_avx2)
-  if(NOT ${_has_avx2} EQUAL -1)
-    add_compile_options(/arch:AVX2)
-  else()
-    add_compile_options(/arch:AVX)
-  endif()
+    execute_process(COMMAND bash -c "cat /proc/cpuinfo" OUTPUT_VARIABLE _cpuinfo)
+    string(FIND "${_cpuinfo}" "avx2" _has_avx2)
+    if(NOT ${_has_avx2} EQUAL -1)
+        add_compile_options(/arch:AVX2)
+    else()
+        add_compile_options(/arch:AVX)
+    endif()
 else()
-  add_compile_options(-pipe
+    add_compile_options(-pipe
       -Wall
       -Wextra
       -Wconversion
@@ -123,13 +123,13 @@ else()
       -Wunreachable-code
       -Xclang
       -fno-pch-timestamp)
-  if(BUILD_DESKTOP)
-    if(NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL arm64) # Option does not work on Apple M1, but "The Internet" says it also causes trouble on multiple other arm platforms.
-      #add_compile_options(-march=native)
+    if(BUILD_DESKTOP)
+        if(NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL arm64) # Option does not work on Apple M1, but "The Internet" says it also causes trouble on multiple other arm platforms.
+            #add_compile_options(-march=native)
+        endif()
+        add_link_options(-fuse-ld=lld)
     endif()
-    add_link_options(-fuse-ld=lld)
-  endif()
-  add_definitions(-D__extern_always_inline=inline)
+    add_definitions(-D__extern_always_inline=inline)
 endif()
 
 set(_is_msvc "$<CXX_COMPILER_ID:MSVC>")
@@ -187,14 +187,14 @@ target_link_options(Flags::Default INTERFACE
     $<$<AND:${_not_mac},${_is_clang}>:$<$<CONFIG:Release>:-s>>)
 
 if(BUILD_DESKTOP)
-  # include("${SIMROBOT_PREFIX}/Make/Common/Box2D.cmake")
-  # include("${SIMROBOT_PREFIX}/Make/Common/ODE.cmake")
-  # include("${SIMROBOT_PREFIX}/Make/Common/OpenGL.cmake")
-  # include("${SIMROBOT_PREFIX}/Make/Common/Qt5.cmake")
+    # include("${SIMROBOT_PREFIX}/Make/Common/Box2D.cmake")
+    # include("${SIMROBOT_PREFIX}/Make/Common/ODE.cmake")
+    # include("${SIMROBOT_PREFIX}/Make/Common/OpenGL.cmake")
+    # include("${SIMROBOT_PREFIX}/Make/Common/Qt5.cmake")
 
-  add_library(GTest::GTest STATIC IMPORTED)
-  set_target_properties(GTest::GTest PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_PREFIX}/Util/gtest/include")
-  set_target_properties(GTest::GTest PROPERTIES IMPORTED_LOCATION "${RBB_PREFIX}/Util/gtest/lib/${PLATFORM}/libgtest.a")
+    add_library(GTest::GTest STATIC IMPORTED)
+    set_target_properties(GTest::GTest PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_PREFIX}/Util/gtest/include")
+    set_target_properties(GTest::GTest PROPERTIES IMPORTED_LOCATION "${RBB_PREFIX}/Util/gtest/lib/${PLATFORM}/libgtest.a")
 endif()
 
 set(EIGEN_NAN_INITIALIZATION_CONDITION "$<NOT:$<CONFIG:Release>>")
@@ -211,142 +211,165 @@ set(EIGEN_NAN_INITIALIZATION_CONDITION "$<NOT:$<CONFIG:Release>>")
 
 # Library - ALSA Sound (libasound)
 if(BUILD_NAO)
-  add_library(Nao::ALSA::ALSA SHARED IMPORTED)
-  set_target_properties(Nao::ALSA::ALSA PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/gcc/V6/lib/libasound.so")
+    add_library(Nao::ALSA::ALSA SHARED IMPORTED)
+    set_target_properties(Nao::ALSA::ALSA PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/gcc/V6/lib/libasound.so")
 else()
-  find_package(ALSA REQUIRED)
+    find_package(ALSA REQUIRED)
 endif()
 
 # Library - Boost (and components)
 if(BUILD_NAO)
-  message(STATUS "----- BUILD NAO CONFIGURATION -----")
+    message(STATUS "----- BUILD NAO CONFIGURATION -----")
 
-  # Boost headers
-  add_library(BoostInterface INTERFACE)
-  set_target_properties(BoostInterface PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    # Boost headers
+    add_library(BoostInterface INTERFACE)
+    set_target_properties(BoostInterface PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
 
-  # Boost program options
-  add_library(Boost::ProgramOptions STATIC IMPORTED)
-  set_target_properties(Boost::ProgramOptions PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::ProgramOptions PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_program_options.a")
+    # Boost program options
+    add_library(Boost::ProgramOptions STATIC IMPORTED)
+    set_target_properties(Boost::ProgramOptions PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::ProgramOptions PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_program_options.a")
 
-  # Boost python3
-  add_library(Boost::Python3 STATIC IMPORTED)
-  set_target_properties(Boost::Python3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Python3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_python38.a")
+    # Boost python3
+    add_library(Boost::Python3 STATIC IMPORTED)
+    set_target_properties(Boost::Python3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::Python3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_python38.a")
 
-  # Boost regex
-  add_library(Boost::Regex STATIC IMPORTED)
-  set_target_properties(Boost::Regex PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Regex PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_regex.a")
+    # Boost regex
+    add_library(Boost::Regex STATIC IMPORTED)
+    set_target_properties(Boost::Regex PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::Regex PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_regex.a")
 
-  # Boost system
-  add_library(Boost::System STATIC IMPORTED)
-  set_target_properties(Boost::System PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::System PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_system.a")
+    # Boost system
+    add_library(Boost::System STATIC IMPORTED)
+    set_target_properties(Boost::System PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::System PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_system.a")
 
-  # Boost thread
-  add_library(Boost::Thread STATIC IMPORTED)
-  set_target_properties(Boost::Thread PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Thread PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_thread.a")
+    # Boost thread
+    add_library(Boost::Thread STATIC IMPORTED)
+    set_target_properties(Boost::Thread PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::Thread PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/V6/libboost_thread.a")
 
-  # Library - libexpat
-  add_library(libexpat::libexpat SHARED IMPORTED)
-  #set_target_properties(libexpat::libexpat PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/expat/include")
-  set_target_properties(libexpat::libexpat PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/expat/lib/V6/libexpat.so.1.6.11")
+    # Library - Compiled NN
+    add_library(CompiledNN STATIC IMPORTED)
+    set_target_properties(CompiledNN PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/CompiledNN/include")
+    set_target_properties(CompiledNN PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/CompiledNN/lib/V6/libCompiledNN.a")
 
-  # Library - libjpeg
-  add_library(libjpeg::libjpeg STATIC IMPORTED)
-  set_target_properties(libjpeg::libjpeg PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/libjpeg/include")
-  set_target_properties(libjpeg::libjpeg PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/libjpeg/lib/V6/libjpeg.a")
+    # Interface - Compiled NN asmjit
+    add_library(CompiledNNasmjit INTERFACE)
+    set_target_properties(CompiledNNasmjit PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/CompiledNN/3rdParty/asmjit/src")
 
-  # Library - PNG
-  add_library(Png::Png STATIC IMPORTED)
-  set_target_properties(Png::Png PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/png/include")
-  set_target_properties(Png::Png PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/png/lib/V6/libpng.a")
+    # Library - ONNX Runtime
+    add_library(ONNXRuntime SHARED IMPORTED)
+    set_target_properties(ONNXRuntime PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/onnxruntime/include")
+    set_target_properties(ONNXRuntime PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/onnxruntime/lib/Linux/libonnxruntime.so.1.10.0")
+    target_link_options(ONNXRuntime INTERFACE -rpath /usr/local/lib/) # see `Install/createRootImage` for how we get the the `.so` into NAOs
 
-  # Library - Python 3
-  add_library(Python38 STATIC IMPORTED)
-  set_target_properties(Python38 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python3.8/include" )
-  set_target_properties(Python38 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python3.8/lib/V6/libpython3.8.a")
+    # Interface - ONNXNao
+    add_library(CompiledNN::ONNXNao INTERFACE IMPORTED)
+    target_include_directories(CompiledNN::ONNXNao INTERFACE "${RBB_BUILDCHAIN_DIR}/CompiledNN2ONNX/include")
+    target_link_libraries(CompiledNN::ONNXNao INTERFACE ONNXRuntime)
 
-  # Library - fast Fourier transform
-  add_library(fftw3 STATIC IMPORTED)
-  set_target_properties(fftw3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/fftw3/include")
-  set_target_properties(fftw3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/fftw3/lib/V6/libfftw3.a")
-
-  add_library(CompiledNN STATIC IMPORTED)
-  set_target_properties(CompiledNN PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/CompiledNN/include")
-  set_target_properties(CompiledNN PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/CompiledNN/lib/libCompiledNN.a")
-  # set_target_properties(libtensorflow PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/libtensorflow/lib/libtensorflow_framework.so")
+    # Library - fast Fourier transform
+    add_library(fftw3 STATIC IMPORTED)
+    set_target_properties(fftw3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/fftw3/include")
+    set_target_properties(fftw3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/fftw3/lib/V6/libfftw3.a")
 
   # Library - hdf5
   add_library(hdf5 STATIC IMPORTED)
   set_target_properties(hdf5 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/hdf5/include")
   set_target_properties(hdf5 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/hdf5/lib/V6/libhdf5.a")
 
-  #  Library - opencv
-  add_library(opencv STATIC IMPORTED)
-  set_target_properties(opencv PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/opencv/include")
-  set_target_properties(opencv PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/opencv/lib/libopencv_ts.a")
+  # Library - kissfft
+  add_library(kissfft STATIC IMPORTED)
+  set_target_properties(kissfft PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/kissfft/include")
+  set_target_properties(kissfft PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/kissfft/lib/V6/libkissfft-float.a")
 
+    # Library - libexpat
+    add_library(libexpat::libexpat SHARED IMPORTED)
+    set_target_properties(libexpat::libexpat PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/expat/lib/V6/libexpat.so.1.6.11")
 
-endif()
-if(BUILD_DESKTOP)
-  message(STATUS "----- BUILD DESKTOP CONFIGURATION -----")
-  # Boost headers
-  add_library(BoostInterface INTERFACE)
-  set_target_properties(BoostInterface PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    # Library - libjpeg
+    add_library(libjpeg::libjpeg STATIC IMPORTED)
+    set_target_properties(libjpeg::libjpeg PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/libjpeg/include")
+    set_target_properties(libjpeg::libjpeg PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/libjpeg/lib/V6/libjpeg.a")
 
-  # Boost program options
-  add_library(Boost::ProgramOptions STATIC IMPORTED)
-  set_target_properties(Boost::ProgramOptions PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::ProgramOptions PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_program_options.a")
-
-  # Boost python3
-  add_library(Boost::Python3 STATIC IMPORTED)
-  set_target_properties(Boost::Python3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Python3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_python38.a")
-
-  # Boost regex
-  add_library(Boost::Regex STATIC IMPORTED)
-  set_target_properties(Boost::Regex PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Regex PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_regex.a")
-
-  # Boost system
-  add_library(Boost::System STATIC IMPORTED)
-  set_target_properties(Boost::System PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::System PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_system.a")
-
-  # Boost thread
-  add_library(Boost::Thread STATIC IMPORTED)
-  set_target_properties(Boost::Thread PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
-  set_target_properties(Boost::Thread PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_thread.a")
-
-  # Library - BZip2
-  find_package(BZip2 REQUIRED)
-
-  # Library - libexpat
-  #add_library(libexpat::libexpat SHARED IMPORTED)
-  #set_target_properties(libexpat::libexpat PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/expat/include")
-  #set_target_properties(libexpat::libexpat PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/expat/lib/${PLATFORM}/libexpat.so.1.6.11")
-
-  # Library - libjpeg
-  add_library(libjpeg::libjpeg STATIC IMPORTED)
-  set_target_properties(libjpeg::libjpeg PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/libjpeg/include")
-  set_target_properties(libjpeg::libjpeg PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/libjpeg/lib/${PLATFORM}/libjpeg.a")
+    #  Library - opencv
+    add_library(opencv STATIC IMPORTED)
+    set_target_properties(opencv PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/opencv/include")
+    set_target_properties(opencv PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/opencv/lib/libopencv_ts.a")
 
   # Library - PNG
   add_library(Png::Png STATIC IMPORTED)
   set_target_properties(Png::Png PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/png/include")
-  set_target_properties(Png::Png PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/png/lib/${PLATFORM}/libpng.a")
+  set_target_properties(Png::Png PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/png/lib/V6/libpng.a")
 
-  # Library - Python 3
-  # NOTE: Ubuntu 22.04 seems to need to use the SHARED library due to 32/64-bit alignment
-  #       as inlcuded files from NaoV6 are 32-bit
-  add_library(Python38 SHARED IMPORTED)
-  set_target_properties(Python38 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python3.8/include" )
-  set_target_properties(Python38 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python3.8/lib/${PLATFORM}/libpython3.8.so")
+  # Library - PortAudio
+  add_library(PortAudio STATIC IMPORTED)
+  set_target_properties(PortAudio PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/PortAudio/include")
+  set_target_properties(PortAudio PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/PortAudio/lib/V6/libportaudio.a")
+
+    # Library - Python 3
+    add_library(Python38 STATIC IMPORTED)
+    set_target_properties(Python38 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python3.8/include" )
+    set_target_properties(Python38 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python3.8/lib/V6/libpython3.8.a")
+
+endif()
+if(BUILD_DESKTOP)
+    message(STATUS "----- BUILD DESKTOP CONFIGURATION -----")
+    # Boost headers
+    add_library(BoostInterface INTERFACE)
+    set_target_properties(BoostInterface PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+
+    # Boost program options
+    add_library(Boost::ProgramOptions STATIC IMPORTED)
+    set_target_properties(Boost::ProgramOptions PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::ProgramOptions PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_program_options.a")
+
+    # Boost python3
+    add_library(Boost::Python3 STATIC IMPORTED)
+    set_target_properties(Boost::Python3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::Python3 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_python38.a")
+
+    # Boost regex
+    add_library(Boost::Regex STATIC IMPORTED)
+    set_target_properties(Boost::Regex PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::Regex PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_regex.a")
+
+    # Boost system
+    add_library(Boost::System STATIC IMPORTED)
+    set_target_properties(Boost::System PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::System PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_system.a")
+
+    # Boost thread
+    add_library(Boost::Thread STATIC IMPORTED)
+    set_target_properties(Boost::Thread PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/boost/include")
+    set_target_properties(Boost::Thread PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/boost/lib/${PLATFORM}/libboost_thread.a")
+
+    # Library - BZip2
+    find_package(BZip2 REQUIRED)
+
+    # Library - Compiled NN - DISABLED (TW: for now CompiledNN is not in desktop)
+    # add_library(CompiledNN STATIC IMPORTED)
+    # set_target_properties(CompiledNN PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/CompiledNN/include")
+    # set_target_properties(CompiledNN PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/CompiledNN/lib/${PLATFORM}/libCompiledNN.a")
+
+    # Library - libjpeg
+    add_library(libjpeg::libjpeg STATIC IMPORTED)
+    set_target_properties(libjpeg::libjpeg PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/libjpeg/include")
+    set_target_properties(libjpeg::libjpeg PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/libjpeg/lib/${PLATFORM}/libjpeg.a")
+
+    # Library - PNG
+    add_library(Png::Png STATIC IMPORTED)
+    set_target_properties(Png::Png PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/png/include")
+    set_target_properties(Png::Png PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/png/lib/${PLATFORM}/libpng.a")
+
+    # Library - Python 3
+    # NOTE: Ubuntu 22.04 seems to need to use the SHARED library due to 32/64-bit alignment
+    #       as inlcuded files from NaoV6 are 32-bit
+    add_library(Python38 SHARED IMPORTED)
+    set_target_properties(Python38 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/python3.8/include" )
+    set_target_properties(Python38 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/python3.8/lib/${PLATFORM}/libpython3.8.so")
 
 endif()
 
@@ -375,17 +398,18 @@ include("../CMake/rbb-common.cmake")
 ##############
 # Nao Source code build
 if(BUILD_NAO OR (NOT DISABLE_NAO))
-  include("../CMake/LolaTest.cmake")
-  include("../CMake/BoostTest.cmake")
-  include("../CMake/Nao.cmake")
-  set(CMAKE_OSX_ARCHITECTURES "")
+    include("../CMake/LolaTest.cmake")
+    include("../CMake/BoostTest.cmake")
+    include("../CMake/Nao.cmake")
+    set(CMAKE_OSX_ARCHITECTURES "")
 endif()
 
 ##############
 # Desktop source code build
 if (BUILD_DESKTOP)
-  # Offnao itself
-  include("../CMake/Offnao.cmake")
+    # Offnao itself
+    include("../CMake/Offnao.cmake")
+    # include("../CMake/Vatnao.cmake")
 endif()
 
 ##############

@@ -9,12 +9,12 @@ const char *gameControllerGamePhaseNames[] = {
 };
 
 const char *gameControllerStateNames[] = {
-   "initial",     // 0
-   "standby",     // 5
-   "ready",       // 1
-   "set",         // 2
-   "playing",     // 3
-   "finished",    // 4
+   "initial",
+   "standby",
+   "ready",
+   "set",
+   "playing",
+   "finished",
 };
 
 const char *gameControllerPenaltyNames[] = {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 
 class SharedStateEstimationBundle
 {

@@ -3,7 +3,7 @@
 
 #include "types/RobotVisionInfo.hpp"
 #include "types/Odometry.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
 
 class RobotObservation {
 public:

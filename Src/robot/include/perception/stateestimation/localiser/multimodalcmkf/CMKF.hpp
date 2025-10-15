@@ -1,7 +1,7 @@
 #ifndef CMKF_HPP
 #define CMKF_HPP
 
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 #include "CMKFConstants.hpp"
 
 class CMKF

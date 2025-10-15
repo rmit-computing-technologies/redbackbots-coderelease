@@ -1,11 +1,13 @@
 from util.Vector2D import Vector2D
-from util.Global import myPos, ballDistance, ballLostTime, myHeading
+from util.Global import myPos, ball_distance, ball_lost_time, myHeading
 from math import acos, radians
 from util.Timer import WallTimer, BumperTimer
 from util.Sonar import hasNearbySonarObject, LEFT, RIGHT
 from util.MathUtil import angleSignedDiff
 from robot import Sensors
 from util.FieldGeometry import ENEMY_GOAL_CENTER
+from util import log
+import random
 
 """
 Description:
@@ -27,7 +29,7 @@ BUMPER_CLEAR_MINIMUM_SECONDS = 1.0
 SONAR_CLEAR_MINIMUM_SECONDS = 0.2 
 
 # Minimum amount of times the bumper must activate before moving backwards
-NUM_BUMPER_ACTIVATIONS = 3.0
+NUM_BUMPER_ACTIVATIONS = 2.0
 SECONDS_BEFORE_BUMPER_ACTIVATIONS_RESET = 1.0
 
 # assumption of headings of obstacles when detected, relative to my heading
@@ -123,7 +125,7 @@ def calculate_tangent_point(
 # Input: Vector2D(forward(mm/s), left(mm/s))
 # Output: Vector2D(forward(mm/s), left(mm/s)) considering obstacle avoidance
 def walk_vec_with_avoidance(walk_vec):
-    if ballDistance() < 350 and ballLostTime() < 2.0 and \
+    if ball_distance() < 350 and ball_lost_time() < 2.0 and \
         ENEMY_GOAL_CENTER.minus(myPos()).length() < 1300 and \
             myHeading() > radians(-60) and myHeading() < radians(60):
         return walk_vec

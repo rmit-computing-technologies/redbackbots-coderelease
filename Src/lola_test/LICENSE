@@ -1,17 +1,77 @@
-Copyright (c) 2018 Nao-Team HTWK. All rights reserved.
+LICENSE
+------------------------------------------------------------------
+Copyright (c) 2024
+Artificial Intelligence Innovation Lab
+Centre for Industrial AI and Research Innovation
+School of Computing Technologies
+STEM College
+RMIT University.
+All rights reserved.
 
-Parts of this distribution were not developed by Nao-Team HTWK. This license doesn't apply to these parts, the rights of the copyright owners remain.
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+Preamble: RedbackBots as part of the AI Innovation Lab at RMIT University
+releases software it uses at RoboCup competitions
+for the benefit of the RoboCup community, including teams in the
+Standard Platform League. We intend to enable teams to benchmark their own scientific
+approaches in RoboCup competitions. We also hope that the scientific community
+will benefit through the publication of their findings. A second reason for
+RedbackBots releasing its code is that source code is the most solid
+documentation of how problems were actually solved.
 
-Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+This distribution contains software developed by:
+* UNSW Sydney, Australia
+* B-Human (http://www.b-human.de)
 
-Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+Parts of this distribution were not developed by RMIT University. This license
+doesn't apply to these parts, the rights of the copyright owners remain.
 
-The end-user documentation included with the redistribution, if any, must include the following acknowledgment: "This product includes software developed by Nao-Team HTWK (htwk-robots.de)." Alternately, this acknowledgment may appear in the software itself, if and wherever such third-party acknowledgments normally appear.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
 
-For each Nao-Team HTWK code release from which parts are used in a RoboCup competition, the usage shall be announced in the SPL mailing list (currently robocup-spl-teams@googlegroups.com) one month before the first competition in which you are using it. The announcement shall name which parts of this code are used.
+2. Redistributions in binary form must reproduce the above
+   copyright notice, this list of conditions and the following
+   disclaimer in the documentation and/or other materials provided
+   with the distribution.
 
-Bug fixes regarding existing code shall be sent back to Nao-Team HTWK via GitHub pull requests (https://github.com/NaoHTWK).
+3. The end-user documentation included with the redistribution, if
+   any, must include the following acknowledgment:
+   "This product includes software developed by RedbackBots, AI Innovation Lab, RMIT University."
+   Alternately, this acknowledgment may appear in the software
+   itself, if and wherever such third-party acknowledgments
+   normally appear.
 
-THIS SOFTWARE IS PROVIDED BY NAO-TEAM HTWK ``AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL NAO-TEAM HTWK NOR ITS MEMBERS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+4. If the source code or parts of the source code shall be used
+   for a RoboCup competition, the competing program must differ in
+   at least multiple major parts from the original distribution.
+   "Major parts" means own contributions to the RoboCup goal, which
+   are potentially publishable and usually manifest themselves as
+   new modules (i.e. source code) and not just as a parameterization
+   of existing technology (e.g. walking parameters, kicks, behavior
+   options).
+
+5. For each RedbackBots code release from which parts are used in a
+   RoboCup competition, the usage shall be announced in the SPL
+   mailing list (currently robocup-nao@lists.robocup.org) one month
+   before the first competition in which you are using it. The
+   announcement shall name which parts of this code are used.
+   It shall also contain a description of the own contribution
+   that addresses the criterions mentioned above.
+
+6. Bug fixes regarding existing code shall be sent back to RMIT University.
+
+
+THIS SOFTWARE IS PROVIDED BY RMIT UNIVERSITY ``AS IS'' AND ANY
+EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+RMIT UNIVERSITY NOR ITS MEMBERS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+------------------------------------------------------------------

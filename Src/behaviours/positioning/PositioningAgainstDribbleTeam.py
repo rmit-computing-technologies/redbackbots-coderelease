@@ -11,7 +11,7 @@ from Positioning import (
     Role,
     OBJECT_INDEX)
 from util.TeamStatus import my_player_number
-from util.Global import ballWorldPos, myPos, myHeading
+from util.Global import ball_world_pos, myPos, myHeading
 from util.Vector2D import (
     Vector2D,
     makeVector2DFromDistHeading)
@@ -51,7 +51,6 @@ from robot import (
     POSITIONING_AGAINST_DRIBBLE_TEAM_SWEEPER
 )
 
-
 class Shooter(Role):
     '''
     Defender:
@@ -75,7 +74,7 @@ class Shooter(Role):
         goal_to_ball_dist_to_use_max = 6000.0
         goal_to_ball_dist_to_use_min = 2000.0
 
-        goal_to_ball = ball_pos.minus(ENEMY_GOAL_CENTER)
+        goal_to_ball = ball_pos.minus(ENEMY_GOAL_CENTER.clone())
         goal_to_ball_dist = goal_to_ball.length()
 
         if goal_to_ball_dist < goal_to_ball_dist_to_use_min:
@@ -90,7 +89,7 @@ class Shooter(Role):
             dist_to_ball = m * goal_to_ball_dist + b
 
         ball_to_opponent_goal_heading = \
-            ENEMY_GOAL_CENTER.minus(ball_pos).heading()
+            ENEMY_GOAL_CENTER.clone().minus(ball_pos).heading()
 
         position = ball_pos.plus(
             makeVector2DFromDistHeading(
@@ -111,7 +110,7 @@ class Shooter(Role):
         return position
 
     # Evaluate positioin, heading, position_error and heading_error
-    def evaluate(self, robot_pos=myPos(), ball_pos=ballWorldPos()):
+    def evaluate(self, robot_pos=myPos(), ball_pos=ball_world_pos()):
 
         self.position = self.default_position(robot_pos, ball_pos)
 
@@ -155,7 +154,7 @@ class Supporter(Role):
         else:
             self.pos_offset = -750
 
-    def evaluate(self, robot_pos=myPos(), ball_pos=ballWorldPos()):
+    def evaluate(self, robot_pos=myPos(), ball_pos=ball_world_pos()):
 
         # Update some flags to decide our position
         self.update_in_left_side(ball_pos)
@@ -471,7 +470,7 @@ class Sweeper(Role):
         return position
 
     # Evaluate positioin, heading, position_error and heading_error
-    def evaluate(self, robot_pos=myPos(), ball_pos=ballWorldPos()):
+    def evaluate(self, robot_pos=myPos(), ball_pos=ball_world_pos()):
 
         self.position = self.default_position(robot_pos, ball_pos)
 
@@ -556,7 +555,7 @@ class PositioningAgainstDribbleTeam(Positioning):
         # of the following arrays
         anticipators_current_positions.append(myPos())
         anticipators_current_headings.append(myHeading())
-        anticipators_ball_positions.append(ballWorldPos())
+        anticipators_ball_positions.append(ball_world_pos())
         player_numbers.append(my_player_number())
 
         # num_ball_players
@@ -574,7 +573,7 @@ class PositioningAgainstDribbleTeam(Positioning):
                 anticipators_current_headings.append(
                     get_teammate_heading(player))
                 if get_teammate_seconds_since_last_ball_update(player) > 5.0:
-                    anticipators_ball_positions.append(ballWorldPos())
+                    anticipators_ball_positions.append(ball_world_pos())
                 else:
                     anticipators_ball_positions.append(teammate_ego_ball(player))  # noqa
                 player_numbers.append(player)
@@ -646,4 +645,4 @@ class PositioningAgainstDribbleTeam(Positioning):
 
         # Evaluate my position again
         self.my_role_name = self.role_index_to_name(best_role_index)
-        self.roles[self.get_my_role_index()][OBJECT_INDEX].evaluate(myPos(), ballWorldPos()) # noqa
+        self.roles[self.get_my_role_index()][OBJECT_INDEX].evaluate(myPos(), ball_world_pos()) # noqa

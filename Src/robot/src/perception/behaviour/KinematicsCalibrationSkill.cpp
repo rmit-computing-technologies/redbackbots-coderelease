@@ -14,9 +14,9 @@
 #include "blackboard/modules/VisionBlackboard.hpp"
 #include "perception/behaviour/KinematicsCalibrationSkill.hpp"
 #include "perception/kinematics/Kinematics.hpp"
-#include "perception/kinematics/Pose.hpp"
+#include "perception/kinematics/RobotPose.hpp"
 #include "types/ActionCommand.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
 #include "utils/Logger.hpp"
 
 fadbad::F<float> fadbadAtan2(fadbad::F<float> y, fadbad::F<float> x) {
@@ -78,7 +78,7 @@ fadbad::F<float> KinematicsCalibrationSkill::objectiveFunction(
    kinematics.parameters = parameters.cast<float>();
 
    kinematics.updateDHChain();
-   Pose pose = kinematics.getPose();
+   RobotPose pose = kinematics.getPose();
 
 
    /* Image to RR */
@@ -98,14 +98,15 @@ fadbad::F<float> KinematicsCalibrationSkill::objectiveFunction(
       0,
       1);
 
+   // TODO (BK): Using boost version of cam2world transform, fix to eigen
    lOrigin = prod(
-      pose.getC2wTransform(),
+      pose.getC2wTransformBoost(),
       lOrigin2);
 
    boost::numeric::ublas::matrix<fadbad::F<float> > toPixel, toPixel2;
-   toPixel2 = vec4<fadbad::F<float> >(0, 0, FOCAL_LENGTH, 1);
+   toPixel2 = vec4<fadbad::F<float> >(0, 0, DEFAULT_FOCAL_LENGTH, 1);
    toPixel = prod(
-      pose.getC2wTransform(),
+      pose.getC2wTransformBoost(),
       toPixel2);
 
    boost::numeric::ublas::matrix<fadbad::F<float> > cdir(toPixel - lOrigin);

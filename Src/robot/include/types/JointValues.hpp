@@ -14,6 +14,7 @@ struct JointValues {
          currents[i] = NAN;
       }
    }
+   
    JointValues(bool zero) {
       for (int i = 0; i < Joints::NUMBER_OF_JOINTS; ++i) {
          angles[i] = 0;
@@ -22,6 +23,7 @@ struct JointValues {
          currents[i] = 0;
       }
    }
+   
    /* Angles in radians. Used both for sensor reading and actuating */
    float angles[Joints::NUMBER_OF_JOINTS];
    /* Stiffnesses [-1.0, 0.0..1.0]. Used only for actuating */

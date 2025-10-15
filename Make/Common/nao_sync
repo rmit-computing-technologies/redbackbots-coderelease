@@ -31,8 +31,6 @@ import rbbpython.sshscp as scp
 
 # Global Parameters
 REDBACKBOTS_CHECKOUT_DIR = cfg.rbbCheckoutDirectory()
-WHISTLE_DIR_HEARD = "whistle/heard_whistles"
-WHISTLE_DIR_OLD = "whistle/old_whistles"
 remote = None
 #remote = scp.SshScp()
 
@@ -235,20 +233,16 @@ def setWirelessProfile(wireless):
     
     # Checking profile exists
     profilePath = REDBACKBOTS_CHECKOUT_DIR + "/Install/Profiles/" + wireless
+
+    # Copy over yaml base files
+    remote.rsyncFiles(
+        src=f"{REDBACKBOTS_CHECKOUT_DIR}/Install/Files/*.yaml.*",
+        dest="Profiles",
+    )
     if os.path.exists(profilePath):
-        remote.sshCommand("/home/nao/bin/setprofile " + wireless)
+        remote.sshCommand(f"sudo python3 /home/nao/bin/setprofile.py -p {wireless}")
     else:
         print_warning("Cannot find wireless profile " + wireless + ". Not setting wireless profile", remote.robot_name)
-
-def create_whistle_dir():
-    """
-    Creates a directory that whistle detector expects to exists
-    """
-    print_status("Creating dir for whistle detector")
-
-    remote.sshCommand(f"mkdir -p {WHISTLE_DIR_HEARD}")
-    remote.sshCommand(f"mkdir -p {WHISTLE_DIR_OLD}")
-    remote.sshCommand(f"rm {WHISTLE_DIR_OLD}/*")
 
 def syncRBB(config, syncAll, volume):
     print_status("Syncing Robot", remote.robot_name)
@@ -294,9 +288,6 @@ def syncRBB(config, syncAll, volume):
             remote.sshCommand(command)
     else:
         print_subitem("Skipping: Services", remote.robot_name)
-
-    # Whistle audio simlink
-    print_warning("Whistle audio simlink not done. TODO - if necessary", remote.robot_name)
 
     # Sync CPP code
     src = cfg.getCppExecutablePath(config)
@@ -349,9 +340,6 @@ def syncToRobot(robot):
         # Do delete
         if args.d:
             deleteRBB(args.config)
-
-        # Make whistle detector dir
-        create_whistle_dir()
 
         # Do robot sync
         syncRBB(args.config, args.a, args.volume)

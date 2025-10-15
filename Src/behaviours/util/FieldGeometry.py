@@ -2,7 +2,7 @@ import robot
 from util import MathUtil
 from util.Vector2D import Vector2D, angleBetween, makeVector2DCopy
 from math import radians, atan2, cos, sin
-from util.Global import ballWorldPos, myPos, myHeading
+from util.Global import ball_world_pos, myPos, myHeading
 from util.Constants import (
     FIELD_WIDTH,
     FIELD_LENGTH,
@@ -11,10 +11,13 @@ from util.Constants import (
     GOAL_POST_ABS_Y,
     HALF_FIELD_LENGTH,
     HALF_FIELD_WIDTH,
+    HALF_GOAL_BOX_WIDTH,
+    HALF_PENALTY_BOX_WIDTH,
+    PENALTY_BOX_LENGTH,
     PENALTY_CROSS_ABS_X,
     GOAL_BOX_LENGTH
 )
-from util.MathUtil import clamp
+from util.MathUtil import clamp, normalisedTheta
 
 blackboard = None
 
@@ -44,6 +47,20 @@ ENEMY_PENALTY_CENTER = Vector2D(PENALTY_CROSS_ABS_X, 0)
 ENEMY_LEFT_POST = Vector2D(GOAL_POST_ABS_X, GOAL_POST_ABS_Y)
 ENEMY_RIGHT_POST = Vector2D(GOAL_POST_ABS_X, -GOAL_POST_ABS_Y)
 
+# Enemy goal line-intersections
+ENEMY_LEFT_GOAL_BOX_CORNER = Vector2D(
+    HALF_FIELD_LENGTH - GOAL_BOX_LENGTH,
+    -HALF_GOAL_BOX_WIDTH)
+ENEMY_RIGHT_GOAL_BOX_CORNER = Vector2D(
+    HALF_FIELD_LENGTH - GOAL_BOX_LENGTH,
+    HALF_GOAL_BOX_WIDTH)
+ENEMY_LEFT_PENALTY_BOX_CORNER = Vector2D(
+    HALF_FIELD_LENGTH - PENALTY_BOX_LENGTH,
+    -HALF_PENALTY_BOX_WIDTH)
+ENEMY_RIGHT_PENALTY_BOX_CORNER = Vector2D(
+    HALF_FIELD_LENGTH - PENALTY_BOX_LENGTH,
+    HALF_PENALTY_BOX_WIDTH)
+
 # Own goal vectors.
 OWN_GOAL_CENTER = Vector2D(-FIELD_LENGTH/2.0, 0)
 # +100 offset so angles aren't too sharp near goals
@@ -52,8 +69,25 @@ OWN_GOAL_BEHIND_CENTER = Vector2D(
 
 OUR_GOAL_CENTRE = Vector2D(-FIELD_LENGTH/2, 0)
 OUR_GOAL_BEHIND_CENTRE = Vector2D(-FIELD_LENGTH/2 - 100, 0)
+OUR_PENALTY_CENTER = Vector2D(-PENALTY_CROSS_ABS_X, 0)
 OUR_LEFT_POST = Vector2D(-GOAL_POST_ABS_X, GOAL_POST_ABS_Y)
 OUR_RIGHT_POST = Vector2D(-GOAL_POST_ABS_X, -GOAL_POST_ABS_Y)
+
+# Our goal line-intersections
+OUR_LEFT_GOAL_BOX_CORNER = Vector2D(
+    -(HALF_FIELD_LENGTH - GOAL_BOX_LENGTH),
+    HALF_GOAL_BOX_WIDTH)
+OUR_RIGHT_GOAL_BOX_CORNER = Vector2D(
+    -(HALF_FIELD_LENGTH - GOAL_BOX_LENGTH),
+    -HALF_GOAL_BOX_WIDTH)
+OUR_LEFT_PENALTY_BOX_CORNER = Vector2D(
+    -(HALF_FIELD_LENGTH - PENALTY_BOX_LENGTH),
+    HALF_PENALTY_BOX_WIDTH)
+OUR_RIGHT_PENALTY_BOX_CORNER = Vector2D(
+    -(HALF_FIELD_LENGTH - PENALTY_BOX_LENGTH),
+    -HALF_PENALTY_BOX_WIDTH)
+
+OUR_MIDLLE_GOAL_POST_BOX_CORNER = -HALF_FIELD_LENGTH + GOAL_BOX_LENGTH/2.0
 
 # The Corners in the field
 ENEMY_RIGHT_CORNER = Vector2D((FIELD_LENGTH / 2), FIELD_WIDTH / 2)
@@ -61,7 +95,10 @@ OUR_LEFT_CORNER = Vector2D(-FIELD_LENGTH / 2, FIELD_WIDTH / 2)
 ENEMY_LEFT_CORNER = Vector2D((FIELD_LENGTH / 2), (-FIELD_WIDTH / 2))
 OUR_RIGHT_CORNER = Vector2D(-FIELD_LENGTH / 2, -FIELD_WIDTH / 2)
 
-
+# Center line points 
+FIELD_CENTER = Vector2D(0, 0)
+MIDDLE_TOP = Vector2D(0, HALF_FIELD_WIDTH)
+MIDDLE_BOTTOM = Vector2D(0, -HALF_FIELD_WIDTH)
 
 def update_field_geometry(newBlackboard):
     """
@@ -80,7 +117,7 @@ def update_field_geometry(newBlackboard):
 
 def calculateTimeToReachBall(robot_pos, robot_heading):
     opponentGoal = ENEMY_GOAL_CENTER
-    interceptPoint = ballWorldPos()
+    interceptPoint = ball_world_pos()
     interceptToGoal = opponentGoal.minus(interceptPoint)
     interceptToGoalHeading = MathUtil.normalisedTheta(
         atan2(interceptToGoal.y, interceptToGoal.x))
@@ -150,7 +187,7 @@ def globalPointToRobotRelativePoint(globalVector):
 
 # Closes y-value from ball to our goal line between posts
 def closest_goal_y():
-    return clamp(ballWorldPos().y, -GOAL_POST_ABS_Y, GOAL_POST_ABS_Y)
+    return clamp(ball_world_pos().y, -GOAL_POST_ABS_Y, GOAL_POST_ABS_Y)
 
 
 # Closest point from the ball to our goal line between posts
@@ -166,7 +203,7 @@ def closest_opponent_goal_point():
 # Update whether ball is near our goal, with a noise margin
 def update_ball_near_our_goal():
     dist_ball_to_our_goal = \
-        ballWorldPos().distanceTo(closest_our_goal_point())
+        ball_world_pos().distanceTo(closest_our_goal_point())
 
     global _ball_near_our_goal
     if _ball_near_our_goal:
@@ -181,12 +218,12 @@ def update_ball_near_our_goal():
 def update_ball_in_front_of_enemy_goal():
     global _ball_in_front_of_enemy_goal
     if _ball_in_front_of_enemy_goal:
-        if ballWorldPos().x < FIELD_LENGTH/2 - GOAL_BOX_LENGTH - 500 or \
-                abs(ballWorldPos().y) > GOAL_POST_ABS_Y + 100:
+        if ball_world_pos().x < FIELD_LENGTH/2 - GOAL_BOX_LENGTH - 500 or \
+                abs(ball_world_pos().y) > GOAL_POST_ABS_Y + 100:
             _ball_in_front_of_enemy_goal = False
     else:
-        if ballWorldPos().x > FIELD_LENGTH/2 - GOAL_BOX_LENGTH - 250 and \
-                abs(ballWorldPos().y) < GOAL_POST_ABS_Y - 100:
+        if ball_world_pos().x > FIELD_LENGTH/2 - GOAL_BOX_LENGTH - 250 and \
+                abs(ball_world_pos().y) < GOAL_POST_ABS_Y - 100:
             _ball_in_front_of_enemy_goal = True
 
 
@@ -197,8 +234,34 @@ def ball_near_our_goal():
 def ball_in_front_of_enemy_goal():
     return _ball_in_front_of_enemy_goal
 
+
 def in_role_position(pos, north=HALF_FIELD_WIDTH, east=HALF_FIELD_WIDTH, south=-HALF_FIELD_WIDTH, west=-HALF_FIELD_LENGTH):
     if pos.y < north and pos.x < east and pos.y > south and pos.x > west:
         return True
     else:
         return False
+
+
+def heading_error(pos: Vector2D) -> float:
+    """Calculates and returns the heading error between the robot's current orientation and the direction 
+        to a field position. The error is normalised to ensure it falls within valid heading boundaries.
+
+    Args:
+        pos (Vector2D): The world position of the target.
+
+    Returns: 
+        heading_error (float): The heading difference between `pos` heading and myHeading in radians.
+    """
+    return normalisedTheta(
+            pos.minus(myPos()).heading() - myHeading()
+            )
+
+# TODO: implement function overload (potentially using `isinstance(Vector2D)` in the above function)
+# def heading_error(heading: float) -> float:
+#     """Calculates and returns the heading error between the robot's current orientation and the direction
+#         of another heading. The error is normalised to ensure it falls within valid heading boundaries.
+
+#     Returns: 
+#         heading_error (float): The heading difference between `heading` and myHeading in radians.
+#     """
+#     return normalisedTheta(heading - myHeading())

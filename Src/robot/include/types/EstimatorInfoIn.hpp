@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamecontroller/RoboCupGameControlData.hpp"
+#include "types/geometry/AbsCoord.hpp"
 #include "types/BehaviourSharedData.hpp"
 #include "types/SensorValues.hpp"
 #include "types/Odometry.hpp"
@@ -10,7 +11,6 @@
 #include "types/BroadcastData.hpp"
 #include "types/RobotVisionInfo.hpp"
 #include "types/ActionCommand.hpp"
-#include "types/AbsCoord.hpp"
 
 class EstimatorInfoIn
 {
@@ -36,7 +36,10 @@ class EstimatorInfoIn
         const Odometry &odometryDiff,
         const float dtInSeconds,
         const ActionCommand::Body actionCommandBody,
-        const SensorValues &sensorValues)
+        const SensorValues &sensorValues,
+        const bool &leftTeam,
+        const bool &seenRefGesture,
+        const uint8_t playerNum)
         : fieldFeatures(fieldFeatures)
         , balls(balls)
         , competitionType(competitionType)
@@ -58,6 +61,9 @@ class EstimatorInfoIn
         , dtInSeconds(dtInSeconds)
         , actionCommandBody(actionCommandBody)
         , sensorValues(sensorValues)
+        , leftTeam(leftTeam)
+        , seenRefGesture(seenRefGesture)
+        , playerNum(playerNum)
     {};
 
     EstimatorInfoIn(){};
@@ -83,6 +89,7 @@ class EstimatorInfoIn
     float dtInSeconds;
     ActionCommand::Body actionCommandBody;
     SensorValues sensorValues;
-
+    bool leftTeam;
+    bool seenRefGesture;
+    uint8_t playerNum;
 };
-

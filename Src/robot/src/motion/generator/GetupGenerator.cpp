@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 #include "motion/MotionDefs.hpp"
-#include "utils/angles.hpp"
+#include "utils/math/angles.hpp"
 #include "utils/Logger.hpp"
 #include "utils/speech.hpp"
 

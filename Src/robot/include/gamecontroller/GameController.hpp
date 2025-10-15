@@ -10,6 +10,8 @@
 #include "gamecontroller/RoboCupGameControlData.hpp"
 #include "types/ButtonPresses.hpp"
 #include "blackboard/Adapter.hpp"
+#include "utils/defs/RobotDefinitions.hpp"
+#include <array>
 
 class GameController : Adapter {
     public:
@@ -22,9 +24,10 @@ class GameController : Adapter {
     private:
         RoboCupGameControlData data;
         TeamInfo *our_team;
+        TeamInfo *opponent_team;
         bool connected;
+        bool active;
         int sock;
-        bool whistleDetected;
 
         /**
          * Connect to the GameController
@@ -47,16 +50,10 @@ class GameController : Adapter {
          */
         void handleFinishedPacket();
 
-        /**
-         * Return True if a whistle file was created in the last num_seconds.
-         * Should be a mirror of whistle_detector.py:whistle_heard function.
-         */
-        bool whistleHeard(int numSeconds);
-        int numWhistles = 0;
-
-        /* Flag to turn off acting on whistle if game does not need it */
-        bool actOnWhistleKickOff;
-        bool actOnWhistleGoal;
+        /* Game configs */
+        bool usePassing;
+        int numRequiredTouches;
+        int previousSetPlay = SET_PLAY_NONE; // Used to check if we have returned to the game without timing out
 
         /**
          * Parse data from the GameController
@@ -83,8 +80,13 @@ class GameController : Adapter {
         uint16_t myLastPenalty;
 
         /* Player & team number re-checked from config each cycle */
-        int playerNumber;
+        int myPlayerNumber;
         int teamNumber;
+
+        /* Touched ball state */
+        std::array<bool, ROBOTS_PER_TEAM> touchedBall;
+
+        int ballSeenFrames; // Works like python Globals ball_lost_frames
 
         /* Structure containing mask of buttons that have been pushed */
         ButtonPresses buttons;
@@ -93,7 +95,7 @@ class GameController : Adapter {
          * Structure containing the timestamps of when STATE_FINISHED
          * packets were received
          */
-        std::vector<time_t> finished_times;
+        std::vector<time_t> finishedTimes;
 
         // Call this every time data or teamNumber changes
         void setOurTeam();

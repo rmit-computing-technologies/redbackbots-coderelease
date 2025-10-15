@@ -96,12 +96,12 @@
      </widget>
     </item>
     <item>
-     <widget class="QCheckBox" name="cbSaliency">
+     <widget class="QCheckBox" name="cbCameraImage">
       <property name="toolTip">
-       <string>Saliency Scan</string>
+       <string>Camera Image</string>
       </property>
       <property name="text">
-       <string>&amp;Saliency Scan</string>
+       <string>&amp;Camera Image</string>
       </property>
       <property name="shortcut">
        <string>Alt+S</string>
@@ -124,6 +124,22 @@
       </property>
       <property name="shortcut">
        <string>Alt+R</string>
+      </property>
+      <attribute name="buttonGroup">
+       <string>bgMasks</string>
+      </attribute>
+     </widget>
+    </item>
+    <item>
+     <widget class="QCheckBox" name="cbDebugInfo">
+      <property name="text">
+       <string>&amp;DebugInfo</string>
+      </property>
+      <property name="shortcut">
+       <string>Alt+D</string>
+      </property>
+      <property name="checked">
+         <bool>true</bool>
       </property>
       <attribute name="buttonGroup">
        <string>bgMasks</string>

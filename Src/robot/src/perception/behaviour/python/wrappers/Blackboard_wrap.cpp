@@ -4,7 +4,10 @@ class_<Blackboard>("Blackboard")
     .def_readonly("stateEstimation", &Blackboard::stateEstimation)
     .def_readonly("behaviour", &Blackboard::behaviour)
     .def_readonly("gameController", &Blackboard::gameController)
+    .def_readonly("whistle", &Blackboard::whistle)
     .def_readonly("receiver", &Blackboard::receiver)
+    .def_readwrite("eventReceiver", &Blackboard::eventReceiver)
+    .def_readwrite("eventTransmitter", &Blackboard::eventTransmitter)
     .add_property("config", make_getter(&Blackboard::config, return_value_policy<return_by_value>()))
     .def_readonly("kinematics", &Blackboard::kinematics);
 
@@ -15,5 +18,8 @@ register_ptr_to_python< boost::shared_ptr<VisionBlackboard> >();
 register_ptr_to_python< boost::shared_ptr<StateEstimationBlackboard> >();
 register_ptr_to_python< boost::shared_ptr<BehaviourBlackboard> >();
 register_ptr_to_python< boost::shared_ptr<GameControllerBlackboard> >();
+register_ptr_to_python< boost::shared_ptr<WhistleBlackboard> >();
 register_ptr_to_python< boost::shared_ptr<ReceiverBlackboard> >();
+register_ptr_to_python< boost::shared_ptr<EventReceiverBlackboard> >();
+register_ptr_to_python< boost::shared_ptr<EventTransmitterBlackboard> >();
 register_ptr_to_python< boost::shared_ptr<KinematicsBlackboard> >();

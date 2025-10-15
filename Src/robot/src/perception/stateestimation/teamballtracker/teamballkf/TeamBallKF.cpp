@@ -10,7 +10,10 @@
 #include "types/EstimatorInfoIn.hpp"
 #include "types/EstimatorInfoOut.hpp"
 
-#include "utils/eigen_helpers.hpp"
+#include "blackboard/modules/EventTransmitterBlackboard.hpp"
+#include "blackboard/modules/EventReceiverBlackboard.hpp"
+
+#include "utils/math/eigen_helpers.hpp"
 #include "utils/Logger.hpp"
 
 static const TeamBallCovarianceMatrix getDefaultCovariance() {
@@ -73,6 +76,18 @@ void TeamBallKF::tick(
     estimatorInfoOut.teamBallVel = getBallVelAbsCoord(estimatorInfoOut, haveTeamBallUpdate);
     // estimatorInfoOut.teamBallPosUncertainty = getBallPosUncertainty();
     estimatorInfoOut.sharedStateEstimationBundle.haveTeamBallUpdate = haveTeamBallUpdate;
+
+    if (haveTeamBallUpdate) {
+        llog(INFO) << "===============================================================" << std::endl;
+        llog(INFO) << "Updating Team ball position: " << estimatorInfoOut.teamBallPos << std::endl;
+        llog(INFO) << "===============================================================" << std::endl;
+        // Raise team ball update event
+        EventTransmitter.raiseEvent(
+            "TEAM_BALL_UPDATE",
+            estimatorInfoOut.teamBallPos,
+            0.0f  // seconds until send
+        );
+    }
 }
 
 bool TeamBallKF::doesTeamBallNeedUpdate(const EstimatorInfoIn &estimatorInfoIn, EstimatorInfoOut &estimatorInfoOut) 
@@ -85,16 +100,24 @@ bool TeamBallKF::doesTeamBallNeedUpdate(const EstimatorInfoIn &estimatorInfoIn, 
     bool canSeeBall = !estimatorInfoIn.balls.empty();
     
     if (canSeeBall) {
-        /// If we can see a ball for 5 consecutive frames, then we can update
-        if (estimatorInfoOut.numOfBallSeenTicks > 5) 
+        /// If we can see a ball for 3 consecutive frames, then we can update
+        if (estimatorInfoOut.numOfBallSeenTicks > 3) 
         {   
             double distToBall = estimatorInfoOut.ballPosRRC.x();  
             int rangeToBall = calculateRangeToBall(distToBall);
 
             int currentRadius = rangeToBall * BALL_BUFFER_RADIUS;
-            double secondsSinceLastTeamBallUpdate = floor(estimatorInfoOut.ticksSinceTeamBallUpdate / TICKS_PER_SECOND);
+            std::array<float, ROBOTS_PER_TEAM> eventTimes = EventReceiver.getEventTimesSinceReceived("TEAM_BALL_UPDATE");
+            float secondsSinceLastTeamBallUpdate = std::numeric_limits<float>::max();
+            for (float time : eventTimes) {
+                if (time >= 0 && time < secondsSinceLastTeamBallUpdate) {
+                    secondsSinceLastTeamBallUpdate = time;
+                }
+            }
 
-            if ((isOutsideRadius(myBallPos, teamBallPos, currentRadius) && secondsSinceLastTeamBallUpdate > rangeToBall) || secondsSinceLastTeamBallUpdate > 6+rangeToBall) {
+            if ((isOutsideRadius(myBallPos, teamBallPos, currentRadius) 
+                && secondsSinceLastTeamBallUpdate > rangeToBall) 
+                || secondsSinceLastTeamBallUpdate > TEAM_BALL_STATIC_BALL_UPDATE_THRESHOLD+rangeToBall) {
                 return true;
             }
         }

@@ -21,6 +21,8 @@ class FieldPainter : private QPainter
 
       void drawBallRR (const BallInfo &ball, const AbsCoord &robot, const QColor &col);
       void drawBallRR(const BallInfo &ball, const AbsCoord &robot);
+      void drawPointRR (const RRCoord &rr, const AbsCoord &robot, const QColor &col=QColor(255, 127, 0));
+      void drawPointAbs (const AbsCoord &pos, const QColor &col=QColor(255, 127, 0));
       void drawFeatureRR (const FieldFeatureInfo &feat, const AbsCoord &robot);
       void drawFeatureAbs (const AbsCoord &pos, const FieldFeatureInfo &ff);
       void drawPlayerNumber(const AbsCoord &pos, int num, QColor color);
@@ -37,6 +39,9 @@ class FieldPainter : private QPainter
 
       void drawFieldLine(const LineInfo &line);
       void drawLineAbs(const AbsCoord &from, const AbsCoord &to, QColor q);
+
+      void drawGotoAbs (const AbsCoord &ball, QColor colour=QColor(0,0,255));
+      void drawGotoLineAbs(const AbsCoord &from, const AbsCoord &to, QColor q);
 
       void drawBallManoeuvre (const AbsCoord &ball, const AbsCoord &target, float headingError, std::string manoeuvreType, bool manoeuvreHard);
 

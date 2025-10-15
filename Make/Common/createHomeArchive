@@ -66,7 +66,7 @@ if __name__ == "__main__":
     requireUSB = False if not args.u else args.u
     volume = None if not args.volume else args.volume
     wirelessProfile = "RBB" if not args.wireless else args.wireless
-    homeArchive = REDBACKBOTS_CHECKOUT_DIR + "/home.tar.gz" if not args.archive else args.archive
+    homeArchive = REDBACKBOTS_CHECKOUT_DIR + "/Install/home.tar.gz" if not args.archive else args.archive
     print_subitem("Build configuration: " + buildConfiguration)
     print_subitem("Require USB: " + str(requireUSB))
     print_subitem("Volume: " + str(volume))
@@ -144,9 +144,9 @@ if __name__ == "__main__":
     with open(homeDir + "/nao/.config/hostname", 'w') as vFile:
         vFile.write("Default")
     with open(homeDir + "/nao/.config/wirelessIp", 'w') as vFile:
-        vFile.write("192.168.100.250")
+        vFile.write("10.0.51.250")
     with open(homeDir + "/nao/.config/wiredIp", 'w') as vFile:
-        vFile.write("192.168.100.251")
+        vFile.write("10.0.51.251")
 
     # Set wireless default profile (used by install.sh to grab the 'default' profile)
     src = REDBACKBOTS_CHECKOUT_DIR + "/Install/Profiles/" + wirelessProfile

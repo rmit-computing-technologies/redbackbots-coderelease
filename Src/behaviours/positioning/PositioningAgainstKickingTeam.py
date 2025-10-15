@@ -13,7 +13,7 @@ from Positioning import (
     Role,
     OBJECT_INDEX)
 from util.TeamStatus import my_player_number
-from util.Global import ballWorldPos, myPos, myHeading
+from util.Global import ball_world_pos, myPos, myHeading
 from util.Vector2D import (
     Vector2D,
     makeVector2DFromDistHeading)
@@ -134,7 +134,7 @@ class Defender(Role):
             far_point_min_dist_to_goal=900,
             far_point_max_dist_to_goal=3200,
             max_opponent_kick_distance=5000,
-            ball_pos=ballWorldPos()):
+            ball_pos=ball_world_pos()):
 
         if self.goalie_is_in_goal_box:
             far_point_min_dist_to_goal += 300
@@ -212,7 +212,7 @@ class Defender(Role):
                     self.goalie_is_in_goal_box = True
 
     # Evaluate positioin, heading, position_error and heading_error
-    def evaluate(self, robot_pos=myPos(), ball_pos=ballWorldPos()):
+    def evaluate(self, robot_pos=myPos(), ball_pos=ball_world_pos()):
 
         # Update some flags to decide our position
         self.update_in_left_side(ball_pos)
@@ -262,7 +262,7 @@ class Supporter(Role):
 
     MIN_X_WHEN_GOALIE_IN_BOX = -FIELD_LENGTH / 2 + GOAL_BOX_LENGTH + 200
 
-    def evaluate(self, robot_pos=myPos(), ball_pos=ballWorldPos):
+    def evaluate(self, robot_pos=myPos(), ball_pos=ball_world_pos):
 
         # Update some flags to decide our position
         self.update_in_left_side(ball_pos)
@@ -578,7 +578,7 @@ class Upfielder(Role):
             far_point_min_distance_to_post=800,
             close_point_default_dist_to_ball=4000,
             far_point_default_dist_to_ball=6000,
-            ball_pos=ballWorldPos()):
+            ball_pos=ball_world_pos()):
 
         ball_to_post = post_pos.minus(ball_pos)
         ball_to_post_dist = ball_to_post.length()
@@ -628,7 +628,7 @@ class Upfielder(Role):
     # Update whether ball is in enemy corner
     def update_in_enemy_corner(self, ball_pos):
         ball_to_goal_heading_abs = \
-            abs(ENEMY_GOAL_CENTER.minus(ball_pos).heading())
+            abs(ENEMY_GOAL_CENTER.clone().minus(ball_pos).heading())
         if self.in_enemy_corner:
             if ball_to_goal_heading_abs < radians(40):
                 self.in_enemy_corner = False
@@ -637,7 +637,7 @@ class Upfielder(Role):
                 self.in_enemy_corner = True
 
     # Evaluate positioin, heading, position_error and heading_error
-    def evaluate(self, robot_pos=myPos(), ball_pos=ballWorldPos()):
+    def evaluate(self, robot_pos=myPos(), ball_pos=ball_world_pos()):
 
         # Update some flags to decide our position
         self.update_in_left_side(ball_pos)
@@ -733,7 +733,7 @@ class PositioningAgainstKickingTeam(Positioning):
         # of the following arrays
         anticipators_current_positions.append(myPos())
         anticipators_current_headings.append(myHeading())
-        anticipators_ball_positions.append(ballWorldPos())
+        anticipators_ball_positions.append(ball_world_pos())
         player_numbers.append(my_player_number())
 
         num_ball_players = 0
@@ -752,7 +752,7 @@ class PositioningAgainstKickingTeam(Positioning):
                 anticipators_current_headings.append(
                     get_teammate_heading(player))
                 if get_teammate_seconds_since_last_ball_update(player) > 5.0:
-                    anticipators_ball_positions.append(ballWorldPos())
+                    anticipators_ball_positions.append(ball_world_pos())
                 else:
                     anticipators_ball_positions.append(teammate_ego_ball(player))  # noqa
                 player_numbers.append(player)
@@ -822,4 +822,4 @@ class PositioningAgainstKickingTeam(Positioning):
 
         # Evaluate my position again
         self.my_role_name = self.role_index_to_name(best_role_index)
-        self.roles[self.get_my_role_index()][OBJECT_INDEX].evaluate(myPos(), ballWorldPos())  # noqa
+        self.roles[self.get_my_role_index()][OBJECT_INDEX].evaluate(myPos(), ball_world_pos())  # noqa

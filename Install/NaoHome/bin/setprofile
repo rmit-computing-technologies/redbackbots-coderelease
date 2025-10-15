@@ -23,7 +23,7 @@ fi
 
 # If profile exists, then use the Profile, otherwise use the default profile
 if [ -s "${PROFILES}/$1" ]; then
-  sed -e "s/^/        /" "${PROFILES}/$1" >/etc/netplan/default.yaml.profile
+  cat "${PROFILES}/$1" >/etc/netplan/default.yaml.profile
   cat /etc/netplan/default.yaml.base /etc/netplan/default.yaml.wifi /etc/netplan/default.yaml.profile >/etc/netplan/default.yaml.staging
 else
   cp /etc/netplan/default.yaml.base /etc/netplan/default.yaml.staging

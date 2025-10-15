@@ -1,26 +1,39 @@
-from util.Constants import PENALTY_BOX_WIDTH, FIELD_LENGTH, PENALTY_BOX_LENGTH, GOAL_BOX_LENGTH, GOAL_BOX_WIDTH, GOAL_WIDTH, MAX_TEAM_BALL_UPDATE_TIME
+from util.Constants import (
+    PENALTY_BOX_WIDTH,
+    FIELD_LENGTH,
+    PENALTY_BOX_LENGTH,
+    GOAL_BOX_LENGTH,
+    GOAL_BOX_WIDTH,
+    GOAL_WIDTH,
+    MAX_TEAM_BALL_UPDATE_TIME,
+    CLOSE_TO_POSITION_DISTANCE,
+    NOT_CLOSE_TO_POSITION_DISTANCE
+)
 from util.Vector2D import Vector2D
 from util.Timer import WallTimer
-from util import Log
-from util.MathUtil import normalisedTheta
-# from util.GameStatus import enemy_goal
+from util.TeamStatus import get_active_player_numbers
+from util import EventComms
 
 # Object caches.
 _robotObstacles = None
-_egoBallPosRR = None
-_egoBallPosRRC = None
-_egoBallWorldPos = None
-_teamBallWorldPos = None
+_ego_ball_pos_rr = None
+_ego_ball_pos_rrc = None
+_ego_ball_world_pos = None
+_team_ball_world_pos = None
 _myPose = None
 _myPos = None
-_ballLostCount = 10000
-_ballSeenCount = 0
+_ball_lost_count = 10000
+_ball_seen_count = 0
 blackboard = None
-_ballLostTime = None
-_timerSinceLastTeamBallUpdate = None
-_lastSeenEgoBallPosRRC = None
-_ballSeenBuffer = []
+_ball_lost_time = None
+_timer_since_last_team_ball_update = None
+_last_seen_ego_ball_pos_rrc = None
+_ball_seen_buffer = []
+_goalie_stop_kick_in_check = False
+_look_target = None
 
+MIN_FRAMES_TO_SEE_BALL = 3
+MAX_EGO_BALL_LOST_TIME = 3
 
 def update_global(newBlackboard):
     """
@@ -37,212 +50,262 @@ def update_global(newBlackboard):
     global _robotObstacles
     _robotObstacles = None
 
-    global _egoBallPosRR
-    _egoBallPosRR = blackboard.stateEstimation.ballPosRR
+    global _ego_ball_pos_rr
+    _ego_ball_pos_rr = blackboard.stateEstimation.ballPosRR
 
-    global _egoBallPosRRC
-    _egoBallPosRRC = blackboard.stateEstimation.ballPosRRC
+    global _ego_ball_pos_rrc
+    _ego_ball_pos_rrc = blackboard.stateEstimation.ballPosRRC
 
-    global _egoBallWorldPos
-    _egoBallWorldPos = blackboard.stateEstimation.ballPos
+    global _ego_ball_world_pos
+    _ego_ball_world_pos = blackboard.stateEstimation.ballPos
 
-    global _teamBallWorldPos
-    _teamBallWorldPos = blackboard.stateEstimation.teamBallPos
+    global _team_ball_world_pos
+    _team_ball_world_pos = blackboard.stateEstimation.teamBallPos
 
     global _myPose
     _myPose = blackboard.stateEstimation.robotPos
 
     global _myPos
     _myPos = Vector2D(_myPose.x, _myPose.y)
-
-    global _ballLostCount
-    global _ballSeenCount
-    if len(blackboard.vision.balls) > 0:
-        _ballLostCount = 0
-        _ballSeenCount += 1
-    else:
-        _ballLostCount += 1
-        _ballSeenCount = 0
-
-    global _ballLostTime
-    if _ballLostTime is None:
-        _ballLostTime = WallTimer()
-
-    if canSeeBall():
-        _ballLostTime.restart()
-
-    global _timerSinceLastTeamBallUpdate
-    if _timerSinceLastTeamBallUpdate is None:
-        _timerSinceLastTeamBallUpdate = WallTimer()
     
-    if teamBallUpdate():
-        _timerSinceLastTeamBallUpdate.restart()
+    global _goalie_stop_kick_in_check
 
-    global _lastSeenEgoBallPosRRC
+    global _ball_lost_count
+    global _ball_seen_count
+    if len(blackboard.vision.balls) > 0:
+        _ball_lost_count = 0
+        _ball_seen_count += 1
+    else:
+        _ball_lost_count += 1
+        _ball_seen_count = 0
+
+    global _ball_lost_time
+    if _ball_lost_time is None:
+        _ball_lost_time = WallTimer()
+
+    if ego_see_ball():
+        _ball_lost_time.restart()
+
+    global _last_seen_ego_ball_pos_rrc
     if len(blackboard.vision.balls) > 0 or \
-            _lastSeenEgoBallPosRRC is None:
-        _lastSeenEgoBallPosRRC = blackboard.stateEstimation.ballPosRRC
+            _last_seen_ego_ball_pos_rrc is None:
+        _last_seen_ego_ball_pos_rrc = blackboard.stateEstimation.ballPosRRC
 
-    global _ballSeenBuffer
-    _ballSeenBuffer.append(1 if canSeeBall() else 0)
-    if len(_ballSeenBuffer) > 100:
-        _ballSeenBuffer.pop(0)
+    global _ball_seen_buffer
+    _ball_seen_buffer.append(1 if ego_see_ball() else 0)
+    if len(_ball_seen_buffer) > 100:
+        _ball_seen_buffer.pop(0)
 
-
-# Vector2D world coordinates of the ball
-def ballWorldPos():
-    if believeMoreInTeamBallPos():
-        return teamBallWorldPos()
-    return egoBallWorldPos()
-
-global _previous_if_kicking_right_foot
-_previous_if_kicking_right_foot = False
-
-def previous_if_kicking_right_foot():
-    return _previous_if_kicking_right_foot
-
-def set_previous_if_kicking_right_foot(kicking_foot):
-    _previous_if_kicking_right_foot = kicking_foot
-
-# Vector2D RRC coordinates of the ball.
-def ballRelPos():
-    if believeMoreInTeamBallPos():
-        return teamBallRelPos()
-    return egoBallRelPos()
+    global _look_target
 
 
-# Vector2D world velocity of the ball, in mm/s
-def ballWorldVel():
-    if believeMoreInTeamBallPos():
-        return teamBallWorldVel()
+def ball_world_pos() -> Vector2D:
+    "Vector2D world coordinates of the ball"
+    if believe_more_in_team_ball():
+        return team_ball_world_pos()
+    return ego_ball_world_pos()
+
+
+def ball_rel_pos() -> Vector2D:
+    "Vector2D RRC coordinates of the ball"
+    if believe_more_in_team_ball():
+        return team_ball_rel_pos()
+    return ego_ball_rel_pos()
+
+
+def ball_world_vel() -> Vector2D:
+    "Vector2D world velocity of the ball, in mm/s"
+    if believe_more_in_team_ball():
+        return team_ball_world_vel()
     else:
-        return egoBallWorldVel()
+        return ego_ball_world_vel()
 
 
-# Vector2D robot relative velocity of the ball, in mm/s
-def ballRelVel():
-    ballVelRRC = blackboard.stateEstimation.ballVelRRC
-    return Vector2D(ballVelRRC.x, ballVelRRC.y)
+def ball_rel_vel() -> Vector2D:
+    "Vector2D robot relative velocity of the ball, in mm/s"
+    ball_vel_rrc = blackboard.stateEstimation.ballVelRRC
+    return Vector2D(ball_vel_rrc.x, ball_vel_rrc.y)
 
 
-# Whether we believe more in the team ball position, depending on which one was
-# more recently updated.
-# time_padding accounts for the 1FPS broadcasting rule and a slight positive
-# bias towards the egoball
-def believeMoreInTeamBallPos(time_padding=1.5):
-    if ballLostTime() > timeSinceLastTeamBallUpdate() + \
-            time_padding:
+def believe_more_in_team_ball(time_padding=1.5) -> bool:
+    """
+    Whether we believe more in the team ball position,
+    depending on which one was more recently updated.
+
+    time_padding accounts for the 1FPS broadcasting rule
+    and a slight positive bias towards the egoball
+    """
+    if ball_lost_time() > time_since_last_team_ball_update() + time_padding:
         return True
     else:
         return False
 
 
-def can_see_ball_or_team_ball_updated():
+def we_see_ball() -> bool:
     """
-    Returns true if robot can see ball, or team ball timer is less than 5 seconds
+    Returns true if robot can see ball for at least 5 frames (MIN_FRAMES_TO_SEE_BALL), or team ball timer is less than 10 seconds (MAX_TEAM_BALL_UPDATE_TIME)
     """
-    if canSeeBall() or timeSinceLastTeamBallUpdate() < 5:
+    if ego_see_ball(MIN_FRAMES_TO_SEE_BALL) or team_see_ball():
         return True
     else:
         return False
 
-def isBallLost(time=MAX_TEAM_BALL_UPDATE_TIME):
-    """
-    Checks both ballLostTime() and timeSinceLastTeamBallUpdate() timers are greater than given seconds (Default: 13 - TeamBall can be updated from 1-12 seconds).\n
-    Replacement for HeadAware._ball_lost.is_max() with updates to teamBall.
-    Return True if both timers are above, assuming then the ball location is unknown.
-    """
-    if ballLostTime() > time and timeSinceLastTeamBallUpdate() > time:
-        return True
-    return False
 
-def egoBallDistance():
+def ego_ball_lost(time = MAX_EGO_BALL_LOST_TIME) -> bool:
+    """
+    Returns true if the ego ball has been lost for 3 seconds
+    """
+    return ball_lost_time() > time
+
+
+def team_ball_lost(time = MAX_TEAM_BALL_UPDATE_TIME) -> bool:
+    """
+    Returns true if the team ball has not been updated for 10 seconds
+    (Default: 10 - TeamBall can be updated from 1-9 seconds).
+    """
+    return time_since_last_team_ball_update() > time
+
+
+def is_ball_lost(time=None) -> bool:
+    """
+    Checks if the ball is lost.
+        - If active player numbers is over 1, check ego_ball_lost() and team_ball_lost().
+        - If only 1 active player, return ego_ball_lost()
+
+    Replacement for HeadAware._ball_lost.is_max() (now removed) as includes updates to teamBall.
+
+    Return True if both ego and team ball are lost, then the ball location is unknown.
+    """
+
+    # If the current active players is over 1.
+    if len(get_active_player_numbers()) > 1:
+        if time is not None:
+            return ego_ball_lost(time) and team_ball_lost(time)
+        return ego_ball_lost() and team_ball_lost()
+
+    # If there is only one active player.
+    return ego_ball_lost()
+
+
+def set_look_target(target: Vector2D):
+    """
+    Sets the look target for the robot to look at.
+    This is used by the head skill to determine where to 
+    start looking to find the ball.
+    
+    :param target: The target position in world coordinates.
+    """
+    _look_target = target
+
+
+def reset_look_target():
+    """
+    Resets the look target for the robot to look at.
+    This is used by the head skill to determine where to 
+    start looking to find the ball.
+    """
+    _look_target = None
+
+
+def look_target() -> Vector2D:
+    """
+    Returns the look target for the robot to look at.
+    This is used by the head skill to determine where to 
+    start looking to find the ball.
+    
+    :return: The target position in world coordinates.
+    """
+    # global _look_target
+    return _look_target
+
+
+def ego_ball_distance():
     return blackboard.stateEstimation.ballPosRR.distance
 
 
-def egoBallHeading():
+def ego_ball_heading():
     return blackboard.stateEstimation.ballPosRR.heading
 
 
-def teamBallDistance():
-    return teamBallWorldPos().minus(_myPos).length()
+def team_ball_distance():
+    return team_ball_world_pos().minus(_myPos).length()
 
 
-def teamBallHeading():
-    return teamBallWorldPos().minus(_myPos).rotate(-myHeading()).heading()
+def team_ball_heading():
+    return team_ball_world_pos().minus(_myPos).rotate(-myHeading()).heading()
 
 
-def egoBallWorldVel():
+def ego_ball_world_vel():
     egoBallVel = blackboard.stateEstimation.ballVel
     return Vector2D(egoBallVel.x, egoBallVel.y)
 
 
-def teamBallWorldVel():
+def team_ball_world_vel():
     teamBallVel = blackboard.stateEstimation.teamBallVel
     return Vector2D(teamBallVel.x, teamBallVel.y)
 
 
-def egoBallRelPos():
+def ego_ball_rel_pos():
     egoBallPosRRC = blackboard.stateEstimation.ballPosRRC
     return Vector2D(egoBallPosRRC.x, egoBallPosRRC.y)
 
 
-def teamBallRelPos():
-    vec = Vector2D(teamBallDistance(), 0).rotated(teamBallHeading())
+def team_ball_rel_pos():
+    vec = Vector2D(team_ball_distance(), 0).rotated(team_ball_heading())
     return Vector2D(vec.x, vec.y)
 
 
-def egoBallWorldPos():
-    return Vector2D(_egoBallWorldPos.x, _egoBallWorldPos.y)
+def ego_ball_world_pos():
+    return Vector2D(_ego_ball_world_pos.x, _ego_ball_world_pos.y)
 
 
-def teamBallWorldPos():
-    return Vector2D(_teamBallWorldPos.x, _teamBallWorldPos.y)
+def team_ball_world_pos():
+    return Vector2D(_team_ball_world_pos.x, _team_ball_world_pos.y)
 
 
-# Float. Returns the Euclidian distance to the ball.
-def ballDistance():
-    if believeMoreInTeamBallPos():
-        return teamBallDistance()
+def ball_distance() -> float:
+    "Returns the Euclidian distance to the ball"
+    if believe_more_in_team_ball():
+        return team_ball_distance()
     else:
         return blackboard.stateEstimation.ballPosRR.distance
 
 
-def ballHeading():
-    if believeMoreInTeamBallPos():
-        return teamBallHeading()
+def ball_heading():
+    if believe_more_in_team_ball():
+        return team_ball_heading()
     else:
         return blackboard.stateEstimation.ballPosRR.heading
 
 
-def ballLostTime():
-    return _ballLostTime.elapsedSeconds()
+def ball_lost_time():
+    return _ball_lost_time.elapsedSeconds()
 
 
 def myPose():
     return _myPose
 
 
-# Vector2D robot world coordinates
-def myPos():
+def myPos() -> Vector2D:
+    "Vector2D robot world coordinates"
     return _myPos
 
 
-# Float of the robot world relative heading, in radians.
-def myHeading():
+def myHeading() -> float:
+    "The robot world relative heading, in radians"
     return _myPose.theta
 
 
-# Boolean of whether the robot can currently see the ball.
-def canSeeBall(frames=1):
-    return _ballSeenCount >= frames
+def ego_see_ball(frames=1) -> bool:
+    "Boolean of whether the robot can currently see the ball"
+    return _ball_seen_count >= frames
 
 
-def teamBallUpdate():
-    return blackboard.stateEstimation.lastTeamBallUpdate == 0
+def team_see_ball() -> bool:
+    return time_since_last_team_ball_update() < MAX_TEAM_BALL_UPDATE_TIME
 
-# Robot Obstacles.
 def robotObstaclesList():
+    "Robot Obstacles"
     # Convert blackboard array to an easier to use list
     global _robotObstacles
     if _robotObstacles is not None:
@@ -253,8 +316,8 @@ def robotObstaclesList():
     return _robotObstacles
 
 
-def ballLostFrames():
-    return _ballLostCount
+def ball_lost_frames():
+    return _ball_lost_count
 
 
 def myPosUncertainty():
@@ -265,11 +328,7 @@ def myHeadingUncertainty():
     return blackboard.stateEstimation.robotHeadingUncertainty
 
 
-def egoBallPosUncertainty():
-    return blackboard.stateEstimation.egoBallPosUncertainty
-
-
-def teamBallPosUncertainty():
+def team_ball_pos_uncertainty():
     return blackboard.stateEstimation.teamBallPosUncertainty
 
 
@@ -281,45 +340,159 @@ def usingGameSkill():
     return blackboard.behaviour.skill == "Game"
 
 
-def timeSinceLastTeamBallUpdate():
-    if _timerSinceLastTeamBallUpdate is not None:
-        return _timerSinceLastTeamBallUpdate.elapsedSeconds()
-    else:
-        return 100000
-
-
-# RRC Vector of the ego ball from the last frame where the ball was seen
-def lastSeenEgoBallPosRRC():
-    return Vector2D(_lastSeenEgoBallPosRRC.x, _lastSeenEgoBallPosRRC.y)
-
-
-def numBallsSeenInLastXFrames(x=30):
-    return sum(_ballSeenBuffer[-x:])
-
-def proportionOfBallsSeenInLastXFrames(x=30) -> float:
-    return sum(_ballSeenBuffer[-x:]) / x
-
-def is_ball_in_box(extra_buffer = 0):
+def time_since_last_team_ball_update():
     """
-    is the ball in the goal box or penalty box? Returns a tuple with these answers
+    Returns the time since the last team ball update in seconds.
+    If the team ball has never been updated, returns a large number.
     """
-    in_penalty_box = -(PENALTY_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (PENALTY_BOX_WIDTH / 2 + extra_buffer) and abs(ballWorldPos().x) > (FIELD_LENGTH / 2 - PENALTY_BOX_LENGTH - extra_buffer)+ 100
-    in_goal_box = -(GOAL_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (GOAL_BOX_WIDTH / 2 + extra_buffer) and abs(ballWorldPos().x) > (FIELD_LENGTH / 2 - GOAL_BOX_LENGTH - extra_buffer)
+    time_since_last = EventComms.time_since_received_by_name("TEAM_BALL_UPDATE")
+    return time_since_last if time_since_last is not None else float('inf')
+
+def last_seen_ego_ball_pos_rrc() -> Vector2D:
+    "RRC Vector of the ego ball from the last frame where the ball was seen"
+    return Vector2D(_last_seen_ego_ball_pos_rrc.x, _last_seen_ego_ball_pos_rrc.y)
+
+
+def num_balls_seen(frames = 30) -> int:
+    """
+    Number of balls seen in the last "frames" frames
+
+    :param frames: Number of frames to consider
+    :return: Number of balls seen in the last "frames" frames
+    """
+    return sum(_ball_seen_buffer[-frames:])
+
+def proportion_of_balls_seen(frames = 30) -> float:
+    """
+    Proportion of balls seen in the last "frames" frames
+
+    :param frames: Number of frames to consider
+    :return: Proportion from 0 to 1 of balls seen in the last "frames" frames
+    """
+    return num_balls_seen(frames) / frames
+
+def ball_seen_in_last_n_frames(frames) -> bool:
+    """
+    Whether we have seen a ball in the last n frames
+
+    :param frames: Number of frames to consider
+    :return: True if we have seen a ball in the last n frames
+    """
+    return sum(_ball_seen_buffer[-frames:]) >= 1
+
+def _is_in_box(position):
+    in_penalty_box = (
+        -PENALTY_BOX_WIDTH / 2 < position.y < PENALTY_BOX_WIDTH / 2
+        and abs(position.x) > FIELD_LENGTH / 2 - PENALTY_BOX_LENGTH
+    )
+    in_goal_box = (
+        -GOAL_BOX_WIDTH / 2 < position.y < GOAL_BOX_WIDTH / 2
+        and abs(position.x) > FIELD_LENGTH / 2 - GOAL_BOX_LENGTH
+    )
     return in_penalty_box, in_goal_box
 
-def is_ball_in_our_box(extra_buffer = 0):
+def _is_in_our_box(position):
+    in_penalty_box = (
+        -PENALTY_BOX_WIDTH / 2 < position.y < PENALTY_BOX_WIDTH / 2
+        and position.x < -(FIELD_LENGTH / 2 - PENALTY_BOX_LENGTH)
+    )
+    in_goal_box = (
+        -GOAL_BOX_WIDTH / 2 < position.y < GOAL_BOX_WIDTH / 2
+        and position.x < -(FIELD_LENGTH / 2 - GOAL_BOX_LENGTH)
+    )
+    return in_penalty_box, in_goal_box
+
+def is_ball_in_box() -> tuple:
+    """
+    is the ball in any goal box or penalty box? Returns a tuple with these answers
+    returns (in_penalty_box, in_goal_box)
+    """
+    return _is_in_box(ball_world_pos())
+
+def is_ball_in_our_box() -> tuple:
     """
     is the ball in our goal box or penalty box? Returns a tuple with these answers
+    returns (in_penalty_box, in_goal_box)
     """
-    in_penalty_box = -(PENALTY_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (PENALTY_BOX_WIDTH / 2 + extra_buffer) and ballWorldPos().x < -FIELD_LENGTH / 2 + PENALTY_BOX_LENGTH + extra_buffer + 100
-    in_goal_box = -(GOAL_BOX_WIDTH / 2 + extra_buffer) < ballWorldPos().y < (GOAL_BOX_WIDTH / 2 + extra_buffer) and ballWorldPos().x < -FIELD_LENGTH / 2 + GOAL_BOX_LENGTH + extra_buffer
-    return in_penalty_box, in_goal_box
+    return _is_in_our_box(ball_world_pos())
 
-def is_ball_in_goal_box_and_between_goal_posts():
+def is_robot_in_box() -> tuple:
+    """
+    Returns a tuple of booleans indicating whether the robot is in the penalty box and/or the goal box.
+    The first boolean indicates if the robot is in the penalty box, and the second boolean indicates
+    if the robot is in the goal box.
+    """
+
+    return _is_in_box(myPos())
+
+def is_robot_in_our_box() -> tuple:
+    """
+    Returns a tuple of booleans indicating whether the robot is in our penalty box and/or the goal box.
+    The first boolean indicates if the robot is in our penalty box, and the second boolean indicates
+    if the robot is in our goal box.
+    """
+
+    return _is_in_our_box(myPos())
+
+def is_ball_in_our_half(time=0) -> bool:
+    """
+    Is the ball in our half of the field
+    
+    Returns:
+        bool: True if the robot can see the ball and it's closer in our half. 
+              Otherwise use team ball posistion after time, (seconds).
+    """
+    if ego_see_ball(time):
+        return ball_world_pos().x < 0
+    else:
+        return team_ball_world_pos().x < 0
+
+def is_ball_in_goal_box_and_between_goal_posts() -> bool:
     """
     is the ball in the goal box or penalty box? Returns a boolean
     """
-    BUFFER = 300
+    BUFFER = 200
     HALF_GOAL_WIDTH_WITH_BUFFER = (GOAL_WIDTH / 2)-BUFFER
-    in_goal_box_and_between_goal_posts = -HALF_GOAL_WIDTH_WITH_BUFFER < ballWorldPos().y < HALF_GOAL_WIDTH_WITH_BUFFER and abs(ballWorldPos().x) > FIELD_LENGTH / 2 - GOAL_BOX_LENGTH
+    in_goal_box_and_between_goal_posts = (
+        -HALF_GOAL_WIDTH_WITH_BUFFER < ball_world_pos().y < HALF_GOAL_WIDTH_WITH_BUFFER
+        and abs(ball_world_pos().x) > FIELD_LENGTH / 2 - GOAL_BOX_LENGTH
+    )
     return in_goal_box_and_between_goal_posts
+
+def close_to_position(position: Vector2D, distance=CLOSE_TO_POSITION_DISTANCE):
+    """
+        Description:
+        This function returns True if the robot is close to the desired position.
+        If there is a distance specified, it will use that distance instead of the default.
+    """
+    return position.minus(myPos()).length2() < distance ** 2
+
+def not_close_to_position(position: Vector2D):
+    """
+        Description:
+        This function returns True if the robot is not close to the desired position.
+    """
+    return position.minus(myPos()).length2() > NOT_CLOSE_TO_POSITION_DISTANCE ** 2
+
+def get_goalie_stop_kick_in_check() -> bool:
+    """
+    Returns whether the goalie should stop checking for kick-ins.
+    This is used to prevent the goalie from checking for kick-ins when they are not needed.
+    """
+    return _goalie_stop_kick_in_check
+
+def set_goalie_stop_kick_in_check(value: bool):
+    """
+    Sets whether the goalie should stop checking for kick-ins.
+    This is used to prevent the goalie from checking for kick-ins when they are not needed.
+    """
+    global _goalie_stop_kick_in_check
+    _goalie_stop_kick_in_check = value
+
+def has_touched_ball() -> bool:
+    """
+    Check if player has touched the ball
+
+    :return: true if player has touched the ball
+    """
+    return blackboard.stateEstimation.hasTouchedBall

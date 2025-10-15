@@ -1,8 +1,7 @@
 LICENSE
 ------------------------------------------------------------------
-Copyright (c) 2024
+Copyright (c) 2025
 Artificial Intelligence Innovation Lab
-Centre for Industrial AI and Research Innovation
 School of Computing Technologies
 STEM College
 RMIT University.
@@ -15,12 +14,13 @@ for the benefit of the RoboCup community, including teams in the
 Standard Platform League. We intend to enable teams to benchmark their own scientific
 approaches in RoboCup competitions. We also hope that the scientific community
 will benefit through the publication of their findings. A second reason for
-RedbackBots releasing its code is that source code is the most solid 
+RedbackBots releasing its code is that source code is the most solid
 documentation of how problems were actually solved.
 
 This distribution contains software developed by:
 * UNSW Sydney, Australia
 * B-Human (http://www.b-human.de)
+* Nao Devils (https://naodevils.de)
 
 Parts of this distribution were not developed by RMIT University. This license
 doesn't apply to these parts, the rights of the copyright owners remain.

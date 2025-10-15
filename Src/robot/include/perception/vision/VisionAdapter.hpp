@@ -1,13 +1,14 @@
-#ifndef PERCEPTION_VISION_VISIONADAPTER_H_
-#define PERCEPTION_VISION_VISIONADAPTER_H_
+#pragma once
 
 #include "perception/vision/camera/CombinedCamera.hpp"
-#include "perception/vision/camera/CameraToRR.hpp"
 #include "perception/vision/Vision.hpp"
 
 #include "utils/Timer.hpp"
 #include "blackboard/Adapter.hpp"
 #include "blackboard/Blackboard.hpp"
+
+// Forward declarations
+class CameraImageDumper;
 
 class VisionAdapter : Adapter {
 friend class AppAdaptor;
@@ -21,24 +22,26 @@ public:
     /**
      * Destructor for VisionAdapter
      */
-    ~VisionAdapter() {}
+    ~VisionAdapter();
 
     /**
      * tick Called to get and process each frame
      */
     void tick();
-    /* Method for writing robot input onto the blackboard */
-    void tickCamera();
-    /* Method for processing what is on the blackboard and writing resuts */
-    void tickProcess();
 
     // TODO: Temporary fix please resolve
 	CombinedCamera *combined_camera_;
+
 private:
-
-    boost::shared_ptr<CombinedFrame> combined_frame_;
-    CameraToRR conv_rr_;
+    // boost::shared_ptr<CombinedFrame> combined_frame_;
     Vision vision_;
-};
 
-#endif
+    // If debugging, dump camera image(s)
+    CameraImageDumper* imageDumper;
+
+    /* Retrieve camera frame */
+    void tickCamera();
+    
+    /* Tick vision processing algorithms */
+    void tickProcess();
+};

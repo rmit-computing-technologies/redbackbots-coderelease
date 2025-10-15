@@ -36,7 +36,7 @@ source "${includeDir}/rbbBase"
 rootImage="${baseDir}/root.ext3"
 homeArchive="${baseDir}/home.tar.gz"
 installer="${baseDir}/Files/install.sh"
-opnImage="${baseDir}/image.opn"
+opnImage="${baseDir}/redbackbots.opn"
 haltAfterUpgrade=true
 
 usage() {

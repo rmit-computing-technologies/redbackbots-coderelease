@@ -7,10 +7,12 @@
 #include "blackboard/modules/StateEstimationBlackboard.hpp"
 #include "blackboard/modules/VisionBlackboard.hpp"
 #include "utils/FieldPainter.hpp"
-#include "utils/PositioningDefs.hpp"
+#include "utils/defs/PositioningDefinitions.hpp"
+#include "utils/defs/RobotDefinitions.hpp"
+#include "types/vision/PlaneSpots.hpp"
+#include "blackboard/modules/debuger/VisionDebuggerBlackboard.hpp"
+#include "blackboard/modules/DebuggerBlackboard.hpp"
 
-
-using namespace std;
 
 FieldView::FieldView() {
    renderPixmap = new QPixmap(640, 480);
@@ -109,6 +111,38 @@ void FieldView::redraw(NaoData *naoData) {
    if (!isnan(robotPos.theta()) && !isnan(robotPos.x()) && !isnan(robotPos.y())) {
       painter.drawRobotAbs(robotPos, "#ffee00", true, "white"); // pacman yellow, white variance
 
+      std::array<PlaneSpots, CameraInfo::Camera::NUM_CAMERAS> planeSpots = readFrom_debugger(vision, planeSpots);
+      for (size_t i = 0; i < planeSpots.size(); ++i) {
+         QColor colour = QColor("red");
+         QColor altColour = QColor("red");
+         
+         if (i == CameraInfo::Camera::bot) {
+         colour = QColor("blue"); // use blue for bot camera spots
+         altColour = QColor("black"); // use blue for bot camera spots
+         } else if (i == CameraInfo::Camera::top) {
+         colour = QColor("red"); // use red for top camera spots
+         altColour = QColor("orange"); // use red for top camera spots
+         }
+
+         for (size_t j = 0; j < planeSpots[i].spots.size(); ++j) {
+            const Spot *spot = planeSpots[i].spots[j];
+            if (spot) {
+               // Convert relative field coordinate vector2f x,y to RRCoord distance, heading, orientation
+               float distance = sqrtf(spot->field.x() * spot->field.x() + spot->field.y() * spot->field.y());
+               float heading = atan2f(spot->field.y(), spot->field.x());
+               RRCoord rrCoord(distance, heading, 0.0f);
+
+               std::cout << "Drawing spot at: " << spot->field.x() << ", " << spot->field.y() << std::endl;
+
+               painter.drawPointRR(rrCoord,
+                        robotPos,
+                        colour);
+
+               // painter.drawPointAbs(AbsCoord(robotPos.x() + spot->field.x(), robotPos.y() + spot->field.y(), 0.0f), altColour);
+            }
+         }
+      }
+
       /* Draw filtered absolute ball position */
       AbsCoord bPos = readFrom(stateEstimation, ballPos);
       AbsCoord bVel = readFrom(stateEstimation, ballVel);
@@ -116,6 +150,16 @@ void FieldView::redraw(NaoData *naoData) {
          painter.drawBallPosAbs(bPos, QColor("yellow"));
          painter.drawBallVelAbs(bPos, bVel, QColor("yellow"));
       }
+   }
+
+   /* Draw features with absolute coordinates */
+   /* Uses the walk poisitions and draws it on the field */
+   const AbsCoord walkToPos = readFrom(stateEstimation, walkToPoint);
+   const std::string behaviour = readFrom(behaviour, request)[0].behaviourDebugInfo.bodyBehaviourHierarchy;
+   if (behaviour.find("WalkToPoint") != std::string::npos &&
+       !isnan(walkToPos.x()) && !isnan(walkToPos.y())) {
+         painter.drawGotoAbs(walkToPos, QColor("purple")); // purple dot representing the goal
+         painter.drawGotoLineAbs(robotPos, walkToPos, QColor("purple")); // line representing the path to goal
    }
 
    /* Draw received ball observations, team mates, roles and player numbers */
@@ -193,14 +237,14 @@ void FieldView::redraw(NaoData *naoData) {
       }
 
       /* Robots */
-//       const std::vector<RobotVisionInfo>& robots = readFrom(vision, robots);
-//       for(unsigned int robot_i = 0; robot_i < robots.size (); ++ robot_i) {
-//          painter.drawRobotRR(robots[robot_i], pos);
-//       }
+      const std::vector<RobotVisionInfo>& robots = readFrom(vision, robots);
+      for(unsigned int robot_i = 0; robot_i < robots.size (); ++ robot_i) {
+         painter.drawRobotRR(robots[robot_i], pos);
+      }
 
       /* Filtered Robots */
-      vector<RobotObstacle> robotObstacles = readFrom(stateEstimation, robotObstacles);
-      vector<RobotObstacle>::iterator robotobs_i;
+      std::vector<RobotObstacle> robotObstacles = readFrom(stateEstimation, robotObstacles);
+      std::vector<RobotObstacle>::iterator robotobs_i;
       for(robotobs_i = robotObstacles.begin(); robotobs_i != robotObstacles.end(); ++ robotobs_i) {
          float absX   = robotobs_i->rr.distance() * cos(robotobs_i->rr.heading() + pos.theta());
          float absY   = robotobs_i->rr.distance() * sin(robotobs_i->rr.heading() + pos.theta());
@@ -211,9 +255,9 @@ void FieldView::redraw(NaoData *naoData) {
          absRobot.var.block(0,0,2,2) = rotation * robotobs_i->rr.var.block(0,0,2,2) * rotation.inverse();
          absRobot.var(2,2) = 0.f;
 
-         if(robotobs_i->type == RobotVisionInfo::rRed) {
+         if(robotobs_i->type == RobotVisionInfo::rEnemyTeam) {
             painter.drawRobotAbs(absRobot, "pink");
-         } else if(robotobs_i->type == RobotVisionInfo::rBlue) {
+         } else if(robotobs_i->type == RobotVisionInfo::rOwnTeam) {
             painter.drawRobotAbs(absRobot, "#7f7fff");
          } else {
             painter.drawRobotAbs(absRobot, "#00ff00");

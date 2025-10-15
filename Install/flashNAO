@@ -1,0 +1,91 @@
+#!/bin/bash
+
+# A new script by Mark that creates a new RBB OPN from the current branch
+
+set -euo pipefail
+
+baseDir="$(cd "$(dirname "$(which "$0")")" && pwd)"
+bhDir="$(dirname "${baseDir}")"
+
+ROOT_IMAGE=""
+TARGET_DEVICE=""
+FLASH=false
+
+usage() {
+    echo "Usage:"
+    echo "  $0 <root image> [-d <target device>]"
+    echo "  $0 -h"
+    echo ""
+    echo " Required arguments:"
+    echo "         <root image>        Path to the root image (required)"
+    echo ""
+    echo " Optional flags:"
+    echo "      -d <target device>  Flash the OPN image to target device"
+    echo "      -h                  Display this help"
+    echo ""
+    echo " Description:"
+    echo "      This script creates a new RedbackBots OPN image from the current branch."
+    echo "      It creates a new root image, home archive, and OPN image."
+    echo "      Optionally, it flashes the OPN image to a target device."
+    echo ""
+    echo " Mark Field is the author of this script."
+    echo " Worship is not required, but appreciated."
+    echo ""
+    exit 1
+}
+
+# If no arguments or help requested
+if [[ $# -eq 0 || "$1" == "-h" ]]; then
+    usage
+fi
+
+# First positional argument is ROOT_IMAGE
+ROOT_IMAGE="$1"
+shift
+
+# Parse remaining arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -d)
+            if [[ $# -lt 2 ]]; then
+                echo "Error: -d requires a target device argument"
+                usage
+            fi
+            TARGET_DEVICE="$2"
+            FLASH=true
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            ;;
+    esac
+done
+
+# Step 1: Create root image
+echo "[INFO] Creating root image..."
+sudo "${baseDir}/createRootImage" "${ROOT_IMAGE}"
+
+# Step 2: Create home archive
+echo "[INFO] Creating home archive..."
+"${bhDir}/Make/Common/createHomeArchive"
+
+# Step 3: Create OPN image
+echo "[INFO] Creating OPN image..."
+"${baseDir}/createOPN"
+
+# Step 4: Flash if requested
+if [[ "${FLASH}" == true && -n "${TARGET_DEVICE}" ]]; then
+    echo "[INFO] Preparing to flash image to ${TARGET_DEVICE}..."
+
+    # Unmount partition on target device
+    if mount | grep -q "${TARGET_DEVICE}"; then
+        echo "[INFO] Unmounting partition on ${TARGET_DEVICE}..."
+        sudo umount "${TARGET_DEVICE}" || true
+    fi
+
+    echo "[INFO] Flashing image..."
+    sudo "${baseDir}/flash" "${baseDir}/redbackbots.opn" "${TARGET_DEVICE}"
+fi
+
+echo "[INFO] Done."

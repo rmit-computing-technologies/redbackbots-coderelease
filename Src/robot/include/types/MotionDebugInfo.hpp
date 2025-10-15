@@ -1,5 +1,4 @@
-#ifndef MOTION_DEBUG_INFO_HPP
-#define MOTION_DEBUG_INFO_HPP
+#pragma once
 
 #include "types/FeetPosition.hpp"
 
@@ -14,4 +13,3 @@ class MotionDebugInfo
     MotionDebugInfo() {};
 };
 
-#endif // MOTION_DEBUG_INFO_HPP

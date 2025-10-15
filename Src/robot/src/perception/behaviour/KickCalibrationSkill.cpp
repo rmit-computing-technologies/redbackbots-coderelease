@@ -1,7 +1,7 @@
 #include "perception/behaviour/KickCalibrationSkill.hpp"
 
 #include "types/BallInfo.hpp"
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 
 #define X_TARGET 200
 #define Y_TARGET 60

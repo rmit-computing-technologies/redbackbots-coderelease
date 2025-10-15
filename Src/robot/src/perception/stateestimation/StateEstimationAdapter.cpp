@@ -2,15 +2,6 @@
 
 #include <boost/math/constants/constants.hpp>
 
-#include "blackboard/Blackboard.hpp"
-#include "blackboard/modules/BehaviourBlackboard.hpp"
-#include "blackboard/modules/GameControllerBlackboard.hpp"
-#include "blackboard/modules/MotionBlackboard.hpp"
-#include "blackboard/modules/ReceiverBlackboard.hpp"
-#include "blackboard/modules/StateEstimationBlackboard.hpp"
-#include "blackboard/modules/SynchronisationBlackboard.hpp"
-#include "blackboard/modules/VisionBlackboard.hpp"
-
 #include "perception/stateestimation/localiser/Localiser.hpp"
 #include "perception/stateestimation/egoballtracker/EgoBallTracker.hpp"
 #include "perception/stateestimation/teamballtracker/TeamBallTracker.hpp"
@@ -24,6 +15,8 @@
 #include "utils/incapacitated.hpp"
 #include "utils/Logger.hpp"
 
+#include "blackboard/Blackboard.hpp"
+
 StateEstimationAdapter::StateEstimationAdapter(Blackboard *bb)
     : Adapter(bb),
       estimatorInfoInit(NULL),
@@ -31,7 +24,8 @@ StateEstimationAdapter::StateEstimationAdapter(Blackboard *bb)
       estimatorInfoMiddle(NULL),
       estimatorInfoOut(NULL),
       prevOdometry(NULL),
-      prevTimeStampInMicroSeconds(-1)
+      prevTimeStampInMicroSeconds(-1),
+      prevTeamBallUpdateTime(std::chrono::system_clock::time_point::min())
 {
     estimatorInfoInit = new EstimatorInfoInit(
         readFrom(gameController, player_number),
@@ -44,11 +38,10 @@ StateEstimationAdapter::StateEstimationAdapter(Blackboard *bb)
         readFrom(gameController, data).competitionType,
         readFrom(gameController, data).state,
         readFrom(gameController, data).gamePhase,
-        readFrom(gameController, data).setPlay,
-        (bb->config)["stateestimation.handle_referee_mistakes"].as<bool>());
+        readFrom(gameController, data).setPlay
+    );
 
     initEstimators();
-    ticksSinceLastTeamBallUpdate = 0;
     numOfBallSeenTicks = 0;
     lastTeamBallPos = AbsCoord();
 }
@@ -101,18 +94,18 @@ Estimator *StateEstimationAdapter::getEstimator(unsigned index)
 
 void StateEstimationAdapter::tick()
 {
-    teamBallStillUpdating = readFrom(stateEstimation, haveTeamBallUpdate);
+    teamBallStillUpdating = blackboard->eventTransmitter->isEventRaised("TEAM_BALL_UPDATE");
 
     createEstimatorInfoIn();
     estimatorInfoMiddle = new EstimatorInfoMiddle();
     estimatorInfoOut = new EstimatorInfoOut();
-    
+
     handleIncomingTeamBallUpdate();
-    
+
     runEstimators();
 
     handleOutgoingTeamBallUpdate();
-    
+
     writeToBlackboard();
 
     // Delete objects
@@ -143,7 +136,7 @@ void StateEstimationAdapter::createEstimatorInfoIn()
         readFrom(vision, fieldFeatures),
         readFrom(vision, balls),
         readFrom(gameController, data).competitionType,
-        readFrom(gameController, data).state,
+        readFrom(gameController, gameState),
         readFrom(gameController, data).gamePhase,
         readFrom(gameController, data).setPlay,
         readFrom(gameController, data).kickingTeam,
@@ -160,21 +153,38 @@ void StateEstimationAdapter::createEstimatorInfoIn()
         odometryDiff,
         dtInSeconds,
         readFrom(motion, active).body,
-        readFrom(motion, sensors));
+        readFrom(motion, sensors),
+        readFrom(gameController, leftTeam),
+        readFrom(gameController, seenRefGesture),
+        readFrom(gameController, player_number)
+    );
 }
 
 void StateEstimationAdapter::handleIncomingTeamBallUpdate()
 {
     // Update team ball if received new packet and team ball is different.
-    for (size_t i = 0; i < estimatorInfoIn->incomingBroadcastData.size(); ++i) {
-        if (estimatorInfoIn->incomingBroadcastData[i].sharedStateEstimationBundle.haveTeamBallUpdate) {
-            lastTeamBallPos = estimatorInfoIn->incomingBroadcastData[i].ballPosAbs;
-            ticksSinceLastTeamBallUpdate = 0;
+    for (size_t i = 0; i < blackboard->eventReceiver->MaxPlayers; ++i) {
+        auto playerNumber = i + 1;
+        system_clock::time_point teamBallUpdateTime = blackboard->eventReceiver->getEventReceiveTime(
+            playerNumber, "TEAM_BALL_UPDATE");
+        // Check if new update and not blank time_point
+        if (teamBallUpdateTime != system_clock::time_point::min() && prevTeamBallUpdateTime < teamBallUpdateTime) {
+            prevTeamBallUpdateTime = teamBallUpdateTime;
+            AbsCoord teamBallPos = AbsCoord();
+            auto eventPtr = blackboard->eventReceiver->getEventData(playerNumber, "TEAM_BALL_UPDATE");
+            if (eventPtr != nullptr) {
+                eventPtr->getUnpackedValue<AbsCoord>(teamBallPos);
+                if (teamBallPos.x() != 0 && teamBallPos.y() != 0) {
+                    // Successfully retrieved the typed data
+                    llog(INFO) << "============================================================" << std::endl;
+                    llog(INFO) << "Got team ball position: " << teamBallPos.x() << ", " << teamBallPos.y() << std::endl;
+                    llog(INFO) << "============================================================" << std::endl;
+                    lastTeamBallPos = teamBallPos;
+                }
+            }
         }
     }
 
-    // Update regardless if new update or not. Ticks have been updated so push it through
-    estimatorInfoOut->ticksSinceTeamBallUpdate = ticksSinceLastTeamBallUpdate;
     estimatorInfoOut->teamBallPos = lastTeamBallPos;
     estimatorInfoOut->numOfBallSeenTicks = numOfBallSeenTicks;
 }
@@ -182,18 +192,14 @@ void StateEstimationAdapter::handleIncomingTeamBallUpdate()
 void StateEstimationAdapter::handleOutgoingTeamBallUpdate()
 {
     numOfBallSeenTicks = estimatorInfoOut->numOfBallSeenTicks;
-    if (teamBallStillUpdating || estimatorInfoOut->sharedStateEstimationBundle.haveTeamBallUpdate) 
+    if (teamBallStillUpdating || estimatorInfoOut->sharedStateEstimationBundle.haveTeamBallUpdate)
     {
-        ticksSinceLastTeamBallUpdate = 0;
         lastTeamBallPos = estimatorInfoOut->ballPos;
     } 
-    else {
-        ticksSinceLastTeamBallUpdate++;
-    }
 }
 
 void StateEstimationAdapter::writeToBlackboard()
-{   
+{
     acquireLock(serialization);
     writeTo(stateEstimation, robotPos, estimatorInfoOut->robotPos);
     writeTo(stateEstimation, robotPosUncertainty, estimatorInfoOut->robotPosUncertainty);

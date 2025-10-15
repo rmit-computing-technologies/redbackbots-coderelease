@@ -1,16 +1,16 @@
-#ifndef OVERVIEW_TAB_HPP
-#define OVERVIEW_TAB_HPP
+#pragma once
 
 #include <QGridLayout>
 #include <QLabel>
+#include <QMenuBar>
 
+#include "renderers/CameraImageRender.hpp"
+#include "tabs/fieldView.hpp"
 #include "tabs/tab.hpp"
 #include "tabs/variableView.hpp"
-#include "fieldView.hpp"
-#include "perception/vision/VisionDebuggerInterface.hpp"
 
-class Vision;
 
+// Forward Declarations
 class Blackboard;
 
 /*
@@ -24,42 +24,37 @@ class Blackboard;
 class OverviewTab : public Tab {
    Q_OBJECT
    public:
-      OverviewTab(QTabWidget *parent, QMenuBar *menuBar, Vision *vision
-                  );
+      OverviewTab(QTabWidget *parent, QMenuBar *menuBar);
+      virtual ~OverviewTab();
       QPixmap *renderPixmap;
       QLabel *renderWidget;
+
    private:
       void init();
       void initMenu(QMenuBar *menuBar);
+      void initOverlays();
       void redraw();
-
-      /*  Draw the image on top of a pixmap */
-      void drawImage(QImage *topImage, QImage *botImage);
-      void drawOverlays(QPixmap *topImage, QPixmap *botImage);
 
       QString naoName;
 
       QGridLayout *layout;
 
-      /* These variables are used to present the debug variables from the nao*/
+      /* These variables are used to present the debug variables from the nao */
       VariableView variableView;
       FieldView fieldView;
 
-      /* Variables for vision */
-      QPixmap topImagePixmap;
-      QLabel *topCamLabel;
-      QPixmap botImagePixmap;
-      QLabel *botCamLabel;
+      /* Image rendering */
+      CameraImageRender* topImageRender;
+      CameraImageRender* botImageRender;
 
-      // Data
-      Colour topSaliency[TOP_SALIENCY_ROWS][TOP_SALIENCY_COLS];
-      Colour botSaliency[BOT_SALIENCY_ROWS][BOT_SALIENCY_COLS];
+      /* Images from Nao */
+      CameraImage topCameraImage;
+      CameraImage botCameraImage;
+
+      // Blackboard ref
       Blackboard *blackboard;
 
    public Q_SLOTS:
       void newNaoData(NaoData *naoData);
       void setNao(const QString &naoName);
 };
-
-
-#endif // OVERVIEW_TAB_HPP

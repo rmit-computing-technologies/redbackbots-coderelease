@@ -1,7 +1,11 @@
 #pragma once
 
+#include <chrono>
+
 #include "blackboard/Adapter.hpp"
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
+
+#include <cstdint>
 
 enum EstimatorsEnum
 {
@@ -55,8 +59,8 @@ class StateEstimationAdapter : Adapter
     /* Functions used to calculate difference between frames */
     Odometry calculateOdometryDiff(Odometry newOdometry);
     float calculateDtInSeconds(int64_t newTimeStampInMicroSeconds);
-    int ticksSinceLastTeamBallUpdate;
     int numOfBallSeenTicks;
     AbsCoord lastTeamBallPos;
     bool teamBallStillUpdating;
+    std::chrono::system_clock::time_point prevTeamBallUpdateTime;
 };

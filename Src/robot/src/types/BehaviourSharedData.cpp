@@ -7,7 +7,7 @@
 #include <cmath>
 #include <iostream>
 
-#include "utils/PositioningDefs.hpp"
+#include "utils/defs/PositioningDefinitions.hpp"
 
 BehaviourSharedData::BehaviourSharedData() {
    #ifdef VALGRIND

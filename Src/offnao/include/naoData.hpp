@@ -5,7 +5,7 @@
 
 #include "frame.hpp"
 #include "blackboard/Blackboard.hpp"
-#include "utils/ProtobufSerialisable.hpp"
+#include "communication/serialisation/ProtobufSerialisable.hpp"
 
 /*
  * Nao data holds all the data that the ui will need when displaying information about the nao.

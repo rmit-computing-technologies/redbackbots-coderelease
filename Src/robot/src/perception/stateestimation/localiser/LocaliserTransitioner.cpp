@@ -1,10 +1,12 @@
 #include "perception/stateestimation/localiser/LocaliserTransitioner.hpp"
+#include "gamecontroller/RoboCupGameControlData.hpp"
 #include "types/EstimatorInfoInit.hpp"
 #include "types/EstimatorInfoIn.hpp"
 
-#define REF_PICKUP_TIMER_MIN_MSEC 500
+#define REF_PICKUP_TIMER_MIN_MSEC 1000
 #define PENALISED_TIMER_MIN_MSEC 20000
 #define REF_FORGOT_TO_TURN_ROBOT_AROUND_MSEC 15000
+#define PENALTY_LOCALISE_DELAY_MSEC 2000
 
 LocaliserTransitioner::LocaliserTransitioner(const EstimatorInfoInit &estimatorInfoInit)
     : estimatorInfoInit(estimatorInfoInit)
@@ -13,26 +15,33 @@ LocaliserTransitioner::LocaliserTransitioner(const EstimatorInfoInit &estimatorI
     , prevGamePhase(estimatorInfoInit.gamePhase)
     , prevPenalty(PENALTY_NONE)
     , prevPickedup(false)
-    , penalisedTimer()
     , refPickupTimer()
-    , unpenalisedTimer()
-    , pickedUpDuringPenalised(false)
+    , penaltyPlaceDownTimer()
+    , localisedInPenalty(true)
+    , isLeftTeam(true)
 {
 }
 
 void LocaliserTransitioner::handleTransition(const EstimatorInfoIn &estimatorInfoIn)
 {
-
     uint8_t newCompetitionType = estimatorInfoIn.competitionType;
     uint8_t newGamePhase = estimatorInfoIn.gamePhase;
     uint8_t newGameState = estimatorInfoIn.state;
     uint8_t newPenalty = estimatorInfoIn.penalty;
-    bool newPickedup = (estimatorInfoIn.active.body.actionType == ActionCommand::Body::REF_PICKUP);
+    bool newPickedup = (estimatorInfoIn.active.body.actionType == ActionCommand::Body::REF_PICKUP); // NOTE: REF_PICKUP just means off-the-ground in general.
     bool weAreKickingTeam = estimatorInfoIn.kickingTeam == estimatorInfoInit.teamNumber;
+    bool newIsLeftTeam = estimatorInfoIn.leftTeam;
 
     // Competition Type Changes
     if (prevCompetitionType != newCompetitionType)
     {
+        resetToInitialPose();
+    }
+
+    // we are right team. this if condition should only be true once during the start of the game.
+    if (newIsLeftTeam != isLeftTeam)
+    {
+        isLeftTeam = newIsLeftTeam;
         resetToInitialPose();
     }
 
@@ -60,7 +69,6 @@ void LocaliserTransitioner::handleTransition(const EstimatorInfoIn &estimatorInf
         }
         else
         {
-
             // Robot Gets Picked Up
             if (prevPickedup == false && newPickedup == true)
             {
@@ -74,103 +82,52 @@ void LocaliserTransitioner::handleTransition(const EstimatorInfoIn &estimatorInf
                 // If we think we've been picked up for long enough,
                 if (refPickupTimer.elapsed_ms() > REF_PICKUP_TIMER_MIN_MSEC)
                 {
-                    if (newGameState == STATE_SET)
+                    if (newGameState == STATE_SET && newPenalty == PENALTY_SPL_ILLEGAL_MOTION_IN_SET)
                     {
                         // If in STATE_SET, reset to manual placement
+                        // TODO: these needs updating to our new kick-off positions
                         if (weAreKickingTeam)
                             resetToManualPlacementPoseOffense();
                         else
                             resetToManualPlacementPoseDefense();
                     }
+                    else if (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY || newPenalty == PENALTY_SPL_ILLEGAL_MOTION_IN_SET)
+                    {
+                        resetToInitialPose();
+                    }
+                    // if placed down while penalised
                     else if (newPenalty != PENALTY_NONE)
                     {
-                        // If penalised, enable picked up during penalised flag
-                        pickedUpDuringPenalised = true;
+                        // start timer to delay localisation reset a few seconds after place down
+                        // to prevent mislocalisation when the assistant ref is still in front of the robot (blocks field lines from cameras)
+                        penaltyPlaceDownTimer.restart();
+                        localisedInPenalty = false;
                     }
-                    else if (unpenalisedTimer.elapsed_ms() < REF_FORGOT_TO_TURN_ROBOT_AROUND_MSEC &&
-                        estimatorInfoInit.handleRefereeMistakes)
+                    // if state is playing and we dont have any penalties, we're probably a substitute player.
+                    else if (newGameState == STATE_PLAYING)
                     {
-                        // Handle case where side ref forgot to turn robot around before it being unpenalised.
-                        // Commonly, the side refs pick up the robot, turn it around and face it towards the field, even
-                        // after it was unpenalised. To handle such cases, if we got unpenalised recently, and get picked up
-                        // and placed back, we reset to unpenalised pose
-                        if (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY) {
-                            resetToInitialPose();
-                        } else {
-                            resetToUnpenalisedPose();
-                        }
+                        // substitute players are placed down in penalised pose
+                        resetToPenalisedPose();
                     }
-                }
-            }
-
-            // Robot Gets Penalised
-            if (prevPenalty != newPenalty && newPenalty != PENALTY_NONE)
-            {
-                // Restart penalisedTimer
-                penalisedTimer.restart();
-
-                // Reset pickedUpDuringPenalised flag
-                pickedUpDuringPenalised = false;
-            }
-
-            // Robot Gets Unpenalised
-            if (prevPenalty != newPenalty && newPenalty == PENALTY_NONE)
-            {
-                if (prevPenalty == PENALTY_SPL_ILLEGAL_MOTION_IN_SET)
-                {
-                    // If robot gets penalised in set, do not reset.
-                    if (pickedUpDuringPenalised)
-                    {
-                        // If robot gets picked up, reset, because we were probably manually placed.
-                        if (weAreKickingTeam)
-                            resetToManualPlacementPoseOffense();
-                        else
-                            resetToManualPlacementPoseDefense();
-                    }
-                }
-                else
-                {
-                    if (estimatorInfoInit.handleRefereeMistakes)
-                    {
-                        // To handle an accidental referee penalise, only reset if:
-                        // - Robot was penalised for long enough (in case referee
-                        //   accidentally penalises robot and immediately unpenalises)
-                        // OR
-                        // - Robot was picked up by referee during penalised
-                        if (penalisedTimer.elapsed_ms() > PENALISED_TIMER_MIN_MSEC ||
-                            pickedUpDuringPenalised)
-                        {
-                            if (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY) {
-                                resetToInitialPose();
-                            } else {
-                                // Reset to unpenalised pose                                
-                                resetToUnpenalisedPose();
-                            }
-
-                            // Restart unpenalisedTimer
-                            unpenalisedTimer.restart();
-                        }
-                    }
+                    // default fall back
                     else
                     {
-                        if (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY) {
-                            resetToInitialPose();
-                        } else {
-                            // Reset to unpenalised pose
-                            resetToUnpenalisedPose();
-                        }
-
-                        // Restart unpenalisedTimer
-                        unpenalisedTimer.restart();
+                        resetToInitialPose();
                     }
                 }
+            }
+
+            if (localisedInPenalty == false && penaltyPlaceDownTimer.elapsed_ms() > PENALTY_LOCALISE_DELAY_MSEC)
+            {
+                localisedInPenalty = true;
+                resetToPenalisedPose();
             }
         }
     }
 
     // Game State transition to STATE_INITIAL AND STATE_STANDBY
     if (prevGameState != newGameState &&
-        (newGameState == STATE_INITIAL || newGameState == STATE_STANDBY))
+        newGameState == STATE_INITIAL)
     {
         resetToInitialPose();
     }
@@ -205,5 +162,17 @@ void LocaliserTransitioner::resetToInitialPose()
                   << std::endl;
 
         resetToGameInitialPose();
+    }
+}
+
+void LocaliserTransitioner::resetToGameInitialPose()
+{
+    if (this->isLeftTeam)
+    {
+        resetToLeftTeamInitialPose();
+    }
+    else
+    {
+        resetToRightTeamInitialPose();
     }
 }

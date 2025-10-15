@@ -1,7 +1,6 @@
-#ifndef TRANSITION_POSES_HPP
-#define TRANSITION_POSES_HPP
+#pragma once
 
-#include "SPLDefs.hpp"
+#include "utils/defs/FieldDefinitions.hpp"
 
 #include <boost/math/constants/constants.hpp>
 
@@ -10,30 +9,37 @@
  */
 
 // Initial State Poses (Px = Player Number x)
+#define LEFT_INITIAL_POSE_P1_X (-FIELD_LENGTH / 2.0) + GOAL_BOX_LENGTH
+#define LEFT_INITIAL_POSE_P1_Y -FIELD_WIDTH / 1.85
+#define LEFT_INITIAL_POSE_P1_THETA boost::math::float_constants::half_pi
 
-#define INITIAL_POSE_P1_X -3500
-#define INITIAL_POSE_P1_Y 3000
-#define INITIAL_POSE_P1_THETA -boost::math::float_constants::half_pi
+#define RIGHT_INITIAL_POSE_P1_X (-FIELD_LENGTH / 2.0) + GOAL_BOX_LENGTH
+#define RIGHT_INITIAL_POSE_P1_Y FIELD_WIDTH / 1.85
+#define RIGHT_INITIAL_POSE_P1_THETA -boost::math::float_constants::half_pi
 
-#define INITIAL_POSE_P2_X -2000
-#define INITIAL_POSE_P2_Y -3000
-#define INITIAL_POSE_P2_THETA boost::math::float_constants::half_pi
+#define INITIAL_POSE_P2_X -CENTER_CIRCLE_DIAMETER / 2.0
+#define INITIAL_POSE_P2_Y FIELD_WIDTH / 1.85
+#define INITIAL_POSE_P2_THETA -boost::math::float_constants::half_pi
 
-#define INITIAL_POSE_P3_X -2700
-#define INITIAL_POSE_P3_Y 3000
-#define INITIAL_POSE_P3_THETA -boost::math::float_constants::half_pi
+#define INITIAL_POSE_P3_X -CENTER_CIRCLE_DIAMETER / 2.0
+#define INITIAL_POSE_P3_Y -FIELD_WIDTH / 1.85
+#define INITIAL_POSE_P3_THETA boost::math::float_constants::half_pi
 
-#define INITIAL_POSE_P4_X -1000
-#define INITIAL_POSE_P4_Y -3000
-#define INITIAL_POSE_P4_THETA boost::math::float_constants::half_pi
+#define INITIAL_POSE_P4_X (-FIELD_LENGTH / 2.0) + PENALTY_BOX_LENGTH
+#define INITIAL_POSE_P4_Y FIELD_WIDTH / 1.85
+#define INITIAL_POSE_P4_THETA -boost::math::float_constants::half_pi
 
-#define INITIAL_POSE_P5_X -1500
-#define INITIAL_POSE_P5_Y 3000
-#define INITIAL_POSE_P5_THETA -boost::math::float_constants::half_pi
+#define INITIAL_POSE_P5_X (-FIELD_LENGTH / 2.0) + PENALTY_BOX_LENGTH
+#define INITIAL_POSE_P5_Y -FIELD_WIDTH / 1.85
+#define INITIAL_POSE_P5_THETA boost::math::float_constants::half_pi
 
-#define INITIAL_POSE_P6_X -3000
-#define INITIAL_POSE_P6_Y -3000
-#define INITIAL_POSE_P6_THETA boost::math::float_constants::half_pi
+#define LEFT_INITIAL_POSE_P6_X (-FIELD_LENGTH / 2.0) + GOAL_BOX_LENGTH
+#define LEFT_INITIAL_POSE_P6_Y FIELD_WIDTH / 1.85
+#define LEFT_INITIAL_POSE_P6_THETA -boost::math::float_constants::half_pi
+
+#define RIGHT_INITIAL_POSE_P6_X (-FIELD_LENGTH / 2.0) + GOAL_BOX_LENGTH
+#define RIGHT_INITIAL_POSE_P6_Y -FIELD_WIDTH / 1.85
+#define RIGHT_INITIAL_POSE_P6_THETA boost::math::float_constants::half_pi
 
 #define INITIAL_POSE_DEFAULT_X -4000
 #define INITIAL_POSE_DEFAULT_Y -3000
@@ -57,6 +63,23 @@
 #define UNPENALISED_H4_Y FIELD_WIDTH / 2.0
 #define UNPENALISED_H4_THETA -M_PI / 2.0
 
+// Penalised Hypotheses (H1 = Hypothesis 1)
+
+#define PENALISED_H1_X -PENALTY_CROSS_ABS_X
+#define PENALISED_H1_Y FULL_FIELD_WIDTH / 2.1
+#define PENALISED_H1_THETA -M_PI / 2.0
+
+#define PENALISED_H2_X -PENALTY_CROSS_ABS_X
+#define PENALISED_H2_Y -FULL_FIELD_WIDTH / 2.1
+#define PENALISED_H2_THETA M_PI / 2.0
+
+#define PENALISED_H3_X -PENALTY_CROSS_ABS_X + 150
+#define PENALISED_H3_Y -FULL_FIELD_WIDTH / 2.1
+#define PENALISED_H3_THETA M_PI / 2.0
+
+#define PENALISED_H4_X -PENALTY_CROSS_ABS_X + 150
+#define PENALISED_H4_Y FULL_FIELD_WIDTH / 2.1
+#define PENALISED_H4_THETA -M_PI / 2.0
 // Manual Placement Poses (H1 = Hypothesis 1)
 
 #define MANUAL_PLACEMENT_H1_X -3666
@@ -96,5 +119,3 @@
 #define PENALTY_SHOOT_SELECTED_POSE_X -4000
 #define PENALTY_SHOOT_SELECTED_POSE_Y -2000
 #define PENALTY_SHOOT_SELECTED_POSE_THETA boost::math::float_constants::half_pi
-
-#endif // TRANSITION_POSES_HPP

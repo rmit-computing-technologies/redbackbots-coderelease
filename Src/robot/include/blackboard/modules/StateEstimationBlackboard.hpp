@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <vector>
 
-#include "types/AbsCoord.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
 #include "types/RobotObstacle.hpp"
 #include "types/SharedStateEstimationBundle.hpp"
 
@@ -19,6 +19,7 @@ struct StateEstimationBlackboard {
 
     // Global robot position and uncertainty
     AbsCoord robotPos;
+    AbsCoord prevRobotPos;
     float robotPosUncertainty;
     float robotHeadingUncertainty;
     std::vector<AbsCoord> allRobotPos;
@@ -46,6 +47,9 @@ struct StateEstimationBlackboard {
     // Team ball velocity
     AbsCoord teamBallVel;
 
+    // Global Walk to position
+    AbsCoord walkToPoint;
+
     // Team ball position uncertainty
     float teamBallPosUncertainty;
 
@@ -64,5 +68,11 @@ struct StateEstimationBlackboard {
 
     float ballAge;
 
+    // If the robot has touched the ball
+    bool hasTouchedBall;
+
     bool haveBallScoreUpdate;
+
+    // If the team can score a goal
+    bool canScore;
 };

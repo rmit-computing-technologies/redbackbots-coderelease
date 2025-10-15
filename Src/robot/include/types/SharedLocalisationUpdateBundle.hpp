@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Eigen/Eigen>
+#include "types/math/Eigen.hpp"
 #include <vector>
 
 #include "perception/localisation/LocalisationUtils.hpp"

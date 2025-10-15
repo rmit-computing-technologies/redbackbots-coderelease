@@ -20,11 +20,10 @@
 #include "perception/behaviour/BehaviourHelpers.hpp"
 #include "perception/behaviour/python/PythonSkill.hpp"
 #include "types/BehaviourRequest.hpp"
-#include "utils/basic_maths.hpp"
+#include "types/SensorValues.hpp"
+#include "utils/math/basic_maths.hpp"
 #include "utils/body.hpp"
 #include "utils/Logger.hpp"
-#include "utils/OptionConstants.hpp"
-#include "types/SensorValues.hpp"
 #include "utils/speech.hpp"
 
 #include <boost/python.hpp>
@@ -44,28 +43,16 @@ BehaviourAdapter::BehaviourAdapter(Blackboard *bb) : Adapter(bb), calibrationSki
    getline (hostfile, hostname);
    pythonSkill = new PythonSkill(bb);
 
-   // Alert redbackbots team - whistle detection requires 4 channels, not 2
-   std::string noHearWhistles = "";
-   int ret = system("python $HOME/whistle/alert_pulseaudio.py");
-   if (ret != 0) {
-      noHearWhistles += "I can not hear whistles. ";
-      std::cout << noHearWhistles << std::endl;
-   }
-
    // Max string length is 70 characters as defined by MAX_SAY_LENGTH in robot/libagent/AgentData.hpp
    std::stringstream startupSpeech;
-   startupSpeech << noHearWhistles << std::string("Player ") << BehaviourHelpers::playerNumber(blackboard);
-   if (ret != 0) {
-     startupSpeech << " ... " << hostname;
+   startupSpeech << std::string("Player ") << BehaviourHelpers::playerNumber(blackboard);
+   if (BehaviourHelpers::teamNumber(blackboard) == 52) {
+      startupSpeech << " team red back bots";
    } else {
-      if (BehaviourHelpers::teamNumber(blackboard) == 52) {
-          startupSpeech << " team red back bots";
-      } else {
-          startupSpeech << " team " << BehaviourHelpers::teamNumber(blackboard);
-      }
-
-      startupSpeech << " ... I am ... " << hostname;
+      startupSpeech << " team " << BehaviourHelpers::teamNumber(blackboard);
    }
+   startupSpeech << " ... I am ... " << hostname;
+   
    std::cout << startupSpeech.str() << std::endl;
    SAY(startupSpeech.str());
 }
@@ -78,7 +65,7 @@ void BehaviourAdapter::readOptions(const boost::program_options::variables_map& 
    if (runningIMUCalibrationSkill) {
       llog(INFO) << "BehaviourAdapter using imu calibration skill";
    }
-   runningKickCalibrationSkill = config[CALIBRATION_KICK].as<bool>();
+   runningKickCalibrationSkill = config["calibration.kick"].as<bool>();
    if (runningKickCalibrationSkill) {
       llog(INFO) << "BehaviourAdapter using kick calibration skill";
       std::string footString = config["kick.foot"].as<std::string>();

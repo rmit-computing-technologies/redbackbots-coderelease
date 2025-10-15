@@ -13,7 +13,15 @@
 
 ## Compiling
 
-CompiledNN can be compiled into a library via CMake:
+BEFORE compiling ``CMakeLists.txt`` needs to be configured for the target platform.
+Edit the block starting at line 18 of ``CMakeLists.txt`` to choose the target platform, selecting which platform is 'ON'.
+All other platforms must be 'OFF'.
+Currently supported target platforms are:
+
+* Nao V6
+* Linux x86_64
+
+Once the target is configured, CompiledNN can be compiled into a library via CMake:
 
 ```bash
 mkdir build
@@ -22,6 +30,11 @@ cmake ..
 make
 make install
 ```
+
+If you are building CompiledNN for multiple platform, do a ``make clean`` between builds
+
+
+## Alternative to Compiling - Integrating into project build
 
 Another way to integrate CompiledNN is to add it (and its dependency [AsmJit](https://github.com/asmjit/asmjit)) as source files to your project.
 

@@ -18,10 +18,8 @@
 #include "blackboard/modules/VisionBlackboard.hpp"
 #include "perception/vision/Vision.hpp"
 #include "types/ActionCommand.hpp"
+#include "utils/defs/RobotDefinitions.hpp"
 
-
-
-using namespace std;
 
 VariableView::VariableView() {
    perceptionHeading = new QTreeWidgetItem(this, QStringList(QString("Perception")), 1);
@@ -43,11 +41,19 @@ VariableView::VariableView() {
    visionHeading->setExpanded(true);
 
    visionTimestamp = new QTreeWidgetItem(visionHeading,
-         QStringList(QString("Vision Timestamp = ")), 1);
+         QStringList(QString("Timestamp: ")), 1);
+   visionTopCameraSettings = new QTreeWidgetItem(visionHeading,
+         QStringList(QString("Top Camera Settings: ")), 1);
+   visionBotCameraSettings = new QTreeWidgetItem(visionHeading,
+         QStringList(QString("Bot Camera Settings: ")), 1);
+   visionTopAutoExposureWeightTable = new QTreeWidgetItem(visionHeading,
+         QStringList(QString("Top Weight Table: ")), 1);
+   visionBotAutoExposureWeightTable = new QTreeWidgetItem(visionHeading,
+         QStringList(QString("Bot Weight Table: ")), 1);
    visionNumBalls = new QTreeWidgetItem(visionHeading,
-         QStringList(QString("# Balls = ")), 1);
+         QStringList(QString("# Balls: ")), 1);
    visionNumRobots = new QTreeWidgetItem(visionHeading,
-                                         QStringList(QString("# Robots = ")), 1);
+                                         QStringList(QString("# Robots: ")), 1);
    visionBallPos = new QTreeWidgetItem(visionHeading,
          QStringList(QString("Ball Pos = ")), 1);
    visionBallPosRobotRelative  = new QTreeWidgetItem(visionHeading,
@@ -82,6 +88,8 @@ VariableView::VariableView() {
    localisationHavePendingIncomingSharedBundle = new QTreeWidgetItem(localisationHeading,
                                                                      QStringList(QString("hpisb = ")),
                                                                      1);
+   localisationWalkToPointx = new QTreeWidgetItem(localisationHeading, QStringList(QString("Goal x = ")), 1);
+   localisationWalkToPointy = new QTreeWidgetItem(localisationHeading, QStringList(QString("Goal y = ")), 1);
 
    motionHeading = new QTreeWidgetItem(this, QStringList(QString("Motion")), 1);
    motionHeading->setExpanded(true);
@@ -119,11 +127,10 @@ VariableView::VariableView() {
    this->addTopLevelItem(localisationHeading);
    this->addTopLevelItem(motionHeading);
    this->addTopLevelItem(behaviourHeading);
-//    this->addTopLevelItem(gameControllerHeading);
 }
 
-static void setTextAndReset(QTreeWidgetItem *item, ostream &ostream) {
-   stringstream &sstream = (stringstream&)ostream;
+static void setTextAndReset(QTreeWidgetItem *item, std::ostream &ostream) {
+   std::stringstream &sstream = (std::stringstream&)ostream;
    item->setText(0, sstream.str().c_str());
    sstream.str("");
 }
@@ -143,8 +150,9 @@ void VariableView::redraw(NaoData *naoData) {
    AbsCoord teamBallPos = readFrom(stateEstimation, teamBallPos);
    std::vector<AbsCoord> allRobotPos = readFrom(stateEstimation, allRobotPos);
    std::vector<bool> havePendingIncomingSharedBundle = readFrom(stateEstimation, havePendingIncomingSharedBundle);
+   AbsCoord walkToPoint = readFrom(stateEstimation, walkToPoint);
 
-   stringstream sstream;
+   std::stringstream sstream;
    ::setTextAndReset(localisationRobotPosx,
                      sstream << "Robot x: " << pos.x() << " stdvar: (" << std::sqrt(pos.var(0, 0)) << ")");
    ::setTextAndReset(localisationRobotPosy,
@@ -180,6 +188,12 @@ void VariableView::redraw(NaoData *naoData) {
              std::ostream_iterator<bool>(sstream, ","));
    ::setTextAndReset(localisationHavePendingIncomingSharedBundle, sstream);
 
+   ::setTextAndReset(localisationWalkToPointx,
+      sstream << "Goal x: " << walkToPoint.x());
+      
+   ::setTextAndReset(localisationWalkToPointy,
+      sstream << "Goal y: " << walkToPoint.y());
+
    updateVision(naoData);
    updateBehaviour(naoData);
    ::setTextAndReset(gameControllerPlayerNumber, sstream << "gamecontroller.player_number = " << readFrom(gameController, player_number));
@@ -190,29 +204,29 @@ void VariableView::redraw(NaoData *naoData) {
 
       sstream << "lastReceived = ";
       for (int lr = 0; lr < ROBOTS_PER_TEAM; ++lr) {
-         sstream << endl << lr + 1 << ": " << lastReceived[lr];
+         sstream << std::endl << lr + 1 << ": " << lastReceived[lr];
       }
       ::setTextAndReset(receiverLastReceived, sstream);
 
       sstream << "data sseb robotPos = ";
       for (int d = 0; d < ROBOTS_PER_TEAM; ++d) {
          const AbsCoord &robotPos = data[d].sharedStateEstimationBundle.robotPos;
-         sstream << endl << d + 1 << ": (" << robotPos.x() << ", " << robotPos.y() << ", " << robotPos.theta() << ")";
+         sstream << std::endl << d + 1 << ": (" << robotPos.x() << ", " << robotPos.y() << ", " << robotPos.theta() << ")";
       }
       ::setTextAndReset(receiverDataSharedStateEstimationBundleRobotPos, sstream);
 
       sstream << "data sseb ballPosRRC = ";
       for (int d = 0; d < ROBOTS_PER_TEAM; ++d) {
          const AbsCoord &ballPosRRC = data[d].sharedStateEstimationBundle.ballPosRRC;
-         sstream << endl << d + 1 << ": (" << ballPosRRC.x() << ", " << ballPosRRC.y() << ")";
+         sstream << std::endl << d + 1 << ": (" << ballPosRRC.x() << ", " << ballPosRRC.y() << ")";
       }
       ::setTextAndReset(receiverDataSharedStateEstimationBundleBallPosRRC, sstream);
    }
 }
 
 template <class T>
-const QString VariableView::createSufPref(string pref, T t, string suff) {
-   stringstream s;
+const QString VariableView::createSufPref(std::string pref, T t, std::string suff) {
+   std::stringstream s;
    s << pref << t << suff;
    return s.str().c_str();
 }
@@ -221,7 +235,7 @@ void VariableView::updateBehaviour(NaoData *naoData) {
    Blackboard *blackboard = (naoData->getCurrentFrame().blackboard);
    if (!blackboard) return;
 
-   string actionName;
+   std::string actionName;
    switch (readFrom(motion, active).body.actionType) {
    case ActionCommand::Body::NONE: actionName = "NONE"; break;
    case ActionCommand::Body::STAND: actionName = "STAND"; break;
@@ -249,8 +263,8 @@ void VariableView::updateBehaviour(NaoData *naoData) {
    behaviourBodyRequest->setText(0, createSufPref("request.body.actionType = ",
                                                   actionName, ""));
 
-   string strBodyBehaviourHierarchy = readFrom(behaviour,request)[0].behaviourDebugInfo.bodyBehaviourHierarchy;
-   string strHeadBehaviourHierarchy = readFrom(behaviour,request)[0].behaviourDebugInfo.headBehaviourHierarchy;
+   std::string strBodyBehaviourHierarchy = readFrom(behaviour,request)[0].behaviourDebugInfo.bodyBehaviourHierarchy;
+   std::string strHeadBehaviourHierarchy = readFrom(behaviour,request)[0].behaviourDebugInfo.headBehaviourHierarchy;
    std::replace(strBodyBehaviourHierarchy.begin(), strBodyBehaviourHierarchy.end(), '.', '\n');
    std::replace(strHeadBehaviourHierarchy.begin(), strHeadBehaviourHierarchy.end(), '.', '\n');
    bodyBehaviourHierarchy->setText(0, createSufPref("Body Behaviour Hierarchy: \n",
@@ -265,8 +279,7 @@ void VariableView::updateVision(NaoData *naoData) {
    if (!blackboard) return;
 
    std::vector<BallInfo>         balls         = readFrom (vision, balls);
-   std::vector<RobotVisionInfo>        robots        = readFrom (vision, robots);
-   std::vector<FieldBoundaryInfo>    fieldBoundaries    = readFrom (vision, fieldBoundaries);
+   std::vector<RobotVisionInfo>  robots        = readFrom (vision, robots);
    std::vector<FieldFeatureInfo> fieldFeatures = readFrom (vision, fieldFeatures);
 
    float headYaw  = readFrom(motion, sensors).joints.angles[Joints::HeadYaw];
@@ -288,9 +301,27 @@ void VariableView::updateVision(NaoData *naoData) {
 
    visionTimestamp->setText(0, createSufPref("Timestamp: ", readFrom(vision, timestamp), ""));
 
+   CameraResolution resolution = readFrom(vision, topResolution);
+   visionTopCameraSettings->setText(0, createSufPref("Top Camera Settings: Res: ", cameraResolutionEnumToString(resolution), ""));
+   resolution = readFrom(vision, botResolution);
+   visionBotCameraSettings->setText(0, createSufPref("Bot Camera Settings: Res: ", cameraResolutionEnumToString(resolution), ""));
 
-   stringstream sBallPos;
+   auto autoExposureWeightTableToStr = [](AutoExposureWeightTable::Table &table) -> std::string {
+      std::stringstream autoExposureTableStr;
+      for (int i = 0; i != 16; ++i) {
+         autoExposureTableStr << (int) (table(i));
+         if (i < 15) {
+            autoExposureTableStr << ",";
+         } 
+      }
+      return autoExposureTableStr.str();
+   };
+   AutoExposureWeightTable::Table autoExposureTable = readFrom(vision, topAutoExposureWeightTable);
+   visionTopAutoExposureWeightTable->setText(0, createSufPref("Top Weight Table: ", autoExposureWeightTableToStr(autoExposureTable), ""));
+   autoExposureTable = readFrom(vision, botAutoExposureWeightTable);
+   visionBotAutoExposureWeightTable->setText(0, createSufPref("Bot Weight Table: ", autoExposureWeightTableToStr(autoExposureTable), ""));
 
+   std::stringstream sBallPos;
    int numBalls = balls.size ();
    int numRobots=robots.size();
    if (numBalls == 0) {
@@ -301,23 +332,7 @@ void VariableView::updateVision(NaoData *naoData) {
    }
    visionBallPos->setText(0, sBallPos.str().c_str());
 
-   stringstream s;
-
-   int numBoundaries = fieldBoundaries.size ();
-   RANSACLine boundaries[MAX_FIELD_BOUNDARIES];
-
-   for (int i = 0; i < numBoundaries; ++ i) {
-      boundaries[i] = fieldBoundaries[i].rrBoundary;
-   }
-
-
-   s << "numBoundaries " << numBoundaries << endl;
-   for (int i = 0; i < numBoundaries; i++) {
-      s << "Edge 1: " << boundaries[i].t1 << "x + " << boundaries[i].t2 <<
-         "y + " << boundaries[i].t3 << endl;
-   }
-
-   stringstream sBallPosRelative;
+   std::stringstream sBallPosRelative;
    if(numBalls > 0) {
       sBallPosRelative << "Ball @ " << balls[0].rr.distance() << ", " <<
          RAD2DEG(balls[0].rr.heading()) << ", " << balls[0].rr.heading();
@@ -327,7 +342,7 @@ void VariableView::updateVision(NaoData *naoData) {
    this->visionNumBalls->setText(0,createSufPref("# Balls: ", numBalls, ""));
    this->visionNumRobots->setText(0,createSufPref("# Robots: ", numRobots, ""));
 
-   stringstream head;
+   std::stringstream head;
    head.str("");
    head << "HeadYaw = " << headYaw;
    motionHeadYaw->setText (0, head.str ().c_str ());

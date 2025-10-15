@@ -1,10 +1,10 @@
 from util.Global import (
-    ballRelPos,
-    ballRelVel,
-    ballWorldPos,
-    ballWorldVel,
-    egoBallWorldPos,
-    egoBallWorldVel)
+    ball_rel_pos,
+    ball_rel_vel,
+    ball_world_pos,
+    ball_world_vel,
+    ego_ball_world_pos,
+    ego_ball_world_vel)
 from util.Vector2D import Vector2D
 from math import sqrt
 from util.Constants import GOAL_POST_ABS_X
@@ -16,8 +16,8 @@ BALL_ACCELERATION = -390.0  # mm/s^2
 
 # Calculate time for ball to reach robot's coronal plane without friction
 def timeToReachCoronalPlaneNoFriction():
-    pos = ballRelPos()
-    vel = ballRelVel()
+    pos = ball_rel_pos()
+    vel = ball_rel_vel()
     if abs(vel.x) < 1:
         vel.x = 1
     t = (0 - pos.x) / vel.x
@@ -26,8 +26,8 @@ def timeToReachCoronalPlaneNoFriction():
 
 # Calculate time for ball to reach our goal base line without friction
 def timeToReachOurGoalBaseLineNoFriction():
-    pos = ballWorldPos()
-    vel = ballWorldVel()
+    pos = ball_world_pos()
+    vel = ball_world_vel()
     if abs(vel.x) < 1:
         vel.x = 1
     t = (-GOAL_POST_ABS_X - pos.x) / vel.x
@@ -36,8 +36,8 @@ def timeToReachOurGoalBaseLineNoFriction():
 
 # Calculate time for egoball to reach our goal base line without friction
 def egoBallTimeToReachOurGoalBaseLineNoFriction():
-    pos = egoBallWorldPos()
-    vel = egoBallWorldVel()
+    pos = ego_ball_world_pos()
+    vel = ego_ball_world_vel()
     if abs(vel.x) < 1:
         vel.x = 1
     t = (-GOAL_POST_ABS_X - pos.x) / vel.x
@@ -50,8 +50,8 @@ def egoBallTimeToReachOurGoalBaseLineNoFriction():
 #     s = ut + 0.5at^2    solving it gives:  t = (-u - sqrt(u^2 + 2as)) / a
 #     where all variables are in the robot-relative x-direction
 def timeToReachCoronalPlaneWithFriction():
-    pos = ballRelPos()
-    vel = ballRelVel()
+    pos = ball_rel_pos()
+    vel = ball_rel_vel()
     stop_rel_pos = stopRelPos()
 
     # 1. Check if the ball travels from infront/behind robot or vice versa
@@ -69,17 +69,17 @@ def timeToReachCoronalPlaneWithFriction():
 
 # Where the ball is going to stop rolling in world coordinates.
 def stopWorldPos():
-    return stopPos(ballWorldPos(), ballWorldVel())
+    return stopPos(ball_world_pos(), ball_world_vel())
 
 
 # Where the ego ball is going to stop rolling in world coordinates.
 def egoBallStopWorldPos():
-    return stopPos(egoBallWorldPos(), egoBallWorldVel())
+    return stopPos(ego_ball_world_pos(), ego_ball_world_vel())
 
 
 # Where the ball is going to stop rolling in relative coordinates.
 def stopRelPos():
-    return stopPos(ballRelPos(), ballRelVel())
+    return stopPos(ball_rel_pos(), ball_rel_vel())
 
 
 # Calculate where the ball is going to stop rolling.
@@ -99,18 +99,23 @@ def stopPos(pos, vel):
 # Calculate where along the coronal plane the ball will intersect the
 # robot's coronal plane, assuming constant velocity
 def YWhenReachCoronalPlane():
-    pos = ballRelPos()
-    vel = ballRelVel()
+    pos = ball_rel_pos()
+    vel = ball_rel_vel()
     t = timeToReachCoronalPlaneNoFriction()
     final_y = pos.y + vel.y * t
     return final_y
 
 
-# Calculate where along the goal base line the ball will intersect the
-# baseline, assuming constant velocity. Used for goalie
+
 def YWhenReachOurGoalBaseLine():
-    pos = ballWorldPos()
-    vel = ballWorldVel()
+    """
+    Calculates where along the goal base line the ball will
+    intersect the baseline
+    
+    Assuming constant velocity. Used for goalie
+    """
+    pos = ball_world_pos()
+    vel = ball_world_vel()
     t = timeToReachOurGoalBaseLineNoFriction()
     final_y = pos.y + vel.y * t
     return final_y
@@ -119,8 +124,8 @@ def YWhenReachOurGoalBaseLine():
 # Calculate where along the goal base line the ball will intersect the
 # baseline, assuming constant velocity. Used for goalie
 def egoBallYWhenReachOurGoalBaseLine():
-    pos = egoBallWorldPos()
-    vel = egoBallWorldVel()
+    pos = ego_ball_world_pos()
+    vel = ego_ball_world_vel()
     t = egoBallTimeToReachOurGoalBaseLineNoFriction()
     final_y = pos.y + vel.y * t
     return final_y

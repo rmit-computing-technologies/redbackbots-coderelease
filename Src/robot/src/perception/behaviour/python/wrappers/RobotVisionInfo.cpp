@@ -4,6 +4,6 @@ class_<RobotVisionInfo>("RobotVisionInfo")
 
 enum_<RobotVisionInfo::Type>("RobotVisionInfoType")
    .value("rUnknown"  , RobotVisionInfo::rUnknown    )
-   .value("rBlue"     , RobotVisionInfo::rBlue       )
-   .value("rRed"      , RobotVisionInfo::rRed        );
+   .value("rOwnTeam"     , RobotVisionInfo::rOwnTeam       )
+   .value("rEnemyTeam"      , RobotVisionInfo::rEnemyTeam        );
 

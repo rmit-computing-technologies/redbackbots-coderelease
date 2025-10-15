@@ -2,7 +2,7 @@
 #define TEAM_BALL_KF_HPP
 
 #include "TeamBallKFConstants.hpp"
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 
 class EstimatorInfoInit;
 class EstimatorInfoIn;
@@ -15,6 +15,8 @@ class TeamBallKFTransitioner;
 class TeamBallKF
 {
   public:
+    const int TEAM_BALL_STATIC_BALL_UPDATE_THRESHOLD = 3;
+
     explicit TeamBallKF(const EstimatorInfoInit &estimatorInfoInit);
     ~TeamBallKF();
 

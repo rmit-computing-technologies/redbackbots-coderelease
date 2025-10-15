@@ -3,7 +3,7 @@
  * Use for efficiently tracing lines across 2D buffers
  */
 
-#include "types/Point.hpp"
+#include "types/geometry/Point.hpp"
 #include <math.h>
 
 template <typename T>

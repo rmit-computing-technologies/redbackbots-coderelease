@@ -5,6 +5,8 @@
 #include "naoData.hpp"
 #include "naoData.pb.h"
 #include "progopts.hpp"
+#include "communication/serialisation/deserialise.hpp"
+#include "communication/serialisation/serialise.hpp"
 
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -30,7 +32,7 @@ static void serialise(const vector<T> &vector, ::google::protobuf::RepeatedPtrFi
 }
 
 static void serialise(const Frame &cpp, offnao::Frame &pb) {
-   Blackboard::serialise(*cpp.blackboard, *pb.mutable_blackboard());
+   serialise(*cpp.blackboard, *pb.mutable_blackboard());
    pb.set_timestamp(cpp.timestamp);
 }
 
@@ -85,7 +87,7 @@ static void deserialise(vector<T> &vector, const ::google::protobuf::RepeatedPtr
 
 static void deserialise(Frame &cpp, const offnao::Frame &pb) {
    cpp.blackboard = new Blackboard(config);
-   Blackboard::deserialise(*cpp.blackboard, pb.blackboard());
+   deserialise(*cpp.blackboard, pb.blackboard());
    deserialise(cpp.timestamp, pb.timestamp());
 }
 

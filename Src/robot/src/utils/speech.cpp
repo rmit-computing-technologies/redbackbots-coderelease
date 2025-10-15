@@ -4,6 +4,7 @@
 
 #include "utils/speech.hpp"
 
+#include "utils/Logger.hpp"
 
 /**
  *  THIS SPEECH INTERFACE IS COMPLETELY BROKEN

@@ -14,4 +14,7 @@ class_<StateEstimationBlackboard>("StateEstimationBlackboard")
    .def_readonly("teamBallPosUncertainty", &StateEstimationBlackboard::teamBallPosUncertainty)
    .def_readonly("robotObstacles", &StateEstimationBlackboard::robotObstacles)
    .def_readonly("haveTeamBallUpdate", &StateEstimationBlackboard::haveTeamBallUpdate)
-   .def_readwrite("ballAge", &StateEstimationBlackboard::ballAge);
+   .def_readwrite("ballAge", &StateEstimationBlackboard::ballAge)
+   .def_readwrite("walkToPoint", &StateEstimationBlackboard::walkToPoint)
+   .def_readonly("canScore", &StateEstimationBlackboard::canScore)
+   .def_readonly("hasTouchedBall", &StateEstimationBlackboard::hasTouchedBall);

@@ -4,7 +4,7 @@
 #include <string>
 #include "perception/kinematics/Parameters.hpp"
 #include "blackboard/Adapter.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
 #include "utils/Timer.hpp"
 #include "types/BehaviourRequest.hpp"
 #include "FADBAD++/fadiff.h"

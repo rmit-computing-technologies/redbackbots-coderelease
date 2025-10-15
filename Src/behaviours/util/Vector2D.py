@@ -1,13 +1,13 @@
 import math
+from typing import Any
 
-
-class Vector2D:
+class Vector2D: 
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
     def __repr__(self):
-        return '{}({}, {})'.format(self.__class__.__name__, self.x, self.y)
+        return self.printRound()
 
     def __getitem__(self, index):
         if index == 0:
@@ -15,9 +15,30 @@ class Vector2D:
         if index == 1:
             return self.y
         return None
+    
+    def __setitem__(self, index, value):
+        if index == 0:
+            self.x = value
+        if index == 1:
+            self.y = value
+            
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    
+    def __add__(self, other):
+        return self.plus(other)
+    
+    def __sub__(self, other):
+        return self.minus(other)
+    
+    def __mul__(self, other):
+        return self.multiply(other)
 
     def printRound(self):
-        return "Vec2D(%05d, %05d)" % (round(self.x), round(self.y))
+        return "Vec2D(%.2f, %.2f)" % (self.x, self.y)
 
     def isShorterThan(self, val):
         return self.length2() < (val * val)
@@ -61,6 +82,22 @@ class Vector2D:
             return math.pi
 
         return math.fabs(math.acos(dp))
+    
+    def thetaTo(self, other):
+        # Calculate the angle between this vector and another vector
+        length_prod = self.length() * other.length()
+        if length_prod == 0:
+            raise ValueError("Zero length vector")
+
+        normed_dp = self.dot_product(other) / length_prod
+
+        if normed_dp >= 1.0:
+            return 0.0
+        if normed_dp <= -1.0:
+            return math.pi
+
+        # Return the angle in radians
+        return math.acos(normed_dp)
 
     def rotate(self, theta):  # anticlockwise
         sinTheta = math.sin(theta)
@@ -139,6 +176,10 @@ class Vector2D:
 
         self.scale(scale)
         return self
+    
+    # Returns the vector perpendicular from a line unit vector line, to a 2D point
+    def point_to_line_vector(line_direction, point):
+        return point.minus(line_direction.multiply(point.dot_product(line_direction))).multiply(-1)
 
 
 # basically explicit constructors

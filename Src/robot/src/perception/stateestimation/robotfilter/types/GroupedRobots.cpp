@@ -1,8 +1,8 @@
 #include "perception/stateestimation/robotfilter/types/GroupedRobots.hpp"
-#include "types/RRCoord.hpp"
-#include "types/AbsCoord.hpp"
+#include "types/geometry/RRCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 
-#include "utils/angles.hpp"
+#include "utils/math/angles.hpp"
 #include <string>
 #include <sstream>
 
@@ -128,9 +128,9 @@ RobotVisionInfo::Type GroupedRobots::getType() const {
     std::vector<RobotObservation>::const_iterator it;
     for (it = observations.begin(); it != observations.end(); ++it) {
         const RobotObservation &observation = (*it);
-        if (observation.type == RobotVisionInfo::rBlue) {
+        if (observation.type == RobotVisionInfo::rOwnTeam) {
             ++totalBlue;
-        } else if (observation.type == RobotVisionInfo::rRed) {
+        } else if (observation.type == RobotVisionInfo::rEnemyTeam) {
             ++totalRed;
         }
     }
@@ -138,9 +138,9 @@ RobotVisionInfo::Type GroupedRobots::getType() const {
     if (totalBlue == 0 && totalRed == 0) {
         return RobotVisionInfo::rUnknown;
     } else if (totalBlue * 2 < totalRed) {
-        return RobotVisionInfo::rRed;
+        return RobotVisionInfo::rEnemyTeam;
     } else if (totalRed * 2 < totalBlue) {
-        return RobotVisionInfo::rBlue;
+        return RobotVisionInfo::rOwnTeam;
     } else {
         return RobotVisionInfo::rUnknown;
     }

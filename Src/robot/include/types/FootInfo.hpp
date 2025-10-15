@@ -1,6 +1,5 @@
 #pragma once
 
-#include "types/Point.hpp"
 #include "types/BBox.hpp"
 
 struct FootInfo

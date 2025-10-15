@@ -12,16 +12,17 @@
 #include <stdint.h>
 
 #include "ui_ConnectionBar.h"
-#include "transmitter/TransmitterDefs.hpp"
+#include "communication/transmitter/TransmitterDefs.hpp"
 
-class NaoData;
+// Forward Declarations of Tabs
+class CameraTab;
 class MediaPanel;
+class NaoData;
 class OverviewTab;
 // class JointsTab;
 // class AroundFeetTab;
 // class TemperatureTab;
-class CameraTab;
-// class VisionTab;
+class VisionTab;
 // class SensorTab;
 // class CameraPoseTab;
 // class WalkTab;
@@ -29,13 +30,16 @@ class CameraTab;
 // class LogsTab;
 // class TeamTab;
 // class GraphTab;
-class Vision;
 class Reader;
 class Tab;
 
 namespace Ui {
    class Visualiser;
 }
+
+// Additional Forward declarations
+class CameraSettings;
+
 
 /*
  * This is the main window. This holds data at the root level, such as
@@ -111,7 +115,7 @@ class Visualiser : public QMainWindow {
       void refreshNaoData();
 
       /**
-       * sends a command line option to the nao
+       * Methods to send various content to the Nao
        */
       void sendCommandLineString(const QString &);
 
@@ -131,9 +135,9 @@ class Visualiser : public QMainWindow {
       QTabWidget *tabs;
 
       /* Tabs */
-      OverviewTab *overviewTab;
-      // VisionTab *visionTab;
       CameraTab *cameraTab;
+      OverviewTab *overviewTab;
+      VisionTab *visionTab;
       // SensorTab *sensorTab;
       // CameraPoseTab *cameraPoseTab;
       // GraphTab *graphTab;
@@ -166,8 +170,6 @@ class Visualiser : public QMainWindow {
        * record/play/stop/pause buttons
        */
       MediaPanel *mediaPanel;
-
-      Vision *vision;
 
       void setUpReaderSignals(Reader *reader);
 

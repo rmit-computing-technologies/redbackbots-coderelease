@@ -2,7 +2,7 @@
 
 #include "types/EstimatorInfoInit.hpp"
 #include "perception/stateestimation/teamballtracker/teamballkf/TeamBallKF.hpp"
-#include <Eigen/Eigen>
+#include "types/math/Eigen.hpp"
 
 TeamBallKFTransitioner::TeamBallKFTransitioner(
     const EstimatorInfoInit &estimatorInfoInit,

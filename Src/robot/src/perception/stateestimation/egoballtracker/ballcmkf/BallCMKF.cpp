@@ -3,8 +3,8 @@
 #include "types/EstimatorInfoIn.hpp"
 #include "types/EstimatorInfoOut.hpp"
 #include "perception/stateestimation/egoballtracker/ballcmkf/BallCMKFParams.hpp"
-#include "utils/basic_maths.hpp"
-#include "utils/eigen_helpers.hpp"
+#include "utils/math/basic_maths.hpp"
+#include "utils/math/eigen_helpers.hpp"
 
 static const Eigen::Matrix<float, NUM_DIM_BALL_POS, NUM_DIM_BALL_TOTAL>
     ballObservationModel((Eigen::Matrix<float, NUM_DIM_BALL_POS, NUM_DIM_BALL_TOTAL>() << 1, 0, 0, 0, 0, 1, 0, 0).finished());
@@ -220,7 +220,7 @@ void BallCMKF::predictWithOdometry(const Odometry &odometry)
     // this matrix rotation is derived by myself and seems to be the same
     // as B-Human's. I think though, that it's not right, but "good enough" for our use.
     // I think the 0's in the covariance parts shouldn't be 0...
-    // Some genius in the future rUNSWift can derivce the actual covariance.
+    // Some genius in the future ̶r̶U̶N̶S̶W̶i̶f̶t̶  RedbackBots (codebase belongs to RedBackBots now 🥴) can derive the actual covariance.
     Eigen::Matrix4f rotation;
     float rotationCos = cosf(-odometry.turn);
     float rotationSin = sinf(-odometry.turn);

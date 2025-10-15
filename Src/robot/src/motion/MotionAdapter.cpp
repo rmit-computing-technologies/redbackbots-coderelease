@@ -18,7 +18,7 @@
 #include "motion/generator/ClippedGenerator.hpp"
 #include "motion/generator/DistributedGenerator.hpp"
 #include "thread/Thread.hpp"
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 #include "types/ActionCommand.hpp"
 #include "types/JointValues.hpp"
 #include "types/SensorValues.hpp"

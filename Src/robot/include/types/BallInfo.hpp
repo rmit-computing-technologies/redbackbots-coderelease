@@ -1,14 +1,15 @@
 #pragma once
 
-#include "types/Point.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/Point.hpp"
+#include "types/geometry/RRCoord.hpp"
 #include "types/XYZ_Coord.hpp"
 
 #include <iostream>
 #include <cmath>
 
 
-struct BallInfo {
+class BallInfo {
+public:
    BallInfo () {}
    BallInfo (RRCoord rr, int radius, Point imageCoords) :
       rr(rr),
@@ -17,9 +18,35 @@ struct BallInfo {
 
    virtual ~BallInfo () {}
 
-   RRCoord rr;
-   int radius;
-   Point imageCoords;
+   void clear(){}
+   
+   void reset();
+
+   void verify() const;
+
+   // New
+   enum Status {
+      notSeen, /**< The ball was not seen. */
+      seen,    /**< The ball was seen. */
+      guessed, /**< Would be ok for a moving ball. */
+   };
+
+   /** Indicates, if the ball was seen in the current image. */
+   Status status = notSeen;  
+
+   /** The measurement covariance of positionOnField */
+   // Matrix2f covarianceOnField;      
+
+   /** Ball position relative to the robot. */
+   RRCoord rr; // BHuman - positionOnField
+
+   /** The radius of the ball in the current image */
+   int radius; // BHuman - radiusOnField        
+
+   /** The position of the ball in the current image */
+   Point imageCoords; // BHuman - positionInImage
+
+   /** If ball was detected on topCamera or bottom camera */
    bool topCamera;
 
    bool operator== (const BallInfo &other) const

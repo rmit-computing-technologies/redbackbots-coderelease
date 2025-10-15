@@ -3,8 +3,8 @@
 #include <iostream>
 #include <vector>
 
-#include "types/Point.hpp"
-#include "perception/vision/Region.hpp"
+#include "types/geometry/Point.hpp"
+#include "perception/vision/fovea/Region.hpp"
 
 /*
 Stores all the data field features generates on a single region.

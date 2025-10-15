@@ -21,18 +21,22 @@
 #include <fstream>
 #include <chrono>
 #include <stdexcept>
+#include <vector>
 
+#include "utils/Logger.hpp"
+#include "utils/speech.hpp"
+#include "utils/defs/RobotDefinitions.hpp"
+#include "motion/LoLAData.hpp"
+
+/* Blackboards */
 #include "blackboard/Blackboard.hpp"
 #include "blackboard/modules/GameControllerBlackboard.hpp"
 #include "blackboard/modules/MotionBlackboard.hpp"
 #include "blackboard/modules/ReceiverBlackboard.hpp"
 #include "blackboard/modules/StateEstimationBlackboard.hpp"
-#include "utils/Logger.hpp"
-#include "utils/speech.hpp"
-#include "motion/LoLAData.hpp"
-
-#include "whistle/whistle_detector.h"
-
+#include "blackboard/modules/EventTransmitterBlackboard.hpp"
+#include "blackboard/modules/EventReceiverBlackboard.hpp"
+#include "blackboard/modules/WhistleBlackboard.hpp"
 
 #define POLL_TIMEOUT 200
 
@@ -62,34 +66,52 @@ const uint8_t LEAVE_WIFI_SECONDS = 20;
  */
 const double JITTER_BUFFER = 0.5;
 
-// Check to see if a whistle has been heard in the last WHISTLE_HEARD_SECS
-const int WHISTLE_HEARD_SECS = 3;
-
 // Used for goal scoring - stay in ready for STAY_IN_READY_SECS
 Timer goalTimer = Timer();
-const int STAY_IN_READY_SECS = 25;
-bool hasPassedInitial = false;
+const float STAY_IN_READY_SECS = 16.0; // GC delay is 15 seconds (2025 Rules)
+const float MIN_STAY_IN_READY = 5.0; // If this amount of time has passed then can exit ready early
+bool goalWhistleHeard = false;
+
+// Used for passing infastructure
+const int NUMBER_OF_TOUCHES_REQUIRED = 2; // The number of touches required before we are allowed to score a goal
+const float TOUCHED_BALL_TIME_TO_SEND = 5.0f; // The maximum time to wait before sending the event
+const float REF_DETECT_TIME_TO_RECEIVE = 60.0f; // The maximum time to wait before discarding the event
+const double ROBOT_HEADING_THRESHOLD = 0.75; // In radians - The angle threshold for the robot to be considered facing the ball
+const int RESEND_POSITION_MOVEMENT_RANGE = 300;
+
+// Defining the region that we deem the ball close enough to be "touched" by us
+const int MINIMUM_DISTANCE_THRESHOLD = 110; // needed to avoid the default of 100 when we can't see the ball
+const int MAXIMUM_DISTANCE_THRESHOLD = 180;
+
+// Ball touch detection - SetPlay handling
+Timer setPlayTimeout = Timer();
+const float SETPLAY_TIMEOUT = 30.0f;
+
+// Event Constants
+const float DEFAULT_MIN_TIME_TO_SEND = 3.0f;
+
+// COMP 2025 Hack Fixes
+Timer refDetectTimeout = Timer();
+const float REF_DETECT_TIMEOUT = 30.0f;
+
+// Global var to update 'active'
+bool GCActive = false;
 
 const uint8_t min_packets =
     JITTER_BUFFER * LEAVE_WIFI_SECONDS * PACKETS_PER_SECOND;
 
 GameController::GameController(Blackboard *bb)
-    : Adapter(bb), our_team(NULL), connected(false) {
+    : Adapter(bb), our_team(NULL), opponent_team(NULL), connected(false), active(false) {
     lastState = STATE_INITIAL;
     myLastPenalty = PENALTY_NONE;
     if (readFrom(gameController, connect)) {
         initialiseConnection();
     }
-    // Check what whistles are enabled
-    actOnWhistleKickOff = (bb->config)["whistle.act_on_whistle_kickoff"].as<bool>();
-    actOnWhistleGoal = (bb->config)["whistle.act_on_whistle_goal"].as<bool>();
+    this->touchedBall.fill(false);
 
-    if (!actOnWhistleKickOff) {
-        llog(ERROR) << "!!!!! Kickoff whistle detection is disabled !!!!!" << std::endl;
-    }
-    if (!actOnWhistleGoal) {
-        llog(ERROR) << "!!!!! Goal scored whistle detection is disabled !!!!!" << std::endl;
-    }
+    // Read in configs
+    usePassing = (bb->config)["game.use_passing"].as<bool>();
+    numRequiredTouches = (bb->config)["game.required_passes"].as<int>();
 }
 
 GameController::~GameController() {
@@ -97,17 +119,19 @@ GameController::~GameController() {
 }
 
 void GameController::tick() {
-    // Notes:
-    // gameState represents what we think the game state should be
-    // It is the same as data.state unless we hear a whistle
-    // If we hear a whistle, set gameState to playing to tell our teammates
-    // If the team agrees, then override the official data.state with playing
+    /* Notes:
+     * gameState represents what we think the game state should be
+     * It is the same as data.state unless we hear a whistle
+     * If we hear a whistle, set gameState to playing to tell our teammates
+     * If the team agrees, then override the official data.state with playing
+     */
 
-    // -- Standard Game Controller Packet Update --
+    // -- Standard GameController Packet Update -- //
     uint8_t previousGameState = readFrom(gameController, gameState);
     data = readFrom(gameController, data);
+    uint8_t gameState = data.state;
     teamNumber = readFrom(gameController, our_team).teamNumber;
-    playerNumber = readFrom(gameController, player_number);
+    myPlayerNumber = readFrom(gameController, player_number);
     setOurTeam();
 
     if (!connected && readFrom(gameController, connect)) {
@@ -118,140 +142,274 @@ void GameController::tick() {
     buttonUpdate();
     writeTo(motion, buttons, buttons);
 
-    // -- Extras for Whistle Detection --
-    uint8_t gameState = data.state;
+    // COMP 2025 Hack Fixes
+    if (gameState == STATE_STANDBY && previousGameState != STATE_STANDBY)
+    {
+        refDetectTimeout.restart();
+    }
 
-    //Check if a whistle has been heard
-    whistleDetected = whistleHeard(WHISTLE_HEARD_SECS);
-
-	// If we previously heard a whistle and changed our gameState from set to playing or playing to ready
-	// Then don't let it get overriden by the game controller
-	if (gameState == STATE_SET && previousGameState == STATE_PLAYING) {
+    // If we previously changed our gameState then don't let it get overriden by the game controller
+	if ((gameState == STATE_SET && previousGameState == STATE_PLAYING)              // Kickoff whistle
+            || (gameState == STATE_PLAYING && previousGameState == STATE_READY)     // Goal whistle
+            || (gameState == STATE_STANDBY && previousGameState == STATE_READY))    // Referee detection
+    {
         gameState = previousGameState;
     }
-    if (gameState == STATE_PLAYING && previousGameState == STATE_READY) {
-        gameState = previousGameState;
-    }
 
-    // -- Whistle Detection --> Kickoff //
-    if (data.state == STATE_SET && actOnWhistleKickOff && whistleDetected) {
-        gameState = STATE_PLAYING;
-        hasPassedInitial = false;
-        SAY("Whistle heard -> Kicking off");
-        llog(INFO) << "SET --> PLAYING" << std::endl;
-        llog(DEBUG) << "State is SET, has heard whistle" << std::endl;
-    } 
-    // -- Whistle Detection --> Goal Scored //
-    else if (data.state == STATE_PLAYING && actOnWhistleGoal && whistleDetected) {
-        goalTimer.restart();
-        gameState = STATE_READY;
-        hasPassedInitial = true;
-        SAY("Whistle heard -> Goal Scored");
-        llog(INFO) << "PLAYING --> READY" << std::endl;
-        llog(DEBUG) << "State is PLAYING, has heard whistle" << std::endl;
-        llog(DEBUG) << "Goal has been scored, returning to kickoff position" << std::endl;
-    }
 
-    // Keeps the robot in ready
-    if (hasPassedInitial && goalTimer.elapsed() <= STAY_IN_READY_SECS && actOnWhistleGoal) {
-        llog(DEBUG) << "Goal Scored - Staying in ready" << std::endl;
-        llog(INFO) << "Time remaining in Ready before return to Playing: " << double(STAY_IN_READY_SECS - goalTimer.elapsed()) << std::endl;
-        gameState = STATE_READY;
-    }
-    // Timeout: If the GC doesn't go into Ready within time limit then return to Playing
-    else if (hasPassedInitial && goalTimer.elapsed() > STAY_IN_READY_SECS && actOnWhistleGoal) {
-        llog(INFO) << "Exiting Goal Scored Ready -> Timeout" << std::endl;
-        gameState = STATE_PLAYING;
-        hasPassedInitial = false;
-    }
-    
-    // Check the team opinion on whether a whistle has been heard for either whistle times
-    if (gameState == STATE_SET) {
-        std::cout << "State is SET, has not heard whistle" << std::endl;
-        float numTeammatesPlaying = 0;
-        float numActiveTeammates = 0;
-        for (int i = 0; i < ROBOTS_PER_TEAM; ++i) {
-            if (!readFrom(receiver, incapacitated)[i]) {
-                ++numActiveTeammates;
-                if (readFrom(receiver, data)[i].gameState == STATE_PLAYING) {
-                    ++numTeammatesPlaying;
-                }
-            }
+    // -- Referee Detection Management -- //
+    if (gameState == STATE_STANDBY) {
+        // Go from STANDBY --> READY when we see referee gesture
+        RefereeGesture::Gesture seenGesture = readFrom(vision, refereeGesture).gesture;
+        bool refereeReadyDetected = (seenGesture == RefereeGesture::Gesture::standbyToReady || 
+                                     seenGesture == RefereeGesture::Gesture::goalKickBlue || // These gesture denote one arm up and the other down
+                                     seenGesture == RefereeGesture::Gesture::goalKickRed);
+        AbsCoord myPos = readFrom(stateEstimation, robotPos);
+
+        if (refereeReadyDetected) {
+            // If we have detected ref, then send the ready event
+            EventTransmitter.raiseEvent("REF_DETECTED", true, 0.0f);
+            gameState = STATE_READY;
+            llog(INFO) << "STANDBY --> READY" << std::endl;
         }
-        AbsCoord robot_pos = readFrom(stateEstimation, robotPos);
-        bool nearCenterCircle = abs(robot_pos.x()) < 1500 &&
-                                        abs(robot_pos.y()) < 3000;
-
-        if (numActiveTeammates > 1) {
-            // If enough of the team thinks we should play,
-            // and we're localised and close to center circle, lets play
-            float ratio = numTeammatesPlaying / numActiveTeammates;
-            if (ratio >= 0.30 && nearCenterCircle && actOnWhistleKickOff) {
-                gameState = STATE_PLAYING;
-                whistleDetected = true;
-               SAY("Whistle heard by teammates");
-            }
-            else if (ratio >= 0.49 && actOnWhistleKickOff) {
-                gameState = STATE_PLAYING;
-                whistleDetected = true;
-               SAY("Whistle heard by most teammates");
-            }
+        else if (refDetectTimeout.elapsed() >= REF_DETECT_TIMEOUT)
+        {
+            // Add timeout for ref detect
+            gameState = STATE_READY;
         }
-    }
-    // For Goal scoring
-        else if (gameState == STATE_PLAYING) {
-            float numTeammatesPlaying = 0;
-            float numActiveTeammates = 0;
-            for (int i = 0; i < ROBOTS_PER_TEAM; ++i) {
-                if (!readFrom(receiver, incapacitated)[i]) {
-                    ++numActiveTeammates;
-                    if (readFrom(receiver, data)[i].gameState == STATE_READY) {
-                        ++numTeammatesPlaying;
+
+        // Check for sent events if we haven't seen signal yet
+        if (gameState != STATE_READY) {
+            for (int playerNum = 1; playerNum <= ROBOTS_PER_TEAM; ++playerNum) {   
+                float timeSinceTouchedEvent = EventReceiver.getEventTimeSinceReceived(playerNum, "REF_DETECTED");
+                if (timeSinceTouchedEvent < REF_DETECT_TIME_TO_RECEIVE) {
+                    bool detectionRecieved = EventReceiver.getEventData(playerNum, "REF_DETECTED")->getUnpackedValue(false);
+                    if (detectionRecieved) {
+                        gameState = STATE_READY;
+                        llog(INFO) << "STANDBY --> READY" << std::endl;
+                        writeTo(gameController, seenRefGesture, true);
+                        break;
                     }
                 }
             }
-            AbsCoord robot_pos = readFrom(stateEstimation, robotPos);
-            bool nearCenterCircle = abs(robot_pos.x()) < 1500 &&
-                                            abs(robot_pos.y()) < 3000;
+        }
+    }
 
-            if (numActiveTeammates > 0) {
-                // If enough of the team thinks we should play,
-                // and we're localised and close to center circle, lets play
-                float ratio = numTeammatesPlaying / numActiveTeammates;
-                if (ratio >= 0.30 && nearCenterCircle && actOnWhistleGoal) {
-                    gameState = STATE_READY;
-                    whistleDetected = true;
-                SAY("Whistle heard by teammates");
+    if (gameState == STATE_SET) {
+        writeTo(gameController, seenRefGesture, false);
+    }
+    
+    // -- Check for Passing Requests -- //
+    // AbsCoord myPos = readFrom(stateEstimation, robotPos);
+    // AbsCoord myPrevPos = readFrom(stateEstimation, prevRobotPos);
+
+    // float timeSinceMyLastUpdate = EventReceiver.getEventTimeSinceReceived(myPlayerNumber, "POSITION_UPDATE");
+
+    // for (int playerNum = 2; playerNum <= ROBOTS_PER_TEAM; ++playerNum) // Do not include goalie
+    // { 
+    //     float timeSincePassingRequestEvent = EventReceiver.getEventTimeSinceReceived(playerNum, "PASSING_REQUEST");
+    //     int defaultVal = 0;
+    //     int requestedPlayerNumbers = EventReceiver.getEventData(playerNum, "PASSING_REQUEST")->getUnpackedValue(defaultVal);
+
+    //     // If the player has been asked to send its position or we want all player's positions (requestedPlayerNumbers = 0)
+    //     // If we have never sent an update, send one
+    //     // Otherwise enough time needs to have passed AND my x or y need to have NOT moved much
+    //     if ((requestedPlayerNumbers == 0 || requestedPlayerNumbers == myPlayerNumber) &&
+    //         (    
+    //             timeSinceMyLastUpdate == -1 || 
+    //                 (
+    //                     timeSinceMyLastUpdate > timeSincePassingRequestEvent && 
+    //                     (
+    //                         abs(myPrevPos.x() - myPos.x()) < RESEND_POSITION_MOVEMENT_RANGE
+    //                         || abs(myPrevPos.y() - myPos.y()) < RESEND_POSITION_MOVEMENT_RANGE
+    //                     )
+    //                 )
+    //         ))
+    //     {
+    //         // If we are not the player that sent the event then send a reply
+    //         EventTransmitter.raiseEvent("POSITION_UPDATE", myPos, DEFAULT_MIN_TIME_TO_SEND);
+    //         break;
+    //     }
+    // }
+    // // Update Prev pos
+    // writeTo(stateEstimation, prevRobotPos, myPrevPos);
+
+
+    // -- Load Received Team Positions into Blackboard -- //
+    // for (int playerNum = 1; playerNum <= ROBOTS_PER_TEAM; ++playerNum)
+    // { 
+    //     AbsCoord defaultVal = AbsCoord();
+    //     AbsCoord receivedData = EventReceiver.getEventData(playerNum, "POSITION_UPDATE")->getUnpackedValue(defaultVal);
+
+    //     // If the robot is penalised or inactive then make its position the default value
+    //     if (our_team->players[playerNum].penalty != PENALTY_NONE) 
+    //     {
+    //         receivedData = defaultVal;
+    //     }
+
+    //     // If the received data is not the default value
+    //     if ( !(receivedData == defaultVal) )
+    //     {
+    //         // Write the received data to blackboard
+    //         blackboard->receiver->data[playerNum].sharedStateEstimationBundle.robotPos = receivedData;
+    //     }
+    // }
+
+
+    // -- Ball Contact Detection/Management -- //
+    if (usePassing) // If we are not in fallback mode
+    {
+        // Evaluate whether or not enough robots have touched the ball
+        if (data.kickingTeam == our_team->teamNumber
+                && (data.setPlay == SET_PLAY_GOAL_KICK
+                || data.setPlay == SET_PLAY_PUSHING_FREE_KICK 
+                || data.setPlay == SET_PLAY_CORNER_KICK 
+                || data.setPlay == SET_PLAY_GOAL_KICK)
+            )
+        {
+            previousSetPlay = data.setPlay;
+            setPlayTimeout.restart();
+        }
+        // If we have returned to game without timing out then assume that the kick was failed (redo indirect kick)
+        else if (data.state == STATE_SET || 
+            (data.setPlay == SET_PLAY_NONE && previousSetPlay != SET_PLAY_NONE && setPlayTimeout.elapsed() >= SETPLAY_TIMEOUT))
+        {
+            previousSetPlay = SET_PLAY_NONE;
+            writeTo(stateEstimation, hasTouchedBall, false);
+            this->touchedBall.fill(false);
+        }
+        else
+        {
+            // Read in the necessary values from blackboard
+            RRCoord relBallPos = readFrom(stateEstimation, ballPosRR);
+            std::vector<BallInfo> seenBall = readFrom(vision, balls);
+
+            // Check how many frames we have seen the ball for
+            if (seenBall.size() > 0) 
+            {
+                ballSeenFrames += 1;
+            }
+            else 
+            {
+                ballSeenFrames = 0;
+            }
+            // If the ball is infront of us, we can currently see the ball and we are close enough to the ball
+            if (abs(relBallPos.heading()) <= ROBOT_HEADING_THRESHOLD && ballSeenFrames >= 3
+                && (MINIMUM_DISTANCE_THRESHOLD <= relBallPos.distance() && relBallPos.distance() <= MAXIMUM_DISTANCE_THRESHOLD))
+            {
+                // If we have touched the ball then send the HAS_TOUCHED_BALL event
+                if (!this->touchedBall[myPlayerNumber - 1])
+                {
+                    writeTo(stateEstimation, hasTouchedBall, true);
+                    EventTransmitter.raiseEvent("HAS_TOUCHED_BALL", true, TOUCHED_BALL_TIME_TO_SEND);
                 }
-                else if (ratio >= 0.49 && actOnWhistleGoal) {
-                    gameState = STATE_READY;
-                    whistleDetected = true;
-                SAY("Whistle heard by most teammates");
+            }
+            // If the above conditions have been met then inform the team that we have made contact with the ball
+            for (int playerNum = 1; playerNum <= ROBOTS_PER_TEAM; ++playerNum) 
+            {   
+                float timeSinceTouchEvent = EventReceiver.getEventTimeSinceReceived(playerNum, "HAS_TOUCHED_BALL");
+                if (0 <= timeSinceTouchEvent && timeSinceTouchEvent < TOUCHED_BALL_TIME_TO_SEND) 
+                {
+                    this->touchedBall[playerNum - 1] = EventReceiver.getEventData(playerNum, "HAS_TOUCHED_BALL")->getUnpackedValue(false);;
                 }
             }
         }
 
+        // Check if we have enough touches for an indirect kick
+        int total_touched_ball = std::count(this->touchedBall.begin(), this->touchedBall.end(), true);
+        bool canScore = false;
+
+        // If we are in a penalty kick we can always score
+        if (data.setPlay == SET_PLAY_PENALTY_KICK)
+        {
+            canScore = true;
+        }
+        // Handle being in the penalty kick setPlay (Always direct)
+        else if (data.setPlay == SET_PLAY_PENALTY_KICK && data.kickingTeam == our_team->teamNumber)
+        {
+            canScore = true;
+        }
+        // If we have enough team ball touches to go for a goal
+        else if (total_touched_ball >= numRequiredTouches)
+        {
+            canScore = true;
+        }
+        // If we have 1 touch less than the required, check if the current robot has touched the ball
+        else if (total_touched_ball == numRequiredTouches - 1)
+        {
+            canScore = !this->touchedBall[myPlayerNumber - 1];
+        }
+
+        writeTo(stateEstimation, canScore, canScore);
+    }
+
+
+    // -- Whistle Detection -- //
+    bool whistleDetected = false;
+    if (!readFrom(whistle, whistleThreadCrashed)) {
+        whistleDetected = (readFrom(whistle, whistleDetectionState) == isDetected);
+    } else {
+        whistleDetected = false;
+        goalWhistleHeard = false;
+    }
+
+    if (whistleDetected) 
+    {
+        // If the confidence is set to 0 then don't check with team, just go if bot hears a whistle
+        if (data.state == STATE_SET && previousGameState != STATE_PLAYING)
+        {
+            gameState = STATE_PLAYING;
+            llog(INFO) << "SET --> PLAYING" << std::endl;
+        }
+        // else if (data.state == STATE_PLAYING && previousGameState != STATE_READY)
+        // {
+        //     goalTimer.restart();
+        //     goalWhistleHeard = true;
+        //     gameState = STATE_READY;
+        //     llog(INFO) << "PLAYING --> READY" << std::endl;
+        // }
+    } 
+
+    // // Handling for the robot being kept in the ready state
+    // if (data.state == STATE_PLAYING)
+    // {
+    //     /* 
+    //      * This is only needed while gc is in playing
+    //      * Should also prevent the issue where the bots go into ready instead of the finished state
+    //      */
+
+    //     // Keeps the robot in ready
+    //     if (goalWhistleHeard && goalTimer.elapsed() <= STAY_IN_READY_SECS) {
+    //         llog(DEBUG) << "Goal Scored - Staying in ready" << std::endl;
+    //         llog(DEBUG) << "Time remaining in Ready before return to Playing: " << double(STAY_IN_READY_SECS - goalTimer.elapsed()) << std::endl;
+    //         gameState = STATE_READY;
+
+    //         // If can still see ball after the minimum time has passed then go back to playing
+    //         for (int playerNum = 1; playerNum <= ROBOTS_PER_TEAM; playerNum++)
+    //         {
+    //             // Uses the most recent ball score update to check if a bot has seen the ball
+    //             float timeSinceLastBallUpdate = EventReceiver.getEventTimeSinceReceived(playerNum, "BALL_SCORE_UPDATE");
+
+    //             if (timeSinceLastBallUpdate < (goalTimer.elapsed() - MIN_STAY_IN_READY)) {
+    //                 goalWhistleHeard = false;
+    //                 gameState = STATE_PLAYING;
+    //             }
+    //         }
+    //     }
+    //     // Timeout: If the GC doesn't go into Ready within time limit then return to Playing
+    //     else if (goalWhistleHeard && goalTimer.elapsed() > STAY_IN_READY_SECS) {
+    //         llog(INFO) << "Exiting Goal Scored Ready -> Timeout" << std::endl;
+    //         gameState = STATE_PLAYING;
+    //         goalWhistleHeard = false;
+    //     }
+    // }
+
     writeTo(gameController, data, data);
     writeTo(gameController, our_team, *our_team);
+    writeTo(gameController, opponent_team, *opponent_team);
     writeTo(gameController, gameState, gameState);
-    writeTo(gameController, whistleDetection, whistleDetected);
 
-    llog(INFO) << "Message Budget: " << our_team->messageBudget << std::endl;
-
-    // In the case where we've heard a whistle, but haven't decided to play yet
-    // We want to keep the official data as set or playing,
-    // ... but tell the team we think its play time or ready time
-    // So override our gameState variable, thus making gameState != data.state
-    // if (gameState == STATE_PLAYING && data.state == STATE_SET) {
-	// 	llog(INFO) << "CONFIRM PLAYING" << std::endl;
-	// 	writeTo(gameController, gameState, gameState);
-    // }
-
-    // For goal scoring
-    // else if (gameState == STATE_PLAYING && data.state == STATE_READY) {
-	//	llog(INFO) << "CONFIRM PLAYING" << std::endl;
-	//	writeTo(gameController, gameState, gameState);
-    // }
+    // llog(INFO) << "Message Budget: " << our_team->messageBudget << std::endl;
 }
 
 void GameController::initialiseConnection() {
@@ -317,16 +475,15 @@ void GameController::buttonUpdate() {
         pressedTime++;
         if(pressedTime>=2){
             llog(INFO) << "button pushed once, switching state" << endl;
-            switch (our_team->players[playerNumber - 1].penalty) {
+            switch (our_team->players[myPlayerNumber - 1].penalty) {
             case PENALTY_NONE:
-                our_team->players[playerNumber - 1].penalty =
+                our_team->players[myPlayerNumber - 1].penalty =
                     PENALTY_MANUAL;
                   SAY((string("Penalised for ") +
-                        gameControllerPenaltyNames[our_team->players[playerNumber - 1].penalty]).c_str());
+                        gameControllerPenaltyNames[our_team->players[myPlayerNumber - 1].penalty]).c_str());
                 break;
             default:
-                // data.state = STATE_PLAYING;
-                our_team->players[playerNumber - 1].penalty =
+                our_team->players[myPlayerNumber - 1].penalty =
                     PENALTY_NONE;
                   SAY("Playing");
             }
@@ -375,6 +532,11 @@ void GameController::wirelessUpdate() {
                 parseData((RoboCupGameControlData*)buffer);
                 handleFinishedPacket();
             }
+            // Set active GC to true
+            if (!GCActive) {
+                GCActive = true;
+                writeTo(gameController, active, GCActive);
+            }
         }
     }
 }
@@ -383,81 +545,22 @@ void GameController::handleFinishedPacket() {
     if (data.state != STATE_FINISHED ||
             data.gamePhase != GAME_PHASE_NORMAL) {
         // If not FINISHED, or in a timeout or penalty shootout game state
-        finished_times.clear();
+        finishedTimes.clear();
         return;
     }
     time_t now = time(0);  // get time now
-    finished_times.push_back(now);
-    double diff = difftime(finished_times.front(), finished_times.back());
+    finishedTimes.push_back(now);
+    double diff = difftime(finishedTimes.front(), finishedTimes.back());
     if (abs(diff) > LEAVE_WIFI_SECONDS &&
-        finished_times.size() > min_packets
+        finishedTimes.size() > min_packets
     ) {
        SAY("THANKS AND SEE YOU LATER");
     }
 }
 
-bool GameController::whistleHeard(int numSeconds) {
-    //  Checks to see if a whistle file was created in the last numSeconds
-    //  If found deletes the file and returns true
-    const std::string WHISTLE_FILE_FORMAT = "Whistle_Has_Been_Heard.wav";
-    const char *NAO_WHISTLE_LOCATION = "whistle/heard_whistles/";
-    double seconds = 0;
-    DIR *dir;
-    struct dirent *ent;
-    time_t currentTime = time(nullptr);
-    struct tm *localTime = localtime(&currentTime);
-    bool found = false;
-
-    if ((dir = opendir(NAO_WHISTLE_LOCATION)) != NULL) {
-        struct tm fileDateTime;
-        while (((ent = readdir(dir)) != NULL)) {
-            
-            if (ent->d_name == WHISTLE_FILE_FORMAT) {
-                found = true;
-                whistleDetected = true;
-                
-                numWhistles ++;
-
-                std::cout << std::endl << "Whistle File: " << WHISTLE_FILE_FORMAT << std::endl;
-
-                llog(DEBUG) << "Seconds since creation: " << std::fixed << std::setprecision(0) 
-                            << seconds << " seconds" << std::endl;
-
-
-                // Move whistle file to old whistles (.wav)
-                std::string command = "mv /home/nao/whistle/heard_whistles/";
-                command += WHISTLE_FILE_FORMAT + " /home/nao/whistle/old_whistles/" + std::to_string(numWhistles) + ".wav";
-        
-                std::system(command.c_str());
-
-                std::cout << "Whistle has been moved to Old_Whistles: Assigned to " << numWhistles << ".wav" << std::endl << std::endl;
-
-            }
-        }
-        llog(INFO) << "Whistle Detector: " << found << std::endl;
-        closedir(dir);
-    } 
-    else {
-        /* could not open directory */
-        llog(ERROR) << "Could not open whistle directory" << std::endl;
-        throw std::runtime_error("Could not open directory");
-    }
-    return found;
-}
-
 void GameController::parseData(RoboCupGameControlData *update) {
     if (isValidData(update)) {
-        // Heard whistles - if GameController still saying we are in SET
-        // but we are already PLAYING, keep PLAYING
-        // if (update->state == STATE_SET && data.state == STATE_PLAYING) {
-        //     update->state = STATE_PLAYING;
-        // } 
-        // For goal scoring
-        // else if (update->state == STATE_PLAYING && data.state == STATE_READY) {
-        //     update->state = STATE_READY;
-        // }
-
-        bool manualPenalty = our_team->players[playerNumber - 1].penalty == PENALTY_MANUAL;
+        bool manualPenalty = our_team->players[myPlayerNumber - 1].penalty == PENALTY_MANUAL;
 
         // Update the data
         if (!gameDataEqual(update, &data)) {
@@ -466,12 +569,11 @@ void GameController::parseData(RoboCupGameControlData *update) {
         }
 
         if (manualPenalty){
-            our_team->players[playerNumber - 1].penalty = PENALTY_MANUAL;
+            our_team->players[myPlayerNumber - 1].penalty = PENALTY_MANUAL;
         }
 
         llog(TRACE) << "GameController: Valid data" << endl;
         if (data.state != lastState) {
-            // Shamefully copied from: http://stackoverflow.com/a/1995057/1101109
             char comboState[100];
             strcpy(comboState, gameControllerGamePhaseNames[update->gamePhase]);
             strcat(comboState, gameControllerStateNames[data.state]);
@@ -479,7 +581,7 @@ void GameController::parseData(RoboCupGameControlData *update) {
             lastState = data.state;
         }
 
-        unsigned char myPenalty = our_team->players[playerNumber - 1].penalty;
+        unsigned char myPenalty = our_team->players[myPlayerNumber - 1].penalty;
 
         if (myPenalty != myLastPenalty) {
             if (myPenalty == PENALTY_NONE) {
@@ -497,14 +599,19 @@ void GameController::parseData(RoboCupGameControlData *update) {
 }
 
 void GameController::setOurTeam() {// make our_team point to the my actual team, based on teamNumber
+    bool leftTeam = false;
    if (data.teams[0].teamNumber == teamNumber) {
-      our_team = &(data.teams[0]);
+        our_team = &(data.teams[0]);
+        opponent_team = &(data.teams[1]);
+        leftTeam = true;
    } else if (data.teams[1].teamNumber == teamNumber) {
       our_team = &(data.teams[1]);
+      opponent_team = &(data.teams[0]);
    } else {
-      llog(ERROR) << "We are team " << teamNumber << " but GC is sending " <<
+        llog(ERROR) << "We are team " << teamNumber << " but GC is sending " <<
                   data.teams[0].teamNumber << " and " << data.teams[1].teamNumber << "\n";
    }
+   writeTo(gameController, leftTeam, leftTeam);
 }
 
 bool GameController::isValidData(RoboCupGameControlData *gameData) {

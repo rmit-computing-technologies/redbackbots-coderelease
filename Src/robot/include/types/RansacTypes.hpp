@@ -3,7 +3,7 @@
 #include <math.h>
 #include <limits>
 
-#include "types/Point.hpp"
+#include "types/geometry/Point.hpp"
 
 struct RANSACLine
 {

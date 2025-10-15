@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cstdio>
-#include <iostream>
-#include "utils/Logger.hpp"
-#include "utils/Timer.hpp"
 #include <errno.h>
+#include <iostream>
+
+#include "utils/Timer.hpp"
 
 class Speech {
 public:

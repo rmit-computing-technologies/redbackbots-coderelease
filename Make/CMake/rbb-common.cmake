@@ -14,46 +14,45 @@ SET(ROBOT_COMMON_SRCS
     # Blackboard
     ${RBB_SRC_DIR}/blackboard/Blackboard.cpp
 
+    # Communication
+    ${RBB_SRC_DIR}/communication/Connection.cpp
+    ${RBB_SRC_DIR}/communication/transmitter/OffNaoTransmitter.cpp
+
+    # Kinematics
+    ${RBB_SRC_DIR}/perception/kinematics/RobotPose.cpp
+    ${RBB_SRC_DIR}/perception/kinematics/Parameters.cpp
+
+    # Vision
+    ${RBB_SRC_DIR}/perception/vision/camera/CameraToRR.cpp
+    ${RBB_SRC_DIR}/perception/vision/camera/CombinedCamera.cpp
+    ${RBB_SRC_DIR}/perception/vision/fovea/Fovea.cpp
+    ${RBB_SRC_DIR}/perception/vision/fovea/Region.cpp
+    ${RBB_SRC_DIR}/perception/vision/other/YUV.cpp
+    ${RBB_SRC_DIR}/perception/vision/other/Ransac.cpp
+    ${RBB_SRC_DIR}/perception/vision/other/GMM_classifier.cpp
+    ${RBB_SRC_DIR}/perception/vision/detector/DNNHelper.cpp
+    ${RBB_SRC_DIR}/perception/vision/camera/NaoCameraProvider.cpp
+    ${RBB_SRC_DIR}/perception/vision/camera/NaoCameraV6.cpp
+
     # Thread
     ${RBB_SRC_DIR}/thread/Thread.cpp
     ${RBB_SRC_DIR}/thread/ThreadManager.cpp
 
-    # Kinematics
-    ${RBB_SRC_DIR}/perception/kinematics/Pose.cpp
-    ${RBB_SRC_DIR}/perception/kinematics/Parameters.cpp
-
-    # Vision
-    ${RBB_SRC_DIR}/perception/vision/Vision.cpp
-    ${RBB_SRC_DIR}/perception/vision/Fovea.cpp
-    ${RBB_SRC_DIR}/perception/vision/Region.cpp
-    ${RBB_SRC_DIR}/perception/vision/VisionAdapter.cpp
-    ${RBB_SRC_DIR}/perception/vision/camera/Camera.cpp
-    ${RBB_SRC_DIR}/perception/vision/camera/CameraToRR.cpp
-    ${RBB_SRC_DIR}/perception/vision/camera/CombinedCamera.cpp
-    ${RBB_SRC_DIR}/perception/vision/other/YUV.cpp
-    ${RBB_SRC_DIR}/perception/vision/other/Ransac.cpp
-    ${RBB_SRC_DIR}/perception/vision/other/GMM_classifier.cpp
-    ${RBB_SRC_DIR}/perception/vision/regionfinder/ColourROI.cpp
-    ${RBB_SRC_DIR}/perception/vision/regionfinder/RobotColorROI.cpp
-    ${RBB_SRC_DIR}/perception/vision/detector/BallDetector.cpp
-    ${RBB_SRC_DIR}/perception/vision/detector/RegionFieldFeatureDetector.cpp
-    ${RBB_SRC_DIR}/perception/vision/detector/RobotDetector.cpp
-    ${RBB_SRC_DIR}/perception/vision/detector/DNNHelper.cpp
-    ${RBB_SRC_DIR}/perception/vision/middleinfoprocessor/FieldBoundaryFinder.cpp
-
     # Types
     ${RBB_SRC_DIR}/types/BehaviourSharedData.cpp
     ${RBB_SRC_DIR}/types/ButtonPresses.cpp
-    ${RBB_SRC_DIR}/types/CameraSettings.cpp
+    ${RBB_SRC_DIR}/types/field/FieldBoundary.cpp
+    ${RBB_SRC_DIR}/types/camera/CameraInfo.cpp
+    ${RBB_SRC_DIR}/types/camera/CameraResolution.cpp
+    ${RBB_SRC_DIR}/types/camera/CameraSettings.cpp
 
     # Misc/utils
-    ${RBB_SRC_DIR}/transmitter/OffNao.cpp
-    ${RBB_SRC_DIR}/utils/Connection.cpp
-    ${RBB_SRC_DIR}/utils/LeastSquaresLine.cpp
     ${RBB_SRC_DIR}/utils/Logger.cpp
     ${RBB_SRC_DIR}/utils/options.cpp
     ${RBB_SRC_DIR}/utils/speech.cpp
     ${RBB_SRC_DIR}/utils/Timer.cpp
+    ${RBB_SRC_DIR}/utils/random.cpp
+    ${RBB_SRC_DIR}/utils/math/LeastSquares.cpp
 )
 
 #############################
@@ -68,7 +67,7 @@ endif()
 
 # RebBackBots Common library
 add_library(${RBBCommonName}
-    STATIC 
+    STATIC
         ${ROBOT_COMMON_SRCS}
 )
 target_include_directories(${RBBCommonName}
@@ -77,24 +76,24 @@ target_include_directories(${RBBCommonName}
 # External dependent libraries
 target_link_libraries(${RBBCommonName} PRIVATE BoostInterface)
 target_link_libraries(${RBBCommonName} PRIVATE Boost::ProgramOptions)
-#target_link_libraries(${RBBCommonName} PRIVATE Boost::Python)
 target_link_libraries(${RBBCommonName} PRIVATE Boost::Python3)
 target_link_libraries(${RBBCommonName} PRIVATE Boost::Regex)
 target_link_libraries(${RBBCommonName} PRIVATE Boost::System)
 target_link_libraries(${RBBCommonName} PRIVATE Boost::Thread)
+# target_link_libraries(${RBBCommonName} PRIVATE CompiledNN)
 target_link_libraries(${RBBCommonName} PRIVATE Eigen)
 target_link_libraries(${RBBCommonName} PRIVATE FadBad)
 target_link_libraries(${RBBCommonName} PRIVATE MsgpackInterface)
 target_link_libraries(${RBBCommonName} PRIVATE Png::Png)
 if(BUILD_NAO)
-    # target_link_libraries(${RBBCommonName} PRIVATE Python27)
+    target_link_libraries(${RBBCommonName} PRIVATE kissfft)
+    target_link_libraries(${RBBCommonName} PRIVATE PortAudio)
     target_link_libraries(${RBBCommonName} PRIVATE Python38)
     target_link_libraries(${RBBCommonName} PRIVATE SnappyNao)
     target_link_libraries(${RBBCommonName} PRIVATE -ldl-2.31)
     target_link_libraries(${RBBCommonName} PRIVATE -lpthread-2.31)
     target_link_libraries(${RBBCommonName} PRIVATE -lrt-2.31)
 elseif(BUILD_DESKTOP)
-    #target_link_libraries(${RBBCommonName} PRIVATE Python::Python)
     target_link_libraries(${RBBCommonName} PRIVATE Python38)
     target_link_libraries(${RBBCommonName} PRIVATE SnappyDesktop)
     set(THREADS_PREFER_PTHREAD_FLAG ON)

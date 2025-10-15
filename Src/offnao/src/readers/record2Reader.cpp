@@ -6,7 +6,7 @@
 #include "blackboard/modules/VisionBlackboard.hpp"
 #include "naoData.hpp"
 #include "perception/vision/other/YUV.hpp"
-#include "perception/vision/Region.hpp"
+#include "perception/vision/fovea/Region.hpp"
 #include "types/BBox.hpp"
 #include "utils/classifier.hpp"
 

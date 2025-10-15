@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include "gamecontroller/RoboCupGameControlData.hpp"
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 #include "types/ActionCommand.hpp"
 #include "types/BroadcastData.hpp"
 

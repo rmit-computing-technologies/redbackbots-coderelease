@@ -29,3 +29,6 @@
    scope().attr("CORNER_KICK_ABS_X"         ) = CORNER_KICK_ABS_X;
    scope().attr("CORNER_KICK_ABS_Y"         ) = CORNER_KICK_ABS_Y;
    scope().attr("ROBOTS_PER_TEAM"           ) = ROBOTS_PER_TEAM;
+   scope().attr("PACKET_LIMIT"              ) = PACKET_LIMIT;
+   scope().attr("GAME_TIME"                 ) = GAME_TIME;
+   scope().attr("MAX_MESSAGE_SIZE"          ) = MAX_MESSAGE_SIZE;

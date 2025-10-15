@@ -1,26 +1,30 @@
+#include "readers/networkReader.hpp"
+
 #include <QDebug>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QString>
 #include <QStringList>
 #include <QInputDialog>
-#include <cmath>
-#include <string>
-#include <sstream>
+
+#include <bitset>
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/vector.hpp>
 #include <boost/shared_ptr.hpp>
+#include <cmath>
+#include <string>
+#include <sstream>
 
-#include "readers/networkReader.hpp"
-#include "utils/Timer.hpp"
 #include "progopts.hpp"
 #include "blackboard/Blackboard.hpp"
-#include "types/AbsCoord.hpp"
 #include "thread/Thread.hpp"
-#include "utils/Connection.hpp"
+#include "types/camera/CameraInfo.hpp"
+#include "types/camera/CameraSettings.hpp"
+#include "types/geometry/AbsCoord.hpp"
+#include "types/serialise/CameraSettingsSerialse.hpp"
+#include "communication/Connection.hpp"
+#include "utils/Timer.hpp"
 
-using namespace std;
-using namespace boost;
 
 NetworkReader::NetworkReader(const QString &robotName, int robotPort, OffNaoMask_t mask) :
    connection_(0), received(), isRecording(false), robotName(robotName), robotPort(robotPort) {
@@ -29,7 +33,7 @@ NetworkReader::NetworkReader(const QString &robotName, int robotPort, OffNaoMask
    isAlive = true;
 }
 
-NetworkReader::NetworkReader(pair<pair<const QString &,int>, OffNaoMask_t> robotNameMask):
+NetworkReader::NetworkReader(std::pair<std::pair<const QString &,int>, OffNaoMask_t> robotNameMask):
    connection_(0), received(), isRecording(false),
    robotName(robotNameMask.first.first), robotPort(robotNameMask.first.second) {
    this->mask = robotNameMask.second;
@@ -37,7 +41,7 @@ NetworkReader::NetworkReader(pair<pair<const QString &,int>, OffNaoMask_t> robot
    isAlive = true;
 }
 
-NetworkReader::NetworkReader(pair<pair<const QString &, int>, OffNaoMask_t> robotNameMask,
+NetworkReader::NetworkReader(std::pair<std::pair<const QString &, int>, OffNaoMask_t> robotNameMask,
                              const NaoData &naoData) :
    Reader(naoData), connection_(0), received(), isRecording(false),
    robotName(robotNameMask.first.first), robotPort(robotNameMask.first.second) {
@@ -155,130 +159,158 @@ void NetworkReader::run()  {
    Q_EMIT newNaoData(NULL);
 }
 
+void NetworkReader::stopMediaTrigger() {
+   if (isRecording) {
+      isRecording = disconnect();
+   }
+   naoData.setPaused(true);
+   Q_EMIT showMessage(QString("Disconnected. Hit record to continue."));
+}
 
-   void NetworkReader::stopMediaTrigger() {
-      if (isRecording) {
-         isRecording = disconnect();
+void NetworkReader::recordMediaTrigger() {
+   if (!isRecording) {
+      isRecording = connect();
+   }
+   naoData.setPaused(false);
+}
+
+bool NetworkReader::disconnect() {
+   llog(INFO) << "Try to disconnect!!" << std::endl;
+   try {
+      if (ioservice)
+         ioservice->stop();
+
+      if (cthread) {
+         cthread->join();
+         delete cthread;
+         cthread = NULL;
       }
-      naoData.setPaused(true);
-      Q_EMIT showMessage(QString("Disconnected. Hit record to continue."));
+
+      if (connection_ && connection_->socket().is_open())
+         connection_->socket().close();
+
+      if (connection_) {
+         delete connection_;
+         connection_ = NULL;
+      }
+      if (ioservice) {
+         delete ioservice;
+         ioservice = NULL;
+      }
+      if (resolver) {
+         delete resolver;
+         resolver = NULL;
+      }
+      if (query) {
+         delete query;
+         query = NULL;
+      }
+   } catch(boost::system::system_error &se) {
+      Q_EMIT showMessage(QString("Could not disconnect to robot!"));
    }
 
-   void NetworkReader::recordMediaTrigger() {
-      if (!isRecording) {
-         isRecording = connect();
-      }
-      naoData.setPaused(false);
-   }
+   return false;
+}
 
-   void NetworkReader::sendCommandLineString(QString item) {
-      std::cout << item.toStdString() << std::endl;
-      OffNaoMask_t sendingMask = COMMAND_MASK;
-      if (connection_ && connection_->socket().is_open()) {
-         boost::asio::write(connection_->socket(),
-                            boost::asio::buffer(&sendingMask,
-                                                sizeof(sendingMask)));
-         connection_->sync_write(item.toStdString());
-      }
-   }
+bool NetworkReader::connect() {
+   llog(INFO) << "Try to connect!" << std::endl;
+   try {
+      ioservice = new boost::asio::io_service();
+      connection_ = new Connection(ioservice);
+      resolver = new boost::asio::ip::tcp::resolver(*ioservice);
+      std::stringstream ss;
+      ss << robotPort;
 
-   bool NetworkReader::disconnect() {
-      std::cerr << "Try to disconnect!!" << std::endl;
-      try {
-         if (ioservice)
-            ioservice->stop();
+      query = new boost::asio::ip::tcp::resolver::query(robotName.toStdString(), ss.str());
+      boost::asio::ip::tcp::resolver::iterator endpoint_iterator = resolver->resolve(*query);
+      boost::asio::ip::tcp::endpoint endpoint = *endpoint_iterator;
 
-         if (cthread) {
-            cthread->join();
-            delete cthread;
-            cthread = NULL;
-         }
-
-         if (connection_ && connection_->socket().is_open())
-            connection_->socket().close();
-
-         if (connection_) {
-            delete connection_;
-            connection_ = NULL;
-         }
-         if (ioservice) {
-            delete ioservice;
-            ioservice = NULL;
-         }
-         if (resolver) {
-            delete resolver;
-            resolver = NULL;
-         }
-         if (query) {
-            delete query;
-            query = NULL;
-         }
-      } catch(boost::system::system_error &se) {
-         Q_EMIT showMessage(QString("Could not disconnect to robot!"));
-      }
-
+      connection_->socket().async_connect(endpoint, 
+         boost::bind(&NetworkReader::handle_connect, 
+                     this,
+                     boost::asio::placeholders::error, 
+                     ++endpoint_iterator)
+      );
+      
+      cthread = new boost::thread(boost::bind(&boost::asio::io_service::run, ioservice));
+      llog(INFO) << "Connected!" << std::endl;
+   } catch (boost::system::system_error &se) {
+      Q_EMIT showMessage(QString("Could not connect to robot!"));
+      llog(ERROR) << "ERROR CODE: " << se.what() << std::endl;
       return false;
    }
+   return true;
+}
 
-   bool NetworkReader::connect() {
-      std::cerr << "Try to connect!" << std::endl;
-      try {
-    	 ioservice = new boost::asio::io_service();
-    	 connection_ = new Connection(ioservice);
-    	 resolver = new boost::asio::ip::tcp::resolver(*ioservice);
-         std::stringstream ss;
-         ss << robotPort;
-         query = new boost::asio::ip::tcp::resolver::query(robotName.toStdString()
-               , ss.str());
-         boost::asio::ip::tcp::resolver::iterator endpoint_iterator =
-            resolver->resolve(*query);
-         boost::asio::ip::tcp::endpoint endpoint = *endpoint_iterator;
-         connection_->socket().async_connect(endpoint,
-               boost::bind(&NetworkReader::handle_connect, this,
-                  boost::asio::placeholders::error, ++endpoint_iterator));
-         cthread = new boost::thread(boost::bind(&boost::asio::io_service::run,
-                  ioservice));
-         std::cerr <<"Connected!" << std::endl;
-      } catch(boost::system::system_error &se) {
-         Q_EMIT showMessage(QString("Could not connect to robot!"));
-         std::cerr << "ERROR CODE: " << se.what() << std::endl;
-         return false;
-      }
-      return true;
+void NetworkReader::write(const msg_t &msg) {
+   if (connection_ && connection_->socket().is_open()) {
+      ioservice->post(boost::bind(&NetworkReader::do_write, this, msg));
    }
+}
 
-   void NetworkReader::write(const msg_t &msg) {
-      if (connection_ && connection_->socket().is_open())
-         ioservice->post(boost::bind(&NetworkReader::do_write, this, msg));
+void NetworkReader::do_write(msg_t msg) {
+   bool write_in_progress = !write_msgs_.empty();
+   write_msgs_.push_back(msg);
+   if (!write_in_progress) {
+      boost::asio::async_write(connection_->socket(),
+            boost::asio::buffer(&(write_msgs_.front()),
+               sizeof(write_msgs_.front())),
+            boost::bind(&NetworkReader::handle_write, this,
+               boost::asio::placeholders::error));
    }
+}
 
-   void NetworkReader::do_write(msg_t msg) {
-      bool write_in_progress = !write_msgs_.empty();
-      write_msgs_.push_back(msg);
-      if (!write_in_progress) {
+void NetworkReader::handle_write(const boost::system::error_code &error) {
+   if (!error) {
+      if (!write_msgs_.empty()) {
          boost::asio::async_write(connection_->socket(),
                boost::asio::buffer(&(write_msgs_.front()),
                   sizeof(write_msgs_.front())),
                boost::bind(&NetworkReader::handle_write, this,
                   boost::asio::placeholders::error));
+         write_msgs_.pop_front();
       }
+   } else {
+      do_close();
    }
+}
 
-   void NetworkReader::handle_write(const boost::system::error_code &error) {
-      if (!error) {
-         if (!write_msgs_.empty()) {
-            boost::asio::async_write(connection_->socket(),
-                  boost::asio::buffer(&(write_msgs_.front()),
-                     sizeof(write_msgs_.front())),
-                  boost::bind(&NetworkReader::handle_write, this,
-                     boost::asio::placeholders::error));
-            write_msgs_.pop_front();
-         }
-      } else {
-         do_close();
-      }
-   }
+void NetworkReader::do_close() {
+   connection_->socket().close();
+}
 
-   void NetworkReader::do_close() {
-      connection_->socket().close();
+void NetworkReader::sendCameraSettings(int whichCamera, QSharedPointer<CameraSettings> settings) {
+   OffNaoMask_t sendingMask = TO_NAO_MASKS | CAMERA_SETTINGS_MASK;
+   llog(INFO) << "OffNao sending with mask " << std::bitset<sizeof(sendingMask) * 8>(sendingMask)
+              << " - camera settings: " << CameraInfo::enumCameraToString((CameraInfo::Camera) whichCamera) << std::endl;
+   llog(INFO) << "\t hflip = " << settings->hflip << std::endl;
+   llog(INFO) << "\t vflip = " << settings->vflip << std::endl;
+   for (int name = 0; name != CameraSettings::CameraSetting::NUM_CAMERA_SETTINGS; ++name) {
+      llog(INFO) << "\t " << CameraSettings::enumToString((CameraSettings::CameraSetting) name) << " = " 
+                 << settings->settings[name] << std::endl;
    }
+   llog(INFO) << "\t whitebalance = " << settings->whiteBalance << std::endl;
+
+   // Create data structure to serialise
+   CameraSettingsSerialse csSerialise;
+   csSerialise.whichCamera = (CameraInfo::Camera) whichCamera;
+   csSerialise.settings = *settings;
+
+   if (connection_ && connection_->socket().is_open()) {
+      boost::asio::write(connection_->socket(),
+                         boost::asio::buffer(&sendingMask, sizeof(sendingMask)));
+      connection_->sync_write((ProtobufSerialisable&) csSerialise);
+   }
+}
+
+void NetworkReader::sendCommandLineString(QString item) {
+   OffNaoMask_t sendingMask = TO_NAO_MASKS | STRING_MASK;
+   llog(INFO) << "OffNao sending with mask " << std::bitset<sizeof(sendingMask) * 8>(sendingMask)
+              << " - string to: " << item.toStdString() << std::endl;
+
+   if (connection_ && connection_->socket().is_open()) {
+      boost::asio::write(connection_->socket(),
+                         boost::asio::buffer(&sendingMask, sizeof(sendingMask)));
+      connection_->sync_write(item.toStdString());
+   }
+}

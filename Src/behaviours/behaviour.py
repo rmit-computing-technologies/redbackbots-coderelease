@@ -20,12 +20,12 @@ from pkgutil import iter_modules
 from traceback import format_exc
 from importlib import import_module
 from os.path import join
-from util import Log
+from util import log
 from robot import BehaviourRequest, All
-from util import LedOverride
+from util import led_override
 from util.world import World
-from util.Global import update_global, ballLostTime, believeMoreInTeamBallPos
-from util.TeamStatus import update_team_status
+from util.Global import update_global, ball_lost_time, believe_more_in_team_ball
+from util.TeamStatus import update_team_status, robot_can_score
 from util.FieldGeometry import update_field_geometry
 from util.Timer import update_timer
 from util.Sonar import update_sonar
@@ -33,8 +33,8 @@ from util.GameStatus import update_game_status, whistle_detected
 from util.NetworkEar import update_network_ear, get_ear_colour
 from util.RemoteStiffener import update_remote_stiffener, get_stiffen_command
 from util.ObstacleAvoidance import update_obstacle_avoidance
-from util import LedOverride
-from util.Constants import LEDColour, LEDSegments
+from util.Constants import LEDColour
+from util.EventComms import update_event_comms
 
 # from vision.visual_ref import estimate_ref_pose
 
@@ -43,13 +43,21 @@ attempted_debug_connect = False
 skill_instance = None
 headskill_instance = None
 
+# Initialise global logger configs
+log.init_logger()
 
 def catch_all(tick):
     def catcher(blackboard):
         try:
             return tick(blackboard)
         except Exception:
-            Log.error("Behaviour exception:", exc_info=True)
+            log.error("Behaviour exception:", say=False, exc_info=True)
+            log.sound("deep_bip.wav")
+            # TODO: Add a say for where the error occurred
+            led_override.override_eye_segment(
+                led_override.RIGHT_EYE, led_override.allSegments, LEDColour.purple)
+            led_override.override_eye_segment(
+                led_override.LEFT_EYE, led_override.allSegments, LEDColour.purple)
             raise
 
     return catcher
@@ -65,8 +73,7 @@ def skill_instance_factory(
         look_in = join(behaviour_root, '/'.join(package))
         seen_modules = [name for _, name, _ in iter_modules([look_in])]
         if skill not in seen_modules:
-            Log.info('%s.py was not in %s, skipping import attempt.',
-                     skill, look_in)
+            log.info(f"{skill}.py was not in {look_in}, skipping import attempt.")
             continue
         skill_path = '%s.%s' % ('.'.join(package), skill)
         try:
@@ -74,11 +81,11 @@ def skill_instance_factory(
             # Access the class so we can do some reflection.
             SkillClass = getattr(skill_module, skill)
             found_skill = True
-            Log.info("Successfully imported %s from %s", skill, skill_path)
+            log.info(f"Successfully imported {skill} from {skill_path}")
             break
         except ImportError as e:
-            Log.error("%s %s", package, e)
-            Log.error(format_exc())
+            log.error(f"{package} {e}")
+            log.error(format_exc())
 
     if not found_skill:
         raise ImportError('Skill: %s not found in behaviour packages %s' %
@@ -124,6 +131,7 @@ def tick(blackboard):
 
 
     # Update all blackboard dependent helper modules.
+    update_event_comms(blackboard)
     update_timer(blackboard)
     update_global(blackboard)
     update_team_status(blackboard)
@@ -136,7 +144,7 @@ def tick(blackboard):
 
     #estimate_ref_pose(blackboard)
 
-    LedOverride.reset_led_override()
+    led_override.reset_led_override()
 
     global skill_instance
     if not skill_instance:
@@ -170,24 +178,31 @@ def tick(blackboard):
     headskill_instance.tick()
     request = headskill_instance.world.b_request
 
+
     # So we know which ball is being used by the robot. Team == green, Robots == Red
-    if believeMoreInTeamBallPos():
-        LedOverride.override_eye_segment(LedOverride.leftEye, LedOverride.positionSegments, LEDColour.green)
+    if believe_more_in_team_ball():
+        led_override.override_eye_segment(led_override.LEFT_EYE, led_override.TEAM_BALL_SEGMENTS, LEDColour.green)
     else:
-        LedOverride.override_eye_segment(LedOverride.leftEye, LedOverride.positionSegments, LEDColour.red)
+        led_override.override_eye_segment(led_override.LEFT_EYE, led_override.TEAM_BALL_SEGMENTS, LEDColour.dim_white)
 
     # LED colouring for ball detection (moved to lower half)
     if len(blackboard.vision.balls) <= 0:
-        LedOverride.override_eye_segment(LedOverride.leftEye, LedOverride.roleSegments, LEDColour.off)
+        led_override.override_eye_segment(led_override.LEFT_EYE, led_override.BALL_SEEN_SEGMENTS, LEDColour.dim_white)
         # request.actions.leds.leftEye = LEDSegments.off
+    else:
+        led_override.override_eye_segment(led_override.LEFT_EYE, led_override.BALL_SEEN_SEGMENTS, LEDColour.red)
+        # request.actions.leds.leftEye = LEDSegments.ballSeen    
     
+    # Use foot LEDs to indicate if we have done enough passes for us to kick a goal
+    led_override.override(led_override.RIGHT_FOOT, LEDColour.green if robot_can_score() else LEDColour.blue)
+
     # Foot LED indicating if a whistle has been heard
     if whistle_detected():
-        LedOverride.override(LedOverride.rightFoot, LEDColour.red)
-        LedOverride.override(LedOverride.leftFoot, LEDColour.red)
+        led_override.override(led_override.RIGHT_FOOT, LEDColour.red)
+        led_override.override(led_override.LEFT_FOOT, LEDColour.red)
 
     # Override leds as requested by skills
-    LedOverride.override_request(request)
+    led_override.override_request(request)
 
     # Get right ear colour depending on network activity
     request.actions.leds.rightEar = get_ear_colour()
@@ -195,7 +210,7 @@ def tick(blackboard):
     # Remotely stiffen
     request.actions.stiffen = get_stiffen_command()
 
-    request.actions.ballAge = ballLostTime()
+    request.actions.ballAge = ball_lost_time()
 
     # Obtain behaviour hierarchies of current skill
     request.behaviourDebugInfo.bodyBehaviourHierarchy = \

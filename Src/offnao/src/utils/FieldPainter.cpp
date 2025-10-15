@@ -3,9 +3,9 @@
 #include "types/BallInfo.hpp"
 #include "types/RobotVisionInfo.hpp"
 #include "types/FieldFeatureInfo.hpp"
-#include "types/AbsCoord.hpp"
-#include "utils/angles.hpp"
-#include "utils/SPLDefs.hpp"
+#include "types/geometry/AbsCoord.hpp"
+#include "utils/math/angles.hpp"
+#include "utils/defs/FieldDefinitions.hpp"
 
 FieldPainter::FieldPainter (QPaintDevice *device) : QPainter (device)
 {
@@ -130,6 +130,27 @@ void FieldPainter::drawBallRR (const BallInfo &ball, const AbsCoord &robot, cons
    restore ();
 }
 
+void FieldPainter::drawPointRR (const RRCoord &rr, const AbsCoord &robot, const QColor &col)
+{
+   save ();
+   translateRR(rr, robot);
+   setPen (QColor ("black"));
+   setBrush(QBrush(col));
+   drawEllipse (QPoint(0, 0), 40, 40);
+   restore ();
+}
+
+void FieldPainter::drawPointAbs (const AbsCoord &pos, const QColor &col)
+{
+   save ();
+   translate(pos.x(), pos.y());
+   rotate(RAD2DEG(pos.theta()));
+   setPen (QColor ("black"));
+   setBrush(QBrush(col));
+   drawEllipse (QPoint(0, 0), 40, 40);
+   restore ();
+}
+
 void FieldPainter::drawBallRR (const BallInfo &ball, const AbsCoord &robot)
 {
    QColor col = QColor(255, 127, 0);
@@ -165,6 +186,19 @@ void FieldPainter::drawFeatureRR (const FieldFeatureInfo &feat, const AbsCoord &
          setPen(p);
          drawRect(-25, -300, 50, 600);
          drawRect(0, 25, -300, -50);
+         break;
+      case FieldFeatureInfo::fXJunction:
+         setPen("black");
+         p = pen();
+         p.setWidth(50);
+         setPen(p);
+         save();
+         drawRect(25, 25, -300, -50);
+         restore();
+         save();
+         drawRect(25, 25, -300, -50);
+         rotate(RAD2DEG(-M_PI));
+         restore();
          break;
       case FieldFeatureInfo::fPenaltySpot:
          setPen("black");
@@ -202,8 +236,8 @@ void FieldPainter::drawFeatureRR (const FieldFeatureInfo &feat, const AbsCoord &
       p.setWidth(50);
       setPen(p);
       setBrush(QBrush("red"));
-      drawLine(feat.p1.x(), feat.p1.y(),
-               feat.p2.x(), feat.p2.y());
+      drawLine(feat.field1.x(), feat.field1.y(),
+               feat.field2.x(), feat.field2.y());
       restore();
    }
 
@@ -230,6 +264,15 @@ void FieldPainter::drawFeatureAbs (const AbsCoord &pos, const FieldFeatureInfo &
       case FieldFeatureInfo::fTJunction:
          drawRect(-25, -300, 50, 600);
          drawRect(0, -25, 300, 50);
+      case FieldFeatureInfo::fXJunction:
+         save();
+         drawRect(25, 25, -300, -50);
+         restore();
+         save();
+         drawRect(25, 25, -300, -50);
+         rotate(RAD2DEG(-M_PI));
+         restore();
+         break;
       case FieldFeatureInfo::fPenaltySpot:
          break;
       case FieldFeatureInfo::fCentreCircle:
@@ -330,9 +373,9 @@ void FieldPainter::drawRobotRR (const RobotVisionInfo &robot, const AbsCoord &ro
 {
    save ();
    translateRR(robot.rr, robotPos);
-   if(robot.type == RobotVisionInfo::rRed) {
+   if(robot.type == RobotVisionInfo::rEnemyTeam) {
       setBrush(QBrush(Qt::red));
-   } else if(robot.type == RobotVisionInfo::rBlue) {
+   } else if(robot.type == RobotVisionInfo::rOwnTeam) {
       setBrush(QBrush(Qt::blue));
    } else {
       setBrush(QBrush(Qt::green));
@@ -433,6 +476,26 @@ void FieldPainter::drawFieldLine(const LineInfo &line) {
 void FieldPainter::drawLineAbs(const AbsCoord &from, const AbsCoord &to, QColor q) {
    save();
    setPen (q);
+   drawLine(from.x(), from.y(), to.x(), to.y());
+   restore();
+}
+
+void FieldPainter::drawGotoAbs(const AbsCoord &ball, QColor colour)
+{
+   save();
+   QPoint newBall = QPoint(ball.x(), ball.y());
+   QPen absPen(colour);
+   setPen(absPen);
+   setBrush(QBrush(colour));
+   drawEllipse(newBall, 40, 40); // Draw a fixed-size circle
+   restore();
+}
+
+void FieldPainter::drawGotoLineAbs(const AbsCoord &from, const AbsCoord &to, QColor q) {
+   save();
+   QPen pen(q);
+   pen.setWidth(30); // Set pen width thicker
+   setPen(pen);
    drawLine(from.x(), from.y(), to.x(), to.y());
    restore();
 }

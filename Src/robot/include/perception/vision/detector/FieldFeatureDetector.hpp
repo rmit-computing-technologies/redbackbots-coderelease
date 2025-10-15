@@ -1,107 +1,99 @@
-#ifndef PERCEPTION_VISION_DETECTOR_FIELDFEATUREDETECTOR_H_
-#define PERCEPTION_VISION_DETECTOR_FIELDFEATUREDETECTOR_H_
+/**
+ * @file FieldFeatureDetector.hpp
+ * 
+ * @author Arne Böckmann
+ * @author <a href="mailto:jesse@tzi.de">Jesse Richter-Klug</a>
+ * @author RedbackBots
+ */
 
-#include "perception/vision/detector/DetectorInterface.hpp"
+#pragma once
 
-#include "types/VisionInfoOut.hpp"
-#include "perception/vision/Region.hpp"
-#include "types/VisionInfoIn.hpp"
-#include "perception/vision/other/Ransac.hpp"
+#include "perception/vision/Detector.hpp"
+#include "blackboard/Blackboard.hpp"
 
-// Parameters to manage cluster based culling.
-#define DENSE_POINT_CLUSTER 160
-#define BOX_SIZE_POWERS 10
-#define BOX_SIZE (1 << BOX_SIZE_POWERS)
-#define BOXES_X ((FIELD_LENGTH/BOX_SIZE)+(FIELD_LENGTH%BOX_SIZE != 0))
-#define BOXES_Y ((FIELD_WIDTH/BOX_SIZE)+(FIELD_WIDTH%BOX_SIZE != 0))
+#include "utils/defs/BallDefinitions.hpp"
+#include "utils/defs/FieldDefinitions.hpp"
+#include "types/camera/CameraImage.hpp"
+#include "types/camera/CameraInfo.hpp"
+#include "types/vision/CentreCircle.hpp"
+#include "types/vision/Intersections.hpp"
+#include "types/vision/LineSpots.hpp"
+#include "types/vision/PenaltyMarkInfo.hpp"
+#include "types/math/Eigen.hpp"
+#include "types/geometry/RRCoord.hpp"
+#include "utils/debug/Assert.hpp"
 
 class FieldFeatureDetector : public Detector {
 public:
-    FieldFeatureDetector();
-    /**
-     * detect implementation of abstract infterface function
-     */
-     void detect(const VisionInfoIn& info_in, const VisionInfoMiddle& info_middle, VisionInfoOut& info_out);
 
+	FieldFeatureDetector(Blackboard* blackboard);
+  	virtual ~FieldFeatureDetector();
+
+	// Resets middle info
+	virtual void resetMiddleInfo(VisionInfoMiddle* info_middle);
+	virtual void resetVisionOut(VisionInfoOut* info_out);
+
+protected:
+  	virtual void detect_(const VisionInfoIn* info_in, 
+                      	VisionInfoMiddle* info_middle,
+                      	VisionInfoOut* info_out);
 private:
-    std::vector<FieldFeatureInfo> field_features_; // final feature list
-    std::vector<FieldFeatureInfo> temp_features_; // temp feature list
-    std::vector<FieldLinePointInfo> field_line_points_; // all candidate points found
-    std::vector<Point> landmarks_; // landmarks around the field to look at
-    int num_circle_landmarks_;
-    const CameraToRR *convertRR_;
-
-    // Temporary storage for points.
-    std::vector<FieldLinePointInfo> field_line_points_temp_;
-    int clusters[BOXES_X*BOXES_Y];
-
-    // find candidate points and put them in top_candidate_points_ or bot_candidate_points_ depending on localisation
-    // also put them in field_line_points_ for offnao
-    void findPointsInRegion(VisionInfoOut& info_out, const RegionI& region);
-
-    void findFeatures(VisionInfoOut &frame, unsigned int *seed, int type = 0);
-
-    void findFieldLinesAndCircles(
-        const std::vector<FieldLinePointInfo> &points,
-        std::vector<FieldFeatureInfo> *features,
-        unsigned int *seed);
-
-    void findFieldLines(
-        const std::vector<FieldLinePointInfo> &points,
-        std::vector<FieldFeatureInfo> *lines,
-        unsigned int *seed);
-
-    void findIntersections(
-        std::vector<FieldFeatureInfo> &lines,
-        std::vector<FieldFeatureInfo> *features);
-
-    void mergeFeatures(std::vector<FieldFeatureInfo> &features);
-
-    void findParallelLines(std::vector<FieldFeatureInfo>* lines);
-
-    void circleOrientation(std::vector<FieldFeatureInfo> *features);
-
-    void findPenaltySpot();
-
-    void reset(bool full);
-
-    void checkLine(const std::vector<FieldLinePointInfo> &points, LineInfo *l1);
-
-    Point intersect(LineInfo l1, LineInfo l2);
-
-    bool perpendicular(LineInfo l1, LineInfo l2);
-
-    bool isBadCorner(LineInfo l1, LineInfo l2);
-
-    float findTAngle(Point p, LineInfo l);
-
-    float findCAngle(Point p, LineInfo l1, LineInfo l2);
-
-    bool possibleT(LineInfo l1, LineInfo l2);
-
-    void findCornerEndpoints(LineInfo l1, LineInfo l2, Point& e1, Point& e2);
-
-    bool closeToEdge(const Fovea &fovea, FieldFeatureInfo f);
-
-    float findGradient(LineInfo l, Point p);
-
-    bool possibleGoalBoxCorner(CornerInfo c, TJunctionInfo t);
-
-    bool isLeftGoalBoxCorner(CornerInfo c, TJunctionInfo t);
-
-    bool parallelPair(
-        LineInfo l1,
-        LineInfo l2,
-        RRCoord* r);
-
-    struct cmpPoints {
-       bool operator()(const FieldLinePointInfo &p1,
-                 const FieldLinePointInfo &p2) const {
-           if (p1.rrp.x() == p2.rrp.x()) return (p1.rrp.y() < p2.rrp.y());
-           return (p1.rrp.x() < p2.rrp.x());
-        }
+    enum SpotLineStatus {
+        thrown,
+        stayed,
     };
 
-};
+    std::vector<SpotLineStatus> spotLineUsage;
+    CentreCircle lastCentreCircle;
+    // Odometry lastOdometry;
+    unsigned int lastFrameTime = 1;
+    std::vector<LineSpots::Line> internalListOfLines;  /**< Unsorted list of computed field lines. */
 
-#endif
+    LineSpots::Line* midLine;
+
+    bool isPointInSegment(const LineSpots::Line& line, const Vector2f& point) const;
+
+    std::vector<size_t> processLines(const VisionInfoIn* info_in, const CameraImage* cameraImage, const CameraInfo& cameraInfo, LineSpots& lineSpots, CentreCircle& centreCircle, std::vector<FieldFeatureInfo>& features);
+
+    void updateLines(const CameraInfo& cameraInfo, LineSpots& lineSpots, std::vector<size_t> sortedLineIndizes, std::vector<FieldFeatureInfo>& features, int playerNum);
+
+    void updateCentreCircle(const VisionInfoIn* info_in, const CameraInfo& cameraInfo, CentreCircle& centreCircle, std::vector<FieldFeatureInfo>& features);
+
+    void updateIntersections(const VisionInfoIn* info_in, const CameraInfo& cameraInfo, LineSpots& lineSpots, Intersections& intersections, std::vector<FieldFeatureInfo>& features);
+
+    void updatePenaltyMark(const VisionInfoIn* info_in, const CameraInfo& cameraInfo, PenaltyMarkInfo& penaltyMark, std::vector<FieldFeatureInfo>& features);
+
+    // Calculates the angle between the robot and the given field feature.
+    float getRobotCentreAngle(FieldFeatureInfo feature);
+
+    // Calculates the angle of the centre line given a line.
+    float getCentreLineAngle(LineSpots::Line* line);
+
+    // Determines the angle of a corner in the form required by localisation.
+    float findCAngle(PointF& intersection, LineSpots::Line& l1, LineSpots::Line& l2);
+
+    // Determines the angle of a T intersection in the form required by localisation.
+    float findTAngle(PointF& intersection, LineSpots::Line& l);
+
+    // Determines the gradient of a line relative to a point.
+    float findGradient(LineSpots::Line& l, PointF& intersection);
+
+	void configure(Blackboard* blackboard);
+
+	void detect_(CameraInfo::Camera whichCamera,
+                const VisionInfoIn* info_in, 
+                VisionInfoMiddle* info_middle,
+                VisionInfoOut* info_out);
+
+    int OPPONENT_FIELD_BOUNDARY = static_cast<int>((FIELD_LENGTH / 2) + FIELD_LENGTH_OFFSET);
+    int LEFT_FIELD_BORDER = static_cast<int>((FIELD_WIDTH / 2) + FIELD_WIDTH_OFFSET);
+    int OPPONENT_PENALTY_AREA = static_cast<int>((FIELD_LENGTH / 2) - PENALTY_BOX_LENGTH);
+
+    unsigned int lastTimestamp = 0;
+    int numberOfFeaturesSent = 0;
+
+    float bigLineThreshold = 1000.f; /**< Internal definition for a long line. TODO: Rethink this! */
+    int maxTimeOffset = 30;
+    float maxLineDeviationFromAssumedCenterCircle = 200.f; /**< If the distance of a short line to the center circle is larger than this, it is not considered to be on the circle. */
+    float centerWeighting = 0.4f; /**< Used for computing the covariance of a line by determining the actual point for this computation, must be between 0 (-> closest point on line) and 1 (-> center of line).*/
+};

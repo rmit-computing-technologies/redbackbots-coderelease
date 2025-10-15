@@ -1,6 +1,6 @@
 #pragma once
 
-#include "types/AbsCoord.hpp"
+#include "types/geometry/AbsCoord.hpp"
 #include "gamecontroller/RoboCupGameControlData.hpp"
 
 class EstimatorInfoInit
@@ -15,8 +15,7 @@ class EstimatorInfoInit
         const uint8_t &competitionType,
         const uint8_t &state,
         const uint8_t &gamePhase,
-        const uint8_t &setPlay,
-        const bool &handleRefereeMistakes)
+        const uint8_t &setPlay)
         : playerNumber(playerNumber)
         , teamNumber(teamNumber)
         , initialPoseType(initialPoseType)
@@ -26,7 +25,6 @@ class EstimatorInfoInit
         , state(state)
         , gamePhase(gamePhase)
         , setPlay(setPlay)
-        , handleRefereeMistakes(handleRefereeMistakes)
         {};
 
     EstimatorInfoInit(){};
@@ -40,5 +38,4 @@ class EstimatorInfoInit
     uint8_t state;
     uint8_t gamePhase;
     uint8_t setPlay;
-    bool handleRefereeMistakes;
 };

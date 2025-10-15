@@ -18,10 +18,7 @@
 // used with filterZeros function
 static const float VERY_SMALL = 0.0001;
 
-// These are the offsets of each of the parts in the kinematics chain, see
-// http://runswift.cse.unsw.edu.au/confluence/download/attachments/3047440/100215-NaoForwardKinematicsLegToCamera.pptx.pdf?version=2&modificationDate=1266227985534
-// for a visual representation of how the Foot->Camera DH chain was calculated
-// for the v3s.
+// These are the offsets of each of the parts in the kinematics chain
 // For a more up to date version (v4 H21 robots) with the DH chain for the limbs
 // and centre of masses, see section 3.1 of
 // http://cgi.cse.unsw.edu.au/~robocup/2012site/reports/Belinda_Teh_Thesis.pdf
@@ -459,7 +456,8 @@ void Kinematics::updateDHChain() {
    //transformLFB[18] = transformRFB[18];
 }
 
-Pose Kinematics::getPose() {
+
+RobotPose Kinematics::getPose() {
    Chain foot = determineSupportChain();
 
     for(int sensor_reading=0; sensor_reading<NUM_RECORDED_FRAMES_OF_SIDE_LEAN-1;
@@ -512,16 +510,38 @@ Pose Kinematics::getPose() {
    boost::numeric::ublas::matrix<float> c2wTop = createCameraToWorldTransform(foot, true);
    boost::numeric::ublas::matrix<float> c2wBot = createCameraToWorldTransform(foot, false);
    boost::numeric::ublas::matrix<float> n2w = createNeckToWorldTransform(foot);
+   
+   JointValues jointValues = sensorValues.joints;
+   double neckYaw = jointValues.angles[Joints::HeadYaw];
+   double neckPitch = jointValues.angles[Joints::HeadPitch];
+   
+   // TODO: (TW) Move to vision computation - this isn't used outside of vision (I think)
    std::pair<int, int> horizon = calculateHorizon(c2wTop);
-   Pose pose(c2wTop, c2wBot, n2w, horizon);
+   
 
-   boost::numeric::ublas::matrix<float> b2cTop =
-      evaluateDHChain(BODY, CAMERA, foot, true);
-   determineBodyExclusionArray(b2cTop, pose.getTopExclusionArray(), true);
+   // TODO (BK): converting to eigen matrices until we remove boost deps in here
+   // Convert boost matrices to Eigen matrices
+   Eigen::Matrix4f eigenC2wTop, eigenC2wBot, eigenN2w;
+   for (int i = 0; i < 4; ++i) {
+       for (int j = 0; j < 4; ++j) {
+           eigenC2wTop(i, j) = c2wTop(i, j);
+           eigenC2wBot(i, j) = c2wBot(i, j);
+           eigenN2w(i, j) = n2w(i, j);
+       }
+   }
 
-   boost::numeric::ublas::matrix<float> b2cBot =
-      evaluateDHChain(BODY, CAMERA, foot, false);
-   determineBodyExclusionArray(b2cBot, pose.getBotExclusionArray(), false);
+   RobotPose pose(eigenC2wTop, eigenC2wBot, eigenN2w, horizon, neckYaw, neckPitch);
+
+
+   // TODO: (TW) Replace and move to vision - this isn't used outside of vision (I think)
+   // TW: Disabled as this does nothing for now
+   // boost::numeric::ublas::matrix<float> b2cTop = evaluateDHChain(BODY, CAMERA, foot, true);
+   // determineBodyExclusionArray(b2cTop, pose.getTopExclusionArray(), true);
+
+   // TODO: (TW) Replace and move to vision - this isn't used outside of vision (I think)
+   // TW: Disabled as this does nothing for now
+   // boost::numeric::ublas::matrix<float> b2cBot = evaluateDHChain(BODY, CAMERA, foot, false);
+   // determineBodyExclusionArray(b2cBot, pose.getBotExclusionArray(), false);
 
    return pose;
 }
@@ -663,8 +683,9 @@ Kinematics::createCameraToFootTransform(Chain foot, bool top) {
    boost::numeric::ublas::matrix<float> hipPt = prod(b2f, z);
    float bodyPitchOffset = DEG2RAD(parameters.bodyPitch);
    float forwardLean = sensorValues.sensors[Sensors::InertialSensor_AngleY];
-   if(offNao)
+   if(offNao) {
       sideLean = sensorValues.sensors[Sensors::InertialSensor_AngleX];
+   }
 
    boost::numeric::ublas::matrix<float> transform = createDHMatrix<float>(hipPt(0, 0), 0, 0, 0);
    transform = prod(transform, createDHMatrix<float>(0, 0, hipPt(2, 0), M_PI / 2)); // move up by hip height
@@ -769,13 +790,18 @@ Kinematics::createWorldToFOVTransform(
    return transform;
 }
 
+// TODO: TW: This appears to only be used for vision in excluding the body from the camera image
+//       Replace and move to vision - this isn't used outside of vision (I think)
+//
+//       Disabled as this isn't used at the moment
+/*
 void Kinematics::determineBodyExclusionArray(
    const boost::numeric::ublas::matrix<float> &m,
    int16_t *points, bool top) {
 
    const int COLS = (top) ? TOP_IMAGE_COLS : BOT_IMAGE_COLS;
 
-   for (int i = 0; i < Pose::EXCLUSION_RESOLUTION; i++) {
+   for (int i = 0; i < RobotPose::EXCLUSION_RESOLUTION; i++) {
       points[i] = TOP_IMAGE_ROWS;
       if (!top) points[i] += BOT_IMAGE_ROWS;
    }
@@ -798,9 +824,9 @@ void Kinematics::determineBodyExclusionArray(
             continue;
          }
          int lIndex = (int)(last(0, 0) / COLS *
-                            Pose::EXCLUSION_RESOLUTION);
+                            RobotPose::EXCLUSION_RESOLUTION);
          int cIndex = (int)(m(0, 0) / COLS *
-                            Pose::EXCLUSION_RESOLUTION);
+                            RobotPose::EXCLUSION_RESOLUTION);
          int lPixel = last(1, 0);
          int cPixel = m(1, 0);
          float gradient = 0;
@@ -808,11 +834,11 @@ void Kinematics::determineBodyExclusionArray(
             float denom = cIndex - lIndex;
             gradient = (cPixel - lPixel) / (denom);
          }
-         cIndex = MIN(MAX(cIndex, 0), (int) Pose::EXCLUSION_RESOLUTION);
-         lIndex = MIN(MAX(lIndex, 0), (int) Pose::EXCLUSION_RESOLUTION);
+         cIndex = MIN(MAX(cIndex, 0), (int) RobotPose::EXCLUSION_RESOLUTION);
+         lIndex = MIN(MAX(lIndex, 0), (int) RobotPose::EXCLUSION_RESOLUTION);
          int index = lIndex;
          while (index != cIndex && last(2, 0) > 0) {
-            if (index >= 0 && index < Pose::EXCLUSION_RESOLUTION &&
+            if (index >= 0 && index < RobotPose::EXCLUSION_RESOLUTION &&
                 index != cIndex) {
                int nPixel = last(1, 0) + gradient * (index - lIndex);
                if (nPixel < points[index]) points[index] = nPixel;
@@ -823,8 +849,8 @@ void Kinematics::determineBodyExclusionArray(
          // get Index of last.
          // keep adding one and linearly interpolate
          index = (int)(m(0, 0) / COLS *
-                       Pose::EXCLUSION_RESOLUTION);
-         if (index >= 0 && index < Pose::EXCLUSION_RESOLUTION) {
+                       RobotPose::EXCLUSION_RESOLUTION);
+         if (index >= 0 && index < RobotPose::EXCLUSION_RESOLUTION) {
             if (m(1, 0) < points[index]) {
                points[index] = m(1, 0);
             }
@@ -833,6 +859,7 @@ void Kinematics::determineBodyExclusionArray(
       }
    }
 }
+*/
 
 std::pair<int, int> Kinematics::calculateHorizon(
    const boost::numeric::ublas::matrix<float> &c2w) {

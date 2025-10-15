@@ -1,5 +1,4 @@
-#ifndef ROBOT_PERCEPTION_VISION_VISIONDEBUGGERINTERFACE_HPP
-#define ROBOT_PERCEPTION_VISION_VISIONDEBUGGERINTERFACE_HPP
+#pragma once
 
 #include <stdint.h>
 #include <map>
@@ -8,7 +7,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "Region.hpp"
+#include "fovea/Region.hpp"
 
 struct VisionDebugQuery {
     // The index of the region the user wants drawn
@@ -118,5 +117,3 @@ class VisionDebugModule {
     // Space to keep values while you do your debugging
     VisionDebugBlackboard vision_debug_blackboard;
 };
-
-#endif

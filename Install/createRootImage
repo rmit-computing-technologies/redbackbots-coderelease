@@ -105,12 +105,12 @@ DEBIAN_FRONTEND=noninteractive apt-get update -y
 DEBIAN_FRONTEND=noninteractive apt-get install -y dialog apt-utils
 DEBIAN_FRONTEND=noninteractive apt-get dist-upgrade -y
 
-DEBIAN_FRONTEND=noninteractive apt-get install -y alsa gdb htop i2c-tools libusb-1.0-0 openssh-server pciutils rsync ubuntu-minimal vim wpasupplicant
+DEBIAN_FRONTEND=noninteractive apt-get install -y alsa espeak gdb htop i2c-tools libusb-1.0-0 openssh-server pciutils rsync ubuntu-minimal vim wpasupplicant
 DEBIAN_FRONTEND=noninteractive apt-get install -y python-is-python2 python-u-msgpack python-numpy python3-numpy python3-alsaaudio python3-msgpack
 
 #DEBIAN_FRONTEND=noninteractive apt-get install -y beignet-opencl-icd
-DEBIAN_FRONTEND=noninteractive apt-get install -y ocl-icd-libopencl1
 #DEBIAN_FRONTEND=noninteractive apt-get install -y intel-opencl-icd
+DEBIAN_FRONTEND=noninteractive apt-get install -y ocl-icd-libopencl1
 
 # wpa_supplicant does not need to run by itself, it will be started by netplan if necessary.
 systemctl disable wpa_supplicant.service
@@ -186,6 +186,10 @@ L+      /var/log          1777  - - - volatile/log
 L+      /var/tmp          1777  - - - volatile/tmp
 EOF
 
+# Add the ALSA config to combine all 4 mic channels into a single device
+mkdir -p "${rootDir}/etc/alsa/conf.d"
+cp "${baseDir}/Files/nao-alsa.conf" "${rootDir}/etc/alsa/conf.d"
+
 # Prepare netplan config (the installer finishes it).
 cp "${baseDir}/Files/default.yaml.base" "${baseDir}/Files/default.yaml.wifi" "${rootDir}/etc/netplan"
 touch "${rootDir}/etc/netplan/default.yaml.profile"
@@ -197,6 +201,9 @@ cp "${baseDir}/Files/chest-harakiri" "${rootDir}/opt/rbb/libexec"
 cp "${baseDir}/Files/flash-cx3" "${rootDir}/opt/aldebaran/libexec"
 cp "${baseDir}/Files/reset-cameras.sh" "${rootDir}/opt/aldebaran/libexec"
 cp "${baseDir}/Files/harakiri" "${rootDir}/lib/systemd/system-shutdown"
+
+# add onnxruntime shared library
+cp --dereference "${baseDir}/Files/libonnxruntime.so.1.10.0" "${rootDir}/usr/local/lib/"
 
 rm "${rootDir}/etc/systemd/system/multi-user.target.wants/ondemand.service"
 

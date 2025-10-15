@@ -12,7 +12,8 @@
 #include "types/SPLStandardMessage.hpp"
 #include "types/BroadcastData.hpp"
 
-#include "utils/SPLDefs.hpp"
+#include "utils/defs/FieldDefinitions.hpp"
+#include "utils/defs/RobotDefinitions.hpp"
 
 /* Used for registering c arrays of fixed size */
 #define REG_ARRAY_TYPE(type, size)                                              \
@@ -50,9 +51,10 @@ void register_python_converters()
    boost::python::to_python_converter<
       Eigen::Matrix<float, 3, 3>,
       EigenM33f_to_python>();
+
    // for reading the config
-    boost::python::to_python_converter<
-            boost::program_options::variables_map,
-            VariablesMap_to_python>();
+   boost::python::to_python_converter<
+      boost::program_options::variables_map,
+      VariablesMap_to_python>();
 }
 

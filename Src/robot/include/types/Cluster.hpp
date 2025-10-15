@@ -1,7 +1,7 @@
 #pragma once
 
-#include "types/Point.hpp"
-#include "utils/basic_maths.hpp"
+#include "types/geometry/Point.hpp"
+#include "utils/math/basic_maths.hpp"
 #include <iostream>
 
 struct Cluster

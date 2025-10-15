@@ -110,24 +110,28 @@ class SshScp:
             success = shell.exec(fullCommand, self.hideOutput)
         return success
 
-    def sshCommand(self, command):
+    def sshCommand(self, command, silent=False):
         fullCommand = "ssh -o ConnectTimeout=2 " + self.hostname + " \"" + command + "\""
-        echo.print_subitem(fullCommand, self.robot_name)
+        
+        if not silent:
+            echo.print_subitem(fullCommand, self.robot_name)
         
         success = True
         if not self.debug:
             success = shell.exec(fullCommand, self.hideOutput)
         return success
     
-    def sshCommandWithSession(self, command):
+    def sshCommandWithSession(self, command, silent=False):
         """
         This is useful compared to sshCommand as it adds extra variables to the environment such as $SSH_CLIENT
         """
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         ssh.connect(self.hostname.split('@')[1], username='nao', password='nao')
-        ssh.exec_command(command)
-        echo.print_subitem(command, self.robot_name)
+        response  = ssh.exec_command(command)
+        if not silent:
+            echo.print_subitem(command, self.robot_name)
+        return response[1].readlines()
 
     def makePath(self, path):
         command = "mkdir -p " + path

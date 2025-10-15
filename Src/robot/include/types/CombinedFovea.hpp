@@ -1,7 +1,7 @@
 #ifndef COMBINED_FOVEA_HPP
 #define COMBINED_FOVEA_HPP
 
-#include "perception/vision/Fovea.hpp"
+#include "perception/vision/fovea/Fovea.hpp"
 
 struct CombinedFovea {
 

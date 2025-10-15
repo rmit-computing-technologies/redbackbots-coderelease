@@ -1,5 +1,5 @@
 #include "motion/generator/HeadGenerator.hpp"
-#include "utils/basic_maths.hpp"
+#include "utils/math/basic_maths.hpp"
 #include "utils/clip.hpp"
 #include "utils/Logger.hpp"
 

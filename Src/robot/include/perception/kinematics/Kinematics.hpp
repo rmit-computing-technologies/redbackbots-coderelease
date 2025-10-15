@@ -8,10 +8,10 @@
 #include <boost/numeric/ublas/lu.hpp>
 
 #include <perception/kinematics/Parameters.hpp>
-#include <perception/kinematics/Pose.hpp>
+#include <perception/kinematics/RobotPose.hpp>
 
-#include <utils/matrix_helpers.hpp>
-#include <types/RRCoord.hpp>
+#include <utils/math/matrix_helpers.hpp>
+#include <types/geometry/RRCoord.hpp>
 #include <types/JointValues.hpp>
 #include <types/SensorValues.hpp>
 
@@ -42,8 +42,8 @@ class Kinematics {
          RIGHT_CHAIN = 1
       };
 
-      /* Creates a Pose with the current evaluated DH Chain */
-      Pose getPose();
+      /* Creates a RobotPose with the current evaluated DH Chain */
+      RobotPose getPose();
 
       void updateDHChain();
 
@@ -79,9 +79,11 @@ class Kinematics {
          const boost::numeric::ublas::matrix<float> &transform,
          const boost::numeric::ublas::matrix<float> &point, bool top);
 
-      void determineBodyExclusionArray(
-         const boost::numeric::ublas::matrix<float> &m,
-         int16_t *points, bool top);
+      // TODO: (TW) Remove/replace
+      //       Disabled as this isn't used at the moment
+      // void determineBodyExclusionArray(
+         // const boost::numeric::ublas::matrix<float> &m,
+         // int16_t *points, bool top);
 
       Chain determineSupportChain();
 

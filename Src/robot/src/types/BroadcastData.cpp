@@ -1,6 +1,7 @@
 #include "types/BroadcastData.hpp"
-#include "utils/SPLDefs.hpp"
 
+#include "utils/defs/FieldDefinitions.hpp"
+#include "utils/defs/RobotDefinitions.hpp"
 
 BroadcastData::BroadcastData(const int &playerNum,
                              const AbsCoord &RobotPos,

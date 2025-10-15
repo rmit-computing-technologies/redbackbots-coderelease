@@ -7,6 +7,8 @@ Custom colour-based reporting to terminal
 import sys
 import os
 # import art
+
+BANNER_SPACING = 5
 class unix_colours:
     RED     = "\033[31;1m"
     GREEN   = "\033[32;1m"
@@ -96,17 +98,19 @@ def query_generic(question, options=["yes", "no"], default="no"):
         choice = ''
     return choice
 
-def print_banner(message, colour=unix_colours.RESET):
+def print_banner(message, colour=unix_colours.RESET, spacing=BANNER_SPACING):
     sys.stdout.write(colour)
     # art.tprint(message)
     frame = "#"*(len(message))
     inside_spacing = " "*len(message)
     print()
-    print(f"        ###{frame}###")
-    print(f"        #  {inside_spacing}  #")
-    print(f"        #  {message}  #")
-    print(f"        #  {inside_spacing}  #")
-    print(f"        ###{frame}###")
+    print(f"\t{'#'*spacing}{frame}{'#'*spacing}")
+    for _ in range((spacing - 2)//2):
+        print(f"\t{'#':<{spacing}}{inside_spacing}{'#':>{spacing}}")
+    print(f"\t{'#':<{spacing}}{message}{'#':>{spacing}}")
+    for _ in range((spacing - 2)//2):
+        print(f"\t{'#':<{spacing}}{inside_spacing}{'#':>{spacing}}")
+    print(f"\t{'#'*spacing}{frame}{'#'*spacing}")
     print()
     sys.stdout.write(unix_colours.RESET)
 
@@ -129,6 +133,9 @@ if __name__ == "__main__":
     print_subitem("This is a subitem", "journey")
     print_warning("This is a warning", "Joule")
     print_success("This is a success", "Joule")
+
+    print_banner("This is a banner!")
+    print_banner("This is a big banner!", colour=unix_colours.CYAN, spacing=10)
 
     sys.stdout.write(unix_colours.MAGENTA)
     print("This is magenta")

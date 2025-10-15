@@ -1,5 +1,4 @@
-#ifndef VARIABLE_VIEW_HPP
-#define VARIABLE_VIEW_HPP
+#pragma once
 
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
@@ -38,6 +37,10 @@ class VariableView : public QTreeWidget {
       QTreeWidgetItem *visionTimestamp;
       QTreeWidgetItem *visionFrames;
       QTreeWidgetItem *visionHeading;
+      QTreeWidgetItem *visionTopCameraSettings;
+      QTreeWidgetItem *visionBotCameraSettings;
+      QTreeWidgetItem *visionTopAutoExposureWeightTable;
+      QTreeWidgetItem *visionBotAutoExposureWeightTable;
       QTreeWidgetItem *visionGoal;
       QTreeWidgetItem *visionBallPos;
       QTreeWidgetItem *visionBallPosRobotRelative;
@@ -68,10 +71,11 @@ class VariableView : public QTreeWidget {
       QTreeWidgetItem *receiverDataSharedStateEstimationBundleRobotPos;
       QTreeWidgetItem *receiverDataSharedStateEstimationBundleBallPosRRC;
 
+      QTreeWidgetItem *localisationWalkToPointx;
+      QTreeWidgetItem *localisationWalkToPointy;
+
       std::deque<int> times;
       void updateVision(NaoData *naoData);
       void updateBehaviour(NaoData *naoData);
 
 };
-
-#endif // VARIABLE_VIEW_HPP

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "types/Point.hpp"
-#include "types/RRCoord.hpp"
+#include "types/geometry/Point.hpp"
+#include "types/geometry/RRCoord.hpp"
 
 struct FieldLinePointInfo {
    Point p, rrp;

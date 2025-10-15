@@ -12,7 +12,6 @@ countdown_timer.restart().start()
 
 blackboard = None
 
-
 def update_timer(newBlackboard):
     """
     Updates the Timer.py global variables, i.e. the blackboard.
@@ -26,54 +25,82 @@ def update_timer(newBlackboard):
     blackboard = newBlackboard
 
 
-class Timer(object):
-    def __init__(self, timeTarget=0):
-
-        self.timeTarget = timeTarget
+class Timer():
+    """A simple timer to measure time"""
+    def __init__(self, time_target=0, target_seconds=None):
+        """
+        :param time_target: The target time in microseconds.
+        :param target_seconds: The target time in seconds. If this is set, it will
+                              override the time_target parameter."""
+        if target_seconds is not None:
+            self.time_target = self.s_to_us(target_seconds)
+        else:
+            self.time_target = time_target
         self.running = False
-        self.elapsedTime = 0
-        self.startTime = blackboard.vision.timestamp
+        self.elapsed_time = 0
+        self.start_time = blackboard.vision.timestamp
         self.restart()
 
-    # Resets the timer.  If it's running at the time, it will keep running.
+    def running_finished(self):
+        """
+        Gets if finished and running.
+        Returns:
+            bool: True if the timer is both running and finished, False otherwise.
+        """
+        return self.running and self.finished()
+
     def restart(self):
-
-        self.elapsedTime = 0
-        self.startTime = blackboard.vision.timestamp
-
+        """Reset the timer. If it's running, it will keep running."""
+        self.elapsed_time = 0
+        self.start_time = blackboard.vision.timestamp
         return self
 
-    # Start the timer.  Does nothing if it's already running.
     def start(self):
-
+        """Start the timer.  Does nothing if it's already running"""
         if not self.running:
-            self.startTime = blackboard.vision.timestamp
+            self.start_time = blackboard.vision.timestamp
             self.running = True
-
         return self
 
-    # Stops the timer.  Does nothing if it's already stopped.
     def stop(self):
-
+        """Stops the timer. Does nothing if it's already stopped."""
         if self.running:
-            self.elapsedTime += blackboard.vision.timestamp - self.startTime
+            self.elapsed_time += blackboard.vision.timestamp - self.start_time
             self.running = False
-
         return self
 
-    # Returns how much time has elapsed so far.
     def elapsed(self):
-        return self.elapsedTime + blackboard.vision.timestamp - self.startTime
+        """Returns how much time has elapsed so far"""
+        return self.elapsed_time + blackboard.vision.timestamp - self.start_time
 
-    # Returns whether we have reached our target time or not
+    def elapsed_seconds(self):
+        """Returns how much time has elapsed so far in seconds"""
+        return self.elapsed() / 1_000_000.0
+
     def finished(self):
-        return self.elapsed() >= self.timeTarget
-    
-    def force_expire(self):
-        self.stop()
-        self.running = True
-        self.elapsedTime = self.timeTarget
-        return
+        """Returns whether the timer has reached its target time"""
+        return self.elapsed() >= self.time_target
+
+    @staticmethod
+    def ms_to_us(ms):
+        """
+        Utility function to convert milliseconds to microseconds.
+        
+        :param ms: Milliseconds to convert.
+        :return: Microseconds to parse to timer.
+        """
+        return ms * 1_000
+
+    @staticmethod
+    def s_to_us(s):
+        """
+        Utility function to convert seconds to microseconds.
+        
+        :param s: Seconds to convert.
+        :return: Microseconds to parse to timer.
+        """
+        return s * 1_000_000
+
 
 class WallTimer(object):
     def __init__(self, timeTarget=0):
@@ -89,10 +116,33 @@ class WallTimer(object):
         return blackboard.vision.timestamp - self.startTime
 
     def elapsedSeconds(self):
-        return self.elapsed() / 1000000.0
+        return self.elapsed() / 1_000_000.0
 
     def finished(self):
         return blackboard.vision.timestamp - self.startTime >= self.timeTarget
+
+
+    @staticmethod
+    def ms_to_us(ms):
+        """
+        Utility function to convert milliseconds to microseconds.
+        
+        :param ms: Milliseconds to convert.
+        :return: Microseconds to parse to timer.
+        """
+        return ms * 1_000
+
+
+    @staticmethod
+    def s_to_us(s):
+        """
+        Utility function to convert seconds to microseconds.
+        
+        :param s: Seconds to convert.
+        :return: Microseconds to parse to timer.
+        """
+        return s * 1_000_000
+
     
 
 class BumperTimer(object):

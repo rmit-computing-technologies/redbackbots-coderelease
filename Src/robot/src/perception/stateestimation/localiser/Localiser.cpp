@@ -48,7 +48,7 @@ void Localiser::fillCanLocaliseInState(
     {
         const uint8_t &state = estimatorInfoIn.state;
         // If out state is in ready, set or playing
-        if (!(state == STATE_READY || state == STATE_SET || state == STATE_PLAYING))
+        if (!(state == STATE_READY || state == STATE_SET || state == STATE_PLAYING || estimatorInfoIn.seenRefGesture))
         {
             estimatorInfoMiddle.canLocaliseInState = false;
         }

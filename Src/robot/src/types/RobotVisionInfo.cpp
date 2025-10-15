@@ -4,7 +4,7 @@
 const char *const RobotVisionInfo::TypeName[] =
 {
    "rUnknown",
-   "rBlue",
-   "rRed"
+   "rOwnTeam",
+   "rEnemyTeam"
 };
 

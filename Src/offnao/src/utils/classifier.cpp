@@ -1,15 +1,14 @@
-#include <math.h>
-#include <string.h>
-#include <bzlib.h>
-
-#include <stdexcept>
-
 #include "utils/classifier.hpp"
 
-using namespace std;
+#include <bzlib.h>
+#include <cstring>
+#include <math.h>
+#include <stdexcept>
+
 
 Classifier::Classifier(void) {
 }
+
 Classifier::~Classifier(void) {
 }
 
@@ -39,7 +38,7 @@ bool Classifier::loadClassificationFile(std::string filename) {
    return true;
 }
 
-void Classifier::saveClassificationFile(string filename) {
+void Classifier::saveClassificationFile(std::string filename) {
    FILE *f = fopen(filename.c_str(), "wb");
    int bzerror;
    BZFILE *bf = BZ2_bzWriteOpen(&bzerror, f, 3, 0, 0);
@@ -81,7 +80,7 @@ bool Classifier::classificationFileOpened(void) {
 
 void Classifier::beginAction(void) {
    if (not currentAction.gaussians.empty()) {
-      cerr << "beginAction(): Began action without ending previous one" << endl;
+      std::cerr << "beginAction(): Began action without ending previous one" << std::endl;
       return;
    }
 }
@@ -260,9 +259,9 @@ void Classifier::classify(int y, int u, int v, double weight, Colour c,
    // We divide by 2 to drop the lsb.
    YuvTriple yuv;
 
-   cout << "Classifying YUV(" << y << ", " << u << ", " << v
-        << ") as " << c << ". Radius = (" << yRadius
-        << ", " << uRadius << ", " << vRadius << ")" << endl;
+   std::cout << "Classifying YUV(" << y << ", " << u << ", " << v
+             << ") as " << c << ". Radius = (" << yRadius
+             << ", " << uRadius << ", " << vRadius << ")" << std::endl;
    yuv.y = static_cast<unsigned char>(y / 2);
    yuv.u = static_cast<unsigned char>(u / 2);
    yuv.v = static_cast<unsigned char>(v / 2);
@@ -276,7 +275,7 @@ bool Classifier::canUndo(void) {
 }
 void Classifier::undo(void) {
    if (not canUndo()) {
-      cerr << "No actions to undo" << endl;
+      std::cerr << "No actions to undo" << std::endl;
       return;
    }
    Action actionToUndo = undoBuffer.back();
@@ -284,7 +283,7 @@ void Classifier::undo(void) {
    applyAction(actionToUndo, true);
 }
 
-void Classifier::saveNnmc(string filename) {
+void Classifier::saveNnmc(std::string filename) {
    FILE *f = fopen(filename.c_str(), "wb");
    int bzerror;
    BZFILE *bf = BZ2_bzWriteOpen(&bzerror, f, 9, 0, 100);
@@ -366,7 +365,7 @@ void Classifier::setUpdateLiveNnmc(bool useLive) {
          // Copy across our current nnmc to make sure it is up to date.
          memcpy(liveNnmc, getNnmcPointer(), YMAX * UMAX * VMAX);
       } else {
-         cerr << "setUpdateLiveNnmc(bool): No live nnmc pointer given" << endl;
+         std::cerr << "setUpdateLiveNnmc(bool): No live nnmc pointer given" << std::endl;
          useLive = false;
       }
    } else {

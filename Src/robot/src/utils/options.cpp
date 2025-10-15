@@ -7,7 +7,7 @@
 
 #include "redbackbots.hpp"
 #include "utils/options.hpp"
-#include "transmitter/TransmitterDefs.hpp"
+#include "communication/transmitter/TransmitterDefs.hpp"
 
 namespace po = boost::program_options;
 // using namespace std;
@@ -19,7 +19,11 @@ void populate_options(po::options_description &config_file_options) {
    po::options_description game_config("Game options");
    game_config.add_options()
       ("game.type,g", po::value<std::string>()->default_value(std::string("MATCH")),
-      "Type of game/challenge (MATCH, DRIBBLE, OPEN, PASSING)");
+      "Type of game/challenge (MATCH, DRIBBLE, OPEN, PASSING)")
+      ("game.use_passing", po::value<bool>()->default_value(true),
+      "Whether the robots should use the indirect kick rules or not")
+      ("game.required_passes", po::value<int>()->default_value(2),
+      "The number of robots that need to touch the ball before a goal can be scored");
 
    po::options_description player_config("Player options");
    player_config.add_options()
@@ -41,10 +45,47 @@ void populate_options(po::options_description &config_file_options) {
 
    po::options_description whistles_config("Whistle options"); // This took 5 years to implement
    whistles_config.add_options()
-      ("whistle.act_on_whistle_kickoff", po::value<bool>()->default_value(true),
+      ("whistle.whistle.kickoff", po::value<bool>()->default_value(true),
       "Acts when whistle heard - Go to PLAYING state when in SET state and whistle heard - for kickoff")
-      ("whistle.act_on_whistle_goal", po::value<bool>()->default_value(true),
+      ("whistle.whistle.goal", po::value<bool>()->default_value(true),
       "Acts when whistle heard - Go to READY state when in PLAYING state and whistle heard - for Goal")
+      ("whistle.confidence.kickoff", po::value<float>()->default_value(0),
+      "The percentage of robots that need to hear a kickoff whistle before it is accepted by the team")
+      ("whistle.confidence.goal", po::value<float>()->default_value(0),
+      "The percentage of robots that need to hear a goal whistle before it is accepted by the team")
+
+      ("whistle.allMicsBroken", po::value<bool>()->default_value(false),
+      "if true, the whistle detector will always output the \"dont know\" state")
+      ("whistle.micChannel", po::value<int>()->default_value(0),
+      "the microphone channel to use for whistle detector. Accepted values: [0,3]")
+      ("whistle.noiseLimit", po::value<float>()->default_value(0.25),
+      "amplitude limit for prominent frequency (to filter out noise)")
+      ("whistle.confidenceThreshold", po::value<float>()->default_value(0.45),
+      "confidence threshold for whiste detection. may be modified by useAdaptiveThreshold")
+      ("whistle.useAdaptiveThreshold", po::value<bool>()->default_value(true),
+      "adapt confidence threshold based on noise data previous runs/ticks of the whistle detector.")
+      ("whistle.adaptiveWindowSize", po::value<float>()->default_value(25),
+      "no. of \"previous runs/ticks\" we keep for adaptive threshold")
+      ("whistle.nnWeight", po::value<float>()->default_value(0.9),
+      "neural network weight")
+      ("whistle.pmWeight", po::value<float>()->default_value(0.3),
+      "physical modelling weight")
+      ("whistle.noiseWeight", po::value<float>()->default_value(0.40),
+      "noise limit weight")
+      ("whistle.useWeightedPMConfidence", po::value<bool>()->default_value(true),
+      "Weigh down pm confidence if most prominent/loudest frequency isnt in whistle frequency range")
+      ("whistle.minWhistleFreq", po::value<int>()->default_value(2200),
+      "minimum frequency of whistle candidate")
+      ("whistle.maxWhistleFreq", po::value<int>()->default_value(3500),
+      "maximum frequency of whistle candidate")
+      ("whistle.freqCalibration", po::value<bool>()->default_value(true),
+      "Calibrate frequency range every tick")
+      ("whistle.release", po::value<int>()->default_value(3),
+      "no. of ticks to \"sustain\" a positive whistle detection")
+      ("whistle.attack", po::value<int>()->default_value(2),
+      "no. of positive whistle detection in a row until we report it to the blackboard")
+      ("whistle.attackTimeout", po::value<int>()->default_value(200),
+      "timeout (ms) before resetting attack counter")
       ;
 
    po::options_description debug_config("Debugging options");
@@ -61,14 +102,21 @@ void populate_options(po::options_description &config_file_options) {
        "logging directory")
       ("debug.log.stdout", po::value<bool>()->default_value(false),
        "allow llog to log to the terminal/screen (standard output)")
-      ("debug.dump,D", po::value<std::string>()->default_value(""),
-      "Dump blackboard in .bbd2 format. Empty std::string disables.")
+      ("debug.log.say", po::value<bool>()->default_value(false),
+      "allow logger to output to say")
+      ("debug.dump,D", po::value<bool>()->default_value(false),
+      "Dump Debugging files (blackboard in .bbd2 format, and camera images) to logging directory.")
+      ("debug.dumprate", po::value<int>()->default_value(1000),
+       "Dump debugging files every <arg> milliseconds")
       ("debug.mask", po::value<int>()->default_value(INITIAL_MASK),
       "Blackboard mask determining what is serialised")
       ("debug.top.jpeg", po::value<int>()->default_value(-1),
       "JPEG quality for raw image serialisation.  -1 to use raw image")
       ("debug.bot.jpeg", po::value<int>()->default_value(-1),
       "JPEG quality for raw image serialisation.  -1 to use raw image")
+      // TODO: TW: Why is this option in debug?
+      ("debug.act_on_whistle", po::value<bool>()->default_value(true),
+       "Go to PLAYING state when in SET state and whistle heard")
       ;
 
    po::options_description thread_config("Thread/Module Execution options");
@@ -83,6 +131,8 @@ void populate_options(po::options_description &config_file_options) {
        "enable Perception thread")
       ("thread.vision,V", po::value<bool>()->default_value(true),
        "enable Vision module")
+      ("thread.whistle,W", po::value<bool>()->default_value(true),
+       "enable Whistle module")
       ("thread.behaviour,B", po::value<bool>()->default_value(true),
        "enable Behaviour module")
       ("thread.naotransmitter,C", po::value<bool>()->default_value(true),
@@ -95,8 +145,6 @@ void populate_options(po::options_description &config_file_options) {
 
    po::options_description stateestimation_config("State Estimation options");
    stateestimation_config.add_options()
-      ("stateestimation.handle_referee_mistakes", po::value<bool>()->default_value(true),
-      "set whether to consider the possiblity of referees accidentally penalising / unpenalising robots")
       ("stateestimation.initial_pose_type", po::value<std::string>()->default_value(std::string("GAME")),
       "Type of initial pose (GAME / UNPENALISED / SPECIFIED)")
       ("stateestimation.specified_initial_x", po::value<int>()->default_value(0),
@@ -109,19 +157,31 @@ void populate_options(po::options_description &config_file_options) {
 
    po::options_description behaviour_config("Behaviour options");
    behaviour_config.add_options()
+      ("behaviour.use_skill_menu", po::value<bool>()->default_value(true),
+       "Skill Menu on/off (TRUE, FALSE)")
       ("behaviour.path", po::value<std::string>()->default_value(std::string("/home/nao/data/behaviours/")),
        "path containing python behaviours.")
       ("behaviour.skill,s", po::value<std::string>()->default_value(std::string("Game")),
        "The desired top level Python skill class.")
+      ("behaviour.second_skill", po::value<std::string>()->default_value(std::string("Demo")),
+       "The desired secondary Python skill class.")
+      ("behaviour.third_skill", po::value<std::string>()->default_value(std::string("Stand")),
+       "The desired tertiary Python skill class.")
       ("behaviour.use_getups", po::value<bool>()->default_value(true),
        "Getups on/off (TRUE, FALSE)")
       // TODO: Are these necessary?
       ("behaviour.headskill,k", po::value<std::string>()->default_value("HeadCentre"),
        "The desired top level Python headskill class.")
+      ("behaviour.second_headskill", po::value<std::string>()->default_value("HeadCentre"),
+       "The secondary Python headskill class.")
+      ("behaviour.third_headskill", po::value<std::string>()->default_value("HeadCentre"),
+       "The tertiary Python headskill class.")
       ("behaviour.positioning", po::value<std::string>()->default_value("PositioningAgainstKickingTeam"),
        "The desired positioning file to use, can be changed against different teams")
       // ("behaviour.remote_stiffen", po::value<bool>()->default_value(false),
       //  "Remotely stiffen (and standup) when a READY packet is received from gamecontroller.")
+      ("behaviour.goalie_strategy", po::value<std::string>()->default_value("DiveHeavy"),
+       "The desired goalie strategy determining what transition and tick functions are used inside Goalie.py")
       ;
 
    po::options_description motion_config("Motion options");
@@ -209,20 +269,8 @@ void populate_options(po::options_description &config_file_options) {
        "camera to be used by vision")
       ("vision.camera_controls", po::value<std::string>()->default_value(std::string("")),
        "comma separated list of cid:value pairs of controls (cid offset from V4L2_CID_BASE)")
-      ("vision.dumpframes,d", po::value<bool>()->default_value(false),
-       "dump frames to disk")
-      ("vision.dumprate,r", po::value<int>()->default_value(1000),
-       "dump frames every arg milliseconds")
-      ("vision.dumpfile,f", po::value<std::string>()->default_value(std::string("dump.yuv")),
-       "file to store frames in")
-      ("vision.top.adaptivethresholdingwindow", po::value<int>()->default_value(101),
-       "base top camera adaptive thresholding window size")
-      ("vision.top.adaptivethresholdingpercent", po::value<int>()->default_value(-40),
-       "base top camera adaptive thresholding percent")
-      ("vision.bot.adaptivethresholdingwindow", po::value<int>()->default_value(101),
-       "base bottom camera adaptive thresholding window size")
-      ("vision.bot.adaptivethresholdingpercent", po::value<int>()->default_value(-40),
-       "base bottom camera adaptive thresholding percent")
+      ("vision.ml.modeldir", po::value<std::string>()->default_value(std::string("/home/nao/data")),
+       "root folder location of ML Models")
       ("vision.top.ball.circlefitadaptivethresholdingwindowportion", po::value<float>()->default_value(0.4),
        "the portion of a ball region to use as window size for circle fit adaptive thresholding in top camera regions")
       ("vision.top.ball.circlefitadaptivethresholdingpercent", po::value<int>()->default_value(-5),
@@ -265,12 +313,16 @@ void populate_options(po::options_description &config_file_options) {
        "camera top hue")
       ("camera.top.sharpness", po::value<int>()->default_value(2),
        "camera top sharpness")
-      ("camera.top.backlightcompensation", po::value<int>()->default_value(0x00),
-       "camera top backlight compensation")
       ("camera.top.exposure", po::value<int>()->default_value(90),
        "camera top exposure")
       ("camera.top.gain", po::value<int>()->default_value(250),
        "camera top gain")
+      ("camera.top.gainred", po::value<int>()->default_value(2048),
+       "camera top gainred")
+      ("camera.top.gaingreen", po::value<int>()->default_value(2048),
+       "camera top gaingreen")
+      ("camera.top.gainblue", po::value<int>()->default_value(2048),
+       "camera top gainblue")
       ("camera.top.whitebalance", po::value<int>()->default_value(2700),
        "camera top whitebalance")
       ("camera.top.exposureauto", po::value<int>()->default_value(1),
@@ -281,8 +333,10 @@ void populate_options(po::options_description &config_file_options) {
        "camera top autofocus")
       ("camera.top.focusabsolute", po::value<int>()->default_value(0),
        "camera top focusabsolute")
-      ("camera.top.exposurealgorithm", po::value<int>()->default_value(3),
-       "camera top exposurealgorithm")
+      ("camera.top.autohue", po::value<int>()->default_value(0),
+       "camera top autohue")
+      ("camera.top.autoexposureweighttable", po::value<std::string>()->default_value(""),
+       "camera top autoexposureweighttable")
       ("camera.top.aetargetavgluma", po::value<int>()->default_value(55),
        "camera top ae target avg luma")
       ("camera.top.aetargetavglumadark", po::value<int>()->default_value(27),
@@ -302,13 +356,29 @@ void populate_options(po::options_description &config_file_options) {
       ("camera.top.aeuseweighttable", po::value<bool>()->default_value(true),
        "camera top ae use weight table for V6 camera")
       ("camera.top.aeweighttablex1", po::value<float>()->default_value(0.f),
-       "camera top weight table left (0.0 - 1.0")
+       "camera top weight table left (0.0 - 1.0)")
       ("camera.top.aeweighttablex2", po::value<float>()->default_value(1.f),
-       "camera top weight table right (0.0 - 1.0")
+       "camera top weight table right (0.0 - 1.0)")
       ("camera.top.aeweighttabley1", po::value<float>()->default_value(0.f),
-       "camera top weight table top (0.0 - 1.0")
+       "camera top weight table top (0.0 - 1.0)")
       ("camera.top.aeweighttabley2", po::value<float>()->default_value(1.f),
-       "camera top weight table bottom (0.0 - 1.0")
+       "camera top weight table bottom (0.0 - 1.0)")
+      ("camera.top.intrinsic.openingAngleHeight", po::value<float>()->default_value(42.5),
+       "camera top intrinsic opening angle height (in degrees)")
+      ("camera.top.intrinsic.openingAngleWidth", po::value<float>()->default_value(54.7),
+       "camera top intrinsic opening angle width (in degrees)")
+      ("camera.top.intrinsic.opticalcentre.x", po::value<float>()->default_value(0.5),
+       "camera top intrinsic optical centre (x,y)")
+      ("camera.top.intrinsic.opticalcentre.y", po::value<float>()->default_value(0.5),
+       "camera top intrinsic optical centre (x,y)")
+      ("camera.top.resolution", po::value<std::string>()->default_value("w640h480"),
+       "camera top resolution to process")
+      ("camera.top.extrinsic.rotationCorrection.x", po::value<float>()->default_value(0.0),
+       "camera top extrinsic rotation correction (x-axis, degrees)")
+      ("camera.top.extrinsic.rotationCorrection.y", po::value<float>()->default_value(-3.5),
+       "camera top extrinsic rotation correction (y-axis, degrees)")
+      ("camera.top.extrinsic.rotationCorrection.z", po::value<float>()->default_value(0.0),
+       "camera top extrinsic rotation correction (z-axis, degrees)")
 
       ("camera.bot.hflip", po::value<int>()->default_value(0),
        "camera bot hflip")
@@ -324,12 +394,16 @@ void populate_options(po::options_description &config_file_options) {
        "camera bot hue")
       ("camera.bot.sharpness", po::value<int>()->default_value(2),
        "camera bot sharpness")
-      ("camera.bot.backlightcompensation", po::value<int>()->default_value(0x00),
-       "camera bot backlight compensation")
       ("camera.bot.exposure", po::value<int>()->default_value(13),
        "camera bot exposure")
       ("camera.bot.gain", po::value<int>()->default_value(250),
        "camera bot gain")
+      ("camera.bot.gainred", po::value<int>()->default_value(2048),
+       "camera bot gainred")
+      ("camera.bot.gaingreen", po::value<int>()->default_value(2048),
+       "camera bot gaingreen")
+      ("camera.bot.gainblue", po::value<int>()->default_value(2048),
+       "camera bot gainblue")
       ("camera.bot.whitebalance", po::value<int>()->default_value(2700),
        "camera bot whitebalance")
       ("camera.bot.exposureauto", po::value<int>()->default_value(1),
@@ -340,8 +414,10 @@ void populate_options(po::options_description &config_file_options) {
        "camera bot autofocus")
       ("camera.bot.focusabsolute", po::value<int>()->default_value(0),
        "camera bot focusabsolute")
-      ("camera.bot.exposurealgorithm", po::value<int>()->default_value(3),
-       "camera bot exposurealgorithm")
+      ("camera.bot.autohue", po::value<int>()->default_value(0),
+       "camera bot autohue")
+      ("camera.bot.autoexposureweighttable", po::value<std::string>()->default_value(""),
+       "camera bot autoexposureweighttable")
       ("camera.bot.aetargetavgluma", po::value<int>()->default_value(55),
        "camera bot ae target avg luma")
       ("camera.bot.aetargetavglumadark", po::value<int>()->default_value(27),
@@ -361,13 +437,29 @@ void populate_options(po::options_description &config_file_options) {
       ("camera.bot.aeuseweighttable", po::value<bool>()->default_value(false),
        "camera bot ae use weight table for V6 camera")
       ("camera.bot.aeweighttablex1", po::value<float>()->default_value(0.f),
-       "camera bot weight table left (0.0 - 1.0")
+       "camera bot weight table left (0.0 - 1.0)")
       ("camera.bot.aeweighttablex2", po::value<float>()->default_value(1.f),
-       "camera bot weight table right (0.0 - 1.0")
+       "camera bot weight table right (0.0 - 1.0)")
       ("camera.bot.aeweighttabley1", po::value<float>()->default_value(0.f),
-       "camera bot weight table top (0.0 - 1.0")
+       "camera bot weight table top (0.0 - 1.0)")
       ("camera.bot.aeweighttabley2", po::value<float>()->default_value(1.f),
-       "camera bot weight table bottom (0.0 - 1.0")
+       "camera bot weight table bottom (0.0 - 1.0)")
+      ("camera.bot.intrinsic.openingAngleHeight", po::value<float>()->default_value(42.5),
+       "camera bot intrinsic opening angle height (in degrees)")
+      ("camera.bot.intrinsic.openingAngleWidth", po::value<float>()->default_value(54.7),
+       "camera bot intrinsic opening angle width (in degrees)")
+      ("camera.bot.intrinsic.opticalcentre.x", po::value<float>()->default_value(0.5),
+       "camera bot intrinsic optical centre (x,y)")
+      ("camera.bot.intrinsic.opticalcentre.y", po::value<float>()->default_value(0.5),
+       "camera bot intrinsic optical centre (x,y)")
+      ("camera.bot.resolution", po::value<std::string>()->default_value("w320h240"),
+       "camera bot resolution to process")
+      ("camera.bot.extrinsic.rotationCorrection.x", po::value<float>()->default_value(0.0),
+       "camera bot extrinsic rotation correction (x-axis, degrees)")
+      ("camera.bot.extrinsic.rotationCorrection.y", po::value<float>()->default_value(-3.5),
+       "camera bot extrinsic rotation correction (y-axis, degrees)")
+      ("camera.bot.extrinsic.rotationCorrection.z", po::value<float>()->default_value(0.0),
+       "camera bot extrinsic rotation correction (z-axis, degrees)")
       ;
 
 
@@ -529,7 +621,7 @@ po::options_description store_and_notify(std::vector<std::string> argv,
    ifs.close();
 
    std::cout << "Loading config files for: " << hostname << std::endl;
-   
+
    std::string configFile = std::string("/home/nao/config/Robots/" + hostname + "/robot.cfg");
    std::cout << "- Robot config: " << configFile << std::endl;
    ifs.open(configFile.c_str());

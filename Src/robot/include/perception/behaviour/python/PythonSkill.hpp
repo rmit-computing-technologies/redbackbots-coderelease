@@ -40,6 +40,7 @@ class PythonSkill : Adapter {
       // refs to pure python objects
       boost::python::object main_module;
       boost::python::object sys_module;
+      boost::python::object numpy_module;
 
       boost::python::object initial_modules;
       boost::python::object behaviour_module;

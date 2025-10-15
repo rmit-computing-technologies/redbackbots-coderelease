@@ -11,6 +11,37 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Configure locations
+set(RBB_PREFIX "${PROJECT_SOURCE_DIR}/../../..")
+set(RBB_BUILDCHAIN_DIR "${RBB_PREFIX}/Util/Buildchain")
+
+########################
+### Configure Platform for which to build, choosing one of the following to be 'on'
+set(BUILD_NAO ON)
+set(BUILD_LINUX_X86 OFF)
+
+### BUILD for Nao (v6)
+if(BUILD_NAO)
+  add_definitions(-DTARGET_ROBOT)
+  set(HDF5_VERSION "V6")
+
+  set(CMAKE_CXX_COMPILER clang++)
+  set(CMAKE_CXX_COMPILER_TARGET x86_64-linux-gnu)
+  set(CMAKE_CXX_FLAGS_INIT "-nostdinc -nostdinc++ -march=silvermont -mtune=silvermont -mrdrnd")
+endif()
+
+### BUILD for LINUX (x86)
+if(BUILD_LINUX_X86)
+  add_definitions(-DLINUX)
+  set(HDF5_VERSION "Linux")
+
+  set(CMAKE_CXX_COMPILER clang++)
+endif()
+
+########################
+
+
+
 add_library(CompiledNN
     Src/CompiledNN/CompiledNN.cpp
     Src/CompiledNN/CompiledNN.h
@@ -260,16 +291,22 @@ set_target_properties(CompiledNN PROPERTIES
 )
 
 if(WITH_KERAS_HDF5)
-  find_package(HDF5 REQUIRED)
-  if(NOT TARGET hdf5::hdf5-shared)
-    add_library(hdf5::hdf5-shared INTERFACE IMPORTED)
-    set_target_properties(hdf5::hdf5-shared PROPERTIES
-        INTERFACE_LINK_LIBRARIES "${HDF5_C_LIBRARIES}"
-        INTERFACE_INCLUDE_DIRECTORIES "${HDF5_C_INCLUDE_DIRS}"
-        INTERFACE_COMPILE_OPTIONS "${HDF5_C_DEFINITIONS}"
-    )
-  endif()
-  target_link_libraries(CompiledNN PRIVATE hdf5::hdf5-shared)
+#   find_package(HDF5 REQUIRED)
+#   if(NOT TARGET hdf5::hdf5-shared)
+#     add_library(hdf5::hdf5-shared INTERFACE IMPORTED)
+#     set_target_properties(hdf5::hdf5-shared PROPERTIES
+#         INTERFACE_LINK_LIBRARIES "${HDF5_C_LIBRARIES}"
+#         INTERFACE_INCLUDE_DIRECTORIES "${HDF5_C_INCLUDE_DIRS}"
+#         INTERFACE_COMPILE_OPTIONS "${HDF5_C_DEFINITIONS}"
+#     )
+#   endif()
+
+  add_library(hdf5 STATIC IMPORTED)
+  set_target_properties(hdf5 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${RBB_BUILDCHAIN_DIR}/hdf5/include")
+  set_target_properties(hdf5 PROPERTIES IMPORTED_LOCATION "${RBB_BUILDCHAIN_DIR}/hdf5/lib/${HDF5_VERSION}/libhdf5.a")
+
+  # target_link_libraries(CompiledNN PRIVATE hdf5::hdf5-shared)
+  target_link_libraries(CompiledNN PRIVATE hdf5)
   target_compile_definitions(CompiledNN PRIVATE WITH_KERAS_HDF5)
   target_sources(CompiledNN PRIVATE
       Src/CompiledNN/Formats/KerasHDF5.cpp

@@ -1,7 +1,6 @@
-#ifndef BALL_CMKF_CONSTANTS_HPP
-#define BALL_CMKF_CONSTANTS_HPP
+#pragma once
 
-#include <Eigen/Eigen>
+#include "types/math/Eigen.hpp"
 
 #define NUM_DIM_BALL_POS 2
 #define NUM_DIM_BALL_VEL 2
@@ -23,5 +22,3 @@
 
 typedef Eigen::Matrix<float, NUM_DIM_BALL_TOTAL, 1> BallStateVector;
 typedef Eigen::Matrix<float, NUM_DIM_BALL_TOTAL, NUM_DIM_BALL_TOTAL> BallCovarianceMatrix;
-
-#endif // BALL_CMKF_CONSTANTS_HPP

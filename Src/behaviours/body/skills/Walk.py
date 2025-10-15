@@ -2,7 +2,6 @@ from BehaviourTask import BehaviourTask
 from util.ObstacleAvoidance import (sonar_left_obstacle, sonar_right_obstacle)
 from util.actioncommand import walk
 
-
 class Walk(BehaviourTask):
 
     """

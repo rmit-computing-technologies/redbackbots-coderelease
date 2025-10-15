@@ -1,5 +1,4 @@
-#ifndef PERCEPTION_VISION_VISIONDEFINITIONS_H_
-#define PERCEPTION_VISION_VISIONDEFINITIONS_H_
+#pragma once
 
 typedef enum {
    //Linked to utils/offnao/utils/CPlaneColours.cpp
@@ -37,10 +36,17 @@ enum write_image_format
     COLOUR_FORMAT = 1
 };
 
-#define TOP_IMAGE_ROWS 960
-#define TOP_IMAGE_COLS 1280
-#define BOT_IMAGE_ROWS 480
-#define BOT_IMAGE_COLS 640
+// TODO (TW): Get rid of this hard-coded and used configured values
+#define TOP_IMAGE_ROWS 480
+#define TOP_IMAGE_COLS 640
+#define BOT_IMAGE_ROWS 240
+#define BOT_IMAGE_COLS 320
+
+// Old runswift vision settings
+// #define TOP_IMAGE_ROWS 960
+// #define TOP_IMAGE_COLS 1280
+// #define BOT_IMAGE_ROWS 480
+// #define BOT_IMAGE_COLS 640
 
 #define MAX_BALLS 2
 #define MAX_FIELD_BOUNDARIES 2
@@ -62,8 +68,12 @@ enum write_image_format
  **/
 #define HIST_AVE_WINDOW_SIZE 3
 #define MAX_FIELD_LINE_POINTS 250
-#define TOP_SALIENCY_DENSITY 4
-#define BOT_SALIENCY_DENSITY 8
+// Original runswift values
+// #define TOP_SALIENCY_DENSITY 4
+// #define BOT_SALIENCY_DENSITY 8
+// New values for temporary saliency scan view
+#define TOP_SALIENCY_DENSITY 2
+#define BOT_SALIENCY_DENSITY 4
 #define TOP_SALIENCY_ROWS (TOP_IMAGE_ROWS / TOP_SALIENCY_DENSITY)
 #define TOP_SALIENCY_COLS (TOP_IMAGE_COLS / TOP_SALIENCY_DENSITY)
 #define BOT_SALIENCY_ROWS (BOT_IMAGE_ROWS / BOT_SALIENCY_DENSITY)
@@ -204,6 +214,7 @@ typedef Colour BotSaliency[BOT_SALIENCY_COLS][BOT_SALIENCY_ROWS];
 
 /**
  * BALL DETECTION
+ * TODO: REMOVE WHEN VISION CLEANUP FINISHED
  **/
 
 /**
@@ -237,16 +248,6 @@ typedef Colour BotSaliency[BOT_SALIENCY_COLS][BOT_SALIENCY_ROWS];
  * before scanning for the ball edges at the lowest resolution
  **/
 #define LARGE_SCAN_THRESHOLD 150
-
-/**
- * The maximum radius a ball can have before it is thrown out
- **/
-#define MAXIMUM_BALL_RADIUS 82
-
-/**
- * The minimum radius a ball can have for it to be considered
- **/
-#define MINIMUM_BALL_RADIUS 2
 
 /**
  * The minimum difference in edge points that is required for a
@@ -375,5 +376,3 @@ typedef Colour BotSaliency[BOT_SALIENCY_COLS][BOT_SALIENCY_ROWS];
  * or percentage can have.
  **/
 #define UNDEFINED_ADAPTIVE_THRESHOLDING_VALUE -101
-
-#endif

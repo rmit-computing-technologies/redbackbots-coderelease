@@ -8,8 +8,8 @@
 #pragma once
 
 #include "RobotVisionInfo.hpp"
-#include "AbsCoord.hpp"
-#include "RRCoord.hpp"
+#include "geometry/AbsCoord.hpp"
+#include "geometry/RRCoord.hpp"
 
 struct RobotObstacle {
     RRCoord rr;

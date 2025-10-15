@@ -3,7 +3,7 @@
 #include "blackboard/Blackboard.hpp"
 #include "blackboard/modules/KinematicsBlackboard.hpp"
 #include "blackboard/modules/MotionBlackboard.hpp"
-#include "utils/basic_maths.hpp"
+#include "utils/math/basic_maths.hpp"
 #include "utils/Logger.hpp"
 
 #define MIN_STANDING_WEIGHT 0.55f

@@ -122,11 +122,11 @@ def setupBash():
 
     print()
     print_status("**** ENSURE THAT YOU READ THE BELOW WARNING ****")
-    print_warning(".bashrc configuration has changed." +
-                  "source the new bashrc file (using below) and re-run the setup\n" +
-                  "source " + rbbBashFile)
+    print_warning(".bashrc configuration has changed.")
+    print_warning("Source the new bashrc file (using below) and re-run the setup")
+    print_subitem("Copy and run: \n\n\t\tsource " + rbbBashFile + "\n")
     print_warning(
-        "REDBACKBOTS_CHECKOUT_DIR is set to: '" + REDBACKBOTS_CHECKOUT_DIR + "'\n. If this is not correct. Then change before relaunch")
+        "REDBACKBOTS_CHECKOUT_DIR is set to: '" + REDBACKBOTS_CHECKOUT_DIR + "'.\n\tIf this is not correct. Then change before relaunch")
 
 
 def setupBuild():
